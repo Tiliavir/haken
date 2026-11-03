@@ -84,6 +84,10 @@ current.
   unexpected error becomes a precise task in the list "errorlogs"
   (`ADR-20261104-strict-errors`): enough context to analyse and fix it,
   never credentials or task content. Throwing must never lose data.
+- Be strict with input too: validate every input against an explicit
+  expectation where it enters; unexpected input is an error, never guessed
+  around. Unknown iCalendar properties are expected and preserved; invalid
+  values in properties haken interprets are errors.
 - Small, focused commits with descriptive messages.
 - The repo is private now and will become public: write everything
   (code, comments, commit messages, docs) as if it were public already.
