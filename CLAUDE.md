@@ -80,6 +80,10 @@ current.
 - Tests are required for anything touching sync, conflict handling,
   iCalendar parsing/serialisation or local persistence. Round-trip tests
   with real-world `VTODO` samples from other clients are especially valuable.
+- Be strict: unexpected behaviour throws, never a silent fallback. Every
+  unexpected error becomes a precise task in the list "errorlogs"
+  (`ADR-20261104-strict-errors`): enough context to analyse and fix it,
+  never credentials or task content. Throwing must never lose data.
 - Small, focused commits with descriptive messages.
 - The repo is private now and will become public: write everything
   (code, comments, commit messages, docs) as if it were public already.

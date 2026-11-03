@@ -24,7 +24,7 @@ This chapter is the binding reference. The [sketches](sketches/README.md) illust
 | Task | Complete circle, title, star. Conflict notes, if any (see States). Steps as a checklist with *Add step*. One grouped block for due date, labels (chips + *Label*) and attachments (file name, size, *Attach file*). A note field (description). Footer with the creation date and delete. |
 | Settings | Account (read-only): *This browser only*, or *Radicale server* with the server (the origin the app was loaded from) and the user name; *Log out*. Changing the storage mode or the user means logging out and running setup again ([Auth](adr/ADR-20261103-authentication.md)). Sync card: status, last sync, pending changes, *Sync now*. Appearance: theme *System/Light/Dark*, accent colour (`<input type="color">` + hex + *Default*), language (*System language*, then the native names from `locales/index.json`). Data: *Export (.ics)*, *Import*. App version. |
 
-Smart lists are views and are never stored on the server. Their names are translated; user list names are not.
+Smart lists are views and are never stored on the server. Their names are translated; user list names are not. The list *errorlogs* ([strict errors](adr/ADR-20261104-strict-errors.md)) appears with the user's lists once it exists and is excluded from smart lists and their counts.
 
 ### Logo
 
@@ -74,7 +74,7 @@ Colours are written as `light-dark(<light>, <dark>)` ([Theming](adr/ADR-20261103
 
 ### States
 
-- The sync status is always visible: a dot + text (*Synced*, *Offline*, *n changes pending*, *Sign in to sync*). In browser-only mode it says that there is no server copy ([Browser-only](adr/ADR-20261103-browser-only-mode.md)).
+- The sync status is always visible: a dot + text (*Synced*, *Offline*, *n changes pending*, *Sign in to sync*, *Sync error*, which links to the errorlogs list). In browser-only mode it says that there is no server copy ([Browser-only](adr/ADR-20261103-browser-only-mode.md)).
 - Conflicts never open a dialog ([Sync](adr/ADR-20261103-sync-strategy.md)). The task detail lists each conflict note: property, the overwritten value, *Use this value*, *Dismiss*. The user does not have to act; the note and its marker stay until one of the two is chosen. A task with a conflict note shows a small marker in its meta line. While the app is visible, a non-blocking notice names a task that was merged.
 - A completed task or step shows a filled accent circle with an `--on-accent` check, and its text is struck through and muted.
 - An important task shows a filled star in the accent colour.
