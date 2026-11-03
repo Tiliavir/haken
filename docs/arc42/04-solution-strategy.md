@@ -11,3 +11,5 @@
 | Optional server | Local account, `.ics` export | [Browser-only](adr/ADR-20261103-browser-only-mode.md) |
 | One credential authority | Radicale authenticates and authorizes; gateway holds sessions | [Auth](adr/ADR-20261103-authentication.md) |
 | Stability | W3C validation, lint, unit/integration/E2E and architecture tests at build time | [Quality gates](adr/ADR-20261103-build-time-quality-gates.md) |
+| Multilingual, extensible | One flat JSON file per locale; `Intl` for plurals, dates, sorting | [i18n](adr/ADR-20261103-i18n-json-messages.md) |
+| Readable in light and dark | `light-dark()` tokens; user accent adjusted to 4.5:1 contrast | [Theming](adr/ADR-20261103-theming.md) |
