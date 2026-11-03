@@ -1,6 +1,6 @@
 # ADR-20261103: Backend is one Go binary, stdlib only
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 

@@ -1,6 +1,6 @@
 # ADR-20261103: Local store is IndexedDB, not localStorage
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 

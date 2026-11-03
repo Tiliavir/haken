@@ -1,6 +1,6 @@
 # ADR-20261103: Frontend in TypeScript on platform APIs, no framework
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 

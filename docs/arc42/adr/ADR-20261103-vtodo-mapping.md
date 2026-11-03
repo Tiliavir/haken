@@ -1,6 +1,6 @@
 # ADR-20261103: Feature to iCalendar mapping
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 

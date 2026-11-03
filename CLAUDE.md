@@ -54,7 +54,7 @@ These outrank every other consideration, including feature velocity.
 ## Repository status
 
 Greenfield. Architecture lives in [`docs/arc42/`](docs/arc42/README.md);
-proposed stack and decisions are ADRs there. When build tooling exists,
+stack and decisions are ADRs there. When build tooling exists,
 document commands (build, test, lint, run locally) here and keep this file
 current.
 

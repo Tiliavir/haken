@@ -1,6 +1,6 @@
 # ADR-20261103: haken syncs via CalDAV itself
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 

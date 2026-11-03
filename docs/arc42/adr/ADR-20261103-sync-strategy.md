@@ -1,6 +1,6 @@
 # ADR-20261103: Sync strategy
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 
