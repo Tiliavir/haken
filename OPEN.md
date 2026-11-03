@@ -44,11 +44,3 @@ browser vendors' push services (third-party requests). Options:
 *Today* is now "due today or overdue". The mapping still has
 `X-HAKEN-MYDAY` for a hand-picked My Day list, but no screen uses it.
 Keep it as a separate smart list, or drop it?
-
-## Only `net/` calls `fetch`
-
-Locale files (`ui/i18n.ts`) and `config.json` are fetched outside `net/`, and
-`sw.ts` fetches for its cache. Proposed fix: `net/` gets one function for
-same-origin static assets (relative paths, no credentials) that `ui/` uses
-through `app/`; `sw.ts` is a separate entry point with its own rule (same-origin
-requests for the app shell only).
