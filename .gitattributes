@@ -1,0 +1,11 @@
+* text=auto eol=lf
+
+# iCalendar requires CRLF line endings (RFC 5545)
+*.ics text eol=crlf
+*.vcf text eol=crlf
+
+*.png binary
+*.jpg binary
+*.webp binary
+*.ico binary
+*.woff2 binary
