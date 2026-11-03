@@ -66,6 +66,8 @@ current.
   `ADR-YYYYMMDD-short-title.md`: what was decided and why. List it in
   `09-architecture-decisions.md`.
 - Update the affected chapters and ADRs in the same change as the code.
+- UI rules, screens and design tokens: [`08-crosscutting-concepts.md`](docs/arc42/08-crosscutting-concepts.md).
+  Follow it for every UI change; update it when the design changes.
 
 ## Working conventions
 

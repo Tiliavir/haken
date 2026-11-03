@@ -9,10 +9,12 @@
 | `net/` | HTTP and CalDAV requests | `domain/` |
 | `sync/` | Pull, push, conflict handling | `domain/`, `store/`, `net/` |
 | `app/` | Commands (edit = store write + outbox entry), queries, events | `domain/`, `store/`, `sync/` |
-| `ui/` | Custom Elements, templates, drag and drop, setup screens | `domain/`, `app/` |
+| `ui/` | Custom Elements, templates, drag and drop, setup screens, i18n (`i18n.ts`), theming (`theme.ts`) | `domain/`, `app/` |
 | `main.ts` | Composition root: wires everything, registers the service worker | all |
 
-`sw.ts` (service worker) caches the app shell only and imports nothing.
+`sw.ts` (service worker) caches the app shell (including `web/locales/*.json`) only and imports nothing.
+
+Message files live in `web/locales/` ([i18n](adr/ADR-20261103-i18n-json-messages.md)).
 
 ## Gateway (`gateway/`)
 
