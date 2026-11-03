@@ -5,11 +5,11 @@
 | Layer | Responsibility | May import |
 | --- | --- | --- |
 | `domain/` | Task model, iCalendar mapping, merge, sort order. Pure, no browser APIs | `ical.js` |
-| `store/` | IndexedDB: tasks, merge base, outbox | `domain/` |
+| `store/` | IndexedDB: meta database (accounts, setup state); per account: tasks, merge base, outbox | `domain/` |
 | `net/` | HTTP and CalDAV requests | `domain/` |
 | `sync/` | Pull, push, conflict handling | `domain/`, `store/`, `net/` |
 | `app/` | Commands (edit = store write + outbox entry), queries, events | `domain/`, `store/`, `sync/` |
-| `ui/` | Custom Elements, templates, drag and drop | `domain/`, `app/` |
+| `ui/` | Custom Elements, templates, drag and drop, setup screens | `domain/`, `app/` |
 | `main.ts` | Composition root: wires everything, registers the service worker | all |
 
 `sw.ts` (service worker) caches the app shell only and imports nothing.
