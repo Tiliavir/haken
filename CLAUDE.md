@@ -46,15 +46,26 @@ These outrank every other consideration, including feature velocity.
 ## Sync modes
 
 - **Direct:** haken speaks CalDAV to Radicale itself.
-- **Via DAVx⁵:** DAVx⁵ owns sync on Android; haken must cope with changes
-  arriving through that path without fighting it (no ordering ping-pong, no
-  duplicate UIDs).
+- **Alongside DAVx⁵:** a web page cannot read DAVx⁵'s local data, so haken
+  always syncs itself (see `ADR-20261103-own-caldav-sync`). DAVx⁵ may sync
+  the same server for other apps; haken must cope with their changes without
+  fighting them (no ordering ping-pong, no duplicate UIDs).
 
 ## Repository status
 
-Greenfield. Tech stack, build tooling and directory layout are not decided
-yet. When they are, document them here (commands to build, test, lint, run
-locally) and keep this file current.
+Greenfield. Architecture lives in [`docs/arc42/`](docs/arc42/README.md);
+proposed stack and decisions are ADRs there. When build tooling exists,
+document commands (build, test, lint, run locally) here and keep this file
+current.
+
+## Architecture docs
+
+- arc42, one `.md` per chapter. Add a chapter only when it is needed.
+- Short, precise, unambiguous. No filler.
+- Every architecture decision is an ADR in `docs/arc42/adr/`, named
+  `ADR-YYYYMMDD-short-title.md`: what was decided and why. List it in
+  `09-architecture-decisions.md`.
+- Update the affected chapters and ADRs in the same change as the code.
 
 ## Working conventions
 
