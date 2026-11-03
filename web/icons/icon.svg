@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <title>haken</title>
+  <rect width="200" height="200" rx="44" fill="#F4EFE6"/>
+  <g transform="translate(-4,0)">
+    <g fill="none" stroke="#1F4D45" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M52 112 L84 144 L140 72" stroke-width="16"/>
+      <circle cx="149.8" cy="59.4" r="11" stroke-width="7"/>
+    </g>
+    <path d="M46.3 117.7 Q56.4 130 62 144.55 A1.5 1.5 0 0 0 64.65 143.2 Q61.1 138 61.2 131.1 Z" fill="#1F4D45"/>
+  </g>
+</svg>
