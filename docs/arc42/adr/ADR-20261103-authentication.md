@@ -1,6 +1,6 @@
 # ADR-20261103: Authentication and authorization
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 

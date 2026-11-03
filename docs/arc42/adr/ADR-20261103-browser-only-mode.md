@@ -1,6 +1,6 @@
 # ADR-20261103: Browser-only mode without a server
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 

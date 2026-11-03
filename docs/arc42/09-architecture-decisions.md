@@ -11,6 +11,6 @@ Status: `Proposed` → `Accepted` | `Rejected` | `Superseded by …`.
 | [ADR-20261103-indexeddb-local-store](adr/ADR-20261103-indexeddb-local-store.md) | Local store: IndexedDB, not `localStorage` | Accepted |
 | [ADR-20261103-sync-strategy](adr/ADR-20261103-sync-strategy.md) | Outbox, triggers, ETag writes, three-way merge | Accepted |
 | [ADR-20261103-vtodo-mapping](adr/ADR-20261103-vtodo-mapping.md) | Feature → iCalendar property mapping | Accepted |
-| [ADR-20261103-browser-only-mode](adr/ADR-20261103-browser-only-mode.md) | Local account without any server | Proposed |
-| [ADR-20261103-authentication](adr/ADR-20261103-authentication.md) | Radicale authenticates; gateway session for the PWA | Proposed |
-| [ADR-20261103-build-time-quality-gates](adr/ADR-20261103-build-time-quality-gates.md) | Validation, lint, tests, architecture rules in containers | Proposed |
+| [ADR-20261103-browser-only-mode](adr/ADR-20261103-browser-only-mode.md) | Local account without any server | Accepted |
+| [ADR-20261103-authentication](adr/ADR-20261103-authentication.md) | Radicale authenticates; gateway session for the PWA | Accepted |
+| [ADR-20261103-build-time-quality-gates](adr/ADR-20261103-build-time-quality-gates.md) | Validation, lint, tests, architecture rules in containers | Accepted |

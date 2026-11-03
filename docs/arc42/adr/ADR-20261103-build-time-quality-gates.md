@@ -1,6 +1,6 @@
 # ADR-20261103: Build-time quality gates
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 
