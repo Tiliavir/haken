@@ -36,6 +36,6 @@ No ESLint.
 - Stability comes from catching errors before deployment, not at runtime.
 - `vnu` is the W3C's own validator and runs offline.
 - ESLint's type-aware rules need the classic TypeScript compiler API; TypeScript 7 does not expose it before 7.1. Keeping TS 6 only for linting means two compilers. Biome 2 covers the rule that matters most here (floating promises, i.e. unawaited IndexedDB writes) without the compiler, at partial coverage; E2E and store tests close the gap. Revisit when typescript-eslint supports TS 7.1.
-- The import scanner is ~50 lines on `node:test`; Biome formatting guarantees one static `import` per line, so no parser is needed.
+- The import scanner is ~50 lines on `node:test`. It reads each file as a whole and matches the module specifier of `import … from "…"`, `export … from "…"`, `import "…"` and `import("…")`, across line breaks: Biome wraps long named imports over several lines. Biome formatting keeps these forms regular (double quotes, no comments inside specifiers), so no parser is needed; a fixture test covers single-line, wrapped and side-effect imports.
 - Drag and drop needs `transform` writes during a gesture; that is the only allowed CSSOM write.
 - Containers make local and CI results identical.

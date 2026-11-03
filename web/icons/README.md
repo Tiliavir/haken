@@ -26,3 +26,9 @@ The SVGs are the sources. After changing one, run `tools/render-icons.sh`
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1F4D45">
 ```
+
+The `theme-color` value is only the initial one; at startup the app replaces it
+with the page background of the active scheme ([Theming](../../docs/arc42/adr/ADR-20261103-theming.md)).
+
+In the app the logo is `icon.svg` shown as an image; it keeps the brand colours
+and does not follow the accent.

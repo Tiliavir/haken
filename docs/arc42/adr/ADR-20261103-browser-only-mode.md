@@ -6,7 +6,9 @@ Status: Accepted
 
 - A "Local" account works without any backend: data lives in IndexedDB only, the outbox is never drained.
 - The same static build runs from any static host (or `localhost`); no gateway required.
-- Backup by `.ics` export/import. A local account can later be connected to a CalDAV server; its tasks are uploaded with `If-None-Match: *`.
+- Backup by `.ics` export/import.
+- **No conversion to a server account.** Moving to a server means: export `.ics`, log out (deletes the local data), sign in, import. The UI warns about this when a local account is created.
+- **Import:** a task whose `UID` already exists is the same task; the import replaces it. Before importing, the app shows how many tasks will be replaced and imports only on confirmation. Replacements are ordinary edits through the outbox (`If-Match`).
 - The UI shows clearly that local data has no server copy.
 
 ### Demo on GitHub Pages
@@ -20,4 +22,6 @@ Status: Accepted
 ## Why
 
 - Local-first already makes the server optional; the mode costs one account type, no new code paths in the store.
+- Account databases are keyed by server + user; an in-place conversion would change that identity and has to merge with tasks already on the server. Export and import reuse existing paths and keep the user in control.
+- `UID`s are globally unique (UUIDs for tasks haken creates), so an equal `UID` means the same task.
 - Browser storage can be evicted; export and `navigator.storage.persist()` mitigate, the warning makes the risk explicit.
