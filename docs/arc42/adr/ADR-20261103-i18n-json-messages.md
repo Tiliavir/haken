@@ -1,6 +1,6 @@
 # ADR-20261103: Internationalisation with flat JSON message files
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 

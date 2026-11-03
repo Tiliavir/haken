@@ -15,5 +15,5 @@ Status: `Proposed` → `Accepted` | `Rejected` | `Superseded by …`.
 | [ADR-20261103-authentication](adr/ADR-20261103-authentication.md) | Radicale authenticates; gateway session for the PWA | Accepted |
 | [ADR-20261103-build-time-quality-gates](adr/ADR-20261103-build-time-quality-gates.md) | Validation, lint, tests, architecture rules in containers | Accepted |
 | [ADR-20261103-first-start-setup](adr/ADR-20261103-first-start-setup.md) | First start: explicit, resumable setup; install first where app storage is separate | Accepted |
-| [ADR-20261103-i18n-json-messages](adr/ADR-20261103-i18n-json-messages.md) | i18n: flat JSON per locale, `Intl`, typed keys; en/de/fr/es/it bundled | Proposed |
-| [ADR-20261103-theming](adr/ADR-20261103-theming.md) | `light-dark()` tokens, appearance override, contrast-safe custom accent | Proposed |
+| [ADR-20261103-i18n-json-messages](adr/ADR-20261103-i18n-json-messages.md) | i18n: flat JSON per locale, `Intl`, typed keys; en/de/fr/es/it bundled | Accepted |
+| [ADR-20261103-theming](adr/ADR-20261103-theming.md) | `light-dark()` tokens, appearance override, contrast-safe custom accent | Accepted |

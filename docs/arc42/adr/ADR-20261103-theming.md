@@ -1,6 +1,6 @@
 # ADR-20261103: Theming with system dark mode, override and custom accent
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 
