@@ -8,3 +8,6 @@
 | Simplicity | TypeScript + platform APIs, no framework, no bundler; `ical.js` only runtime dependency | [Frontend](adr/ADR-20261103-vanilla-typescript-frontend.md) |
 | Interoperability | Standard `VTODO` properties; `X-APPLE-SORT-ORDER` for order | [Data mapping](adr/ADR-20261103-vtodo-mapping.md) |
 | One sync path | haken syncs CalDAV itself; DAVx⁵ only for other apps | [Own sync](adr/ADR-20261103-own-caldav-sync.md) |
+| Optional server | Local account, `.ics` export | [Browser-only](adr/ADR-20261103-browser-only-mode.md) |
+| One credential authority | Radicale authenticates and authorizes; gateway holds sessions | [Auth](adr/ADR-20261103-authentication.md) |
+| Stability | W3C validation, lint, unit/integration/E2E and architecture tests at build time | [Quality gates](adr/ADR-20261103-build-time-quality-gates.md) |
