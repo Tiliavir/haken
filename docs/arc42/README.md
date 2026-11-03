@@ -9,4 +9,5 @@ Short by design. A chapter exists only once it is needed.
 | 3 | [Context and Scope](03-context-and-scope.md) |
 | 4 | [Solution Strategy](04-solution-strategy.md) |
 | 5 | [Building Block View](05-building-block-view.md) |
+| 6 | [Runtime View](06-runtime-view.md) |
 | 9 | [Architecture Decisions](09-architecture-decisions.md) |
