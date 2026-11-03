@@ -4,7 +4,17 @@
 
 Runs when the meta database has no completed setup and no account
 ([ADR](adr/ADR-20261103-first-start-setup.md)). Every step is stored; a reload
-or a switch to the installed app resumes at the same step.
+resumes at the same step.
+
+Switching from the browser tab to the installed app is optional. Whether the
+app sees the tab's data depends on the platform:
+
+| Platform | Tab and app share storage | Switching to the app |
+| --- | --- | --- |
+| Chromium (Chrome, Edge), Firefox Android, Samsung Internet | Yes | Resumes at the same step, same data and session |
+| iOS, iPadOS (any browser), macOS Safari ("Add to Dock") | No | App starts with an empty store: setup from step 1, new sign-in |
+
+The second group is called *separate app storage* below.
 
 ```mermaid
 flowchart TD
@@ -16,8 +26,8 @@ flowchart TD
   resume -- yes --> at[Continue at stored step]
   resume -- no --> welcome[1 Welcome]
   welcome --> intro[2 Intro, 3 screens, skippable]
-  intro --> ios{iOS Safari tab?}
-  ios -- yes --> iosinst[3 Install first:<br/>Share, Add to Home Screen]
+  intro --> ios{Separate app storage<br/>and not standalone?}
+  ios -- yes --> iosinst[3 Install first:<br/>Add to Home Screen / Dock]
   iosinst -- installed --> handoff([Continue in the installed app])
   iosinst -- continue in browser --> mode
   ios -- no --> mode{4 Storage mode<br/>offered by config.json}
@@ -42,7 +52,7 @@ flowchart TD
 | --- | --- | --- | --- |
 | 1 Welcome | Name, one sentence. Secondary action "Used haken here before?": browser storage may have been cleared; signing in restores from the server, a local account only from `.ics` | Start | — |
 | 2 Intro | Offline first, sync, order by drag and drop. Original illustrations | Next, Skip | — |
-| 3 Install first (iOS only) | Safari tab and home-screen app have separate storage; Safari clears it after 7 days unused | Installed, Continue in browser | — |
+| 3 Install first (separate app storage only) | Data set up in this tab stays in the tab; Safari clears a site's storage after 7 days unused. Detected in one tested function from the user agent, since no feature test exists | Installed, Continue in browser | Continue in browser: server mode loses nothing (app signs in and pulls; the tab's outbox syncs when the tab is used again). Local mode: tab and app are separate stores, transfer only via `.ics` |
 | 4 Storage mode | "Sync with my server" or "Only on this device". Only the modes in `config.json` `accounts`; a single mode skips the step | Choice, Back | — |
 | 5a Sign in | Username, password (`autocomplete` so password managers work) to `POST /api/session`. The app never stores the password | Sign in, Back | 401: message, retry. 429: wait time. Unreachable: offer local start |
 | 5a Lists | `PROPFIND` calendar home, list `VTODO` collections. None: `MKCALENDAR` "Tasks" | automatic | Error: retry, back |
