@@ -17,10 +17,11 @@ first and foremost. No accounts, no cloud, no tracking.
 - **Offline first.** Works without a connection; syncs back when one is
   available.
 - **Your server is the source of truth.** State lives in CalDAV `VTODO`s on
-  your Radicale instance. Use haken's own sync, or let
-  [DAVx⁵](https://www.davx5.com) sync the calendars and point haken at them.
-- **No data loss, no data leaks.** Conflicts are surfaced, never silently
-  overwritten. Nothing leaves your device except to the server you configured.
+  your Radicale instance. haken syncs them itself; other clients
+  ([DAVx⁵](https://www.davx5.com) with Tasks.org, Thunderbird, …) can keep
+  using the same server alongside it.
+- **No data loss, no data leaks.** Conflicts are merged; an overwritten value
+  is kept visibly on the task, never dropped silently. Nothing leaves your device except to the server you configured.
 
 ## Features (planned)
 

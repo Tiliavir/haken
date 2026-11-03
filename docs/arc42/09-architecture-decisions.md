@@ -17,3 +17,4 @@ Status: `Proposed` → `Accepted` | `Rejected` | `Superseded by …`.
 | [ADR-20261103-first-start-setup](adr/ADR-20261103-first-start-setup.md) | First start: explicit, resumable setup; install first where app storage is separate | Accepted |
 | [ADR-20261103-i18n-json-messages](adr/ADR-20261103-i18n-json-messages.md) | i18n: flat JSON per locale, `Intl`, typed keys; en/de/fr/es/it bundled | Accepted |
 | [ADR-20261103-theming](adr/ADR-20261103-theming.md) | `light-dark()` tokens, appearance override, contrast-safe custom accent | Accepted |
+| [ADR-20261104-strict-errors](adr/ADR-20261104-strict-errors.md) | Fail fast, strict input validation; unexpected errors become tasks in the list "errorlogs" | Accepted |

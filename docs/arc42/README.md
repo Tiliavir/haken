@@ -10,5 +10,6 @@ Short by design. A chapter exists only once it is needed.
 | 4 | [Solution Strategy](04-solution-strategy.md) |
 | 5 | [Building Block View](05-building-block-view.md) |
 | 6 | [Runtime View](06-runtime-view.md) |
+| 7 | [Deployment View](07-deployment-view.md) |
 | 8 | [Cross-cutting Concepts](08-crosscutting-concepts.md) (UI) |
 | 9 | [Architecture Decisions](09-architecture-decisions.md) |

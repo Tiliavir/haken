@@ -20,12 +20,12 @@ Status: Accepted
 - Placeholders are written `{name}` and are substituted as plain text. Plurals use one key suffix per CLDR category (`.zero` `.one` `.two` `.few` `.many` `.other`), selected with `Intl.PluralRules`. No ICU MessageFormat and no library.
 - Dates, numbers and the sorting of names use `Intl.DateTimeFormat`, `Intl.NumberFormat` and `Intl.Collator` with the active locale. Message files never contain formats.
 - The active locale is resolved in this order: the per-device setting (stored in IndexedDB), then the first match in `navigator.languages` (exact tag first, then language only), then `en`. The result is set on `<html lang>`.
-- Loading: the active locale and `en` are fetched same-origin before the first render. The service worker precaches every bundled locale with the app shell, so switching language works offline.
+- Loading: the active locale and `en` are loaded before the first render through `app/`, which uses the static-asset loader in `net/` (same origin, relative path, no credentials). The service worker precaches every bundled locale with the app shell, so switching language works offline.
 - A missing key falls back to `en` at runtime. A [quality gate](ADR-20261103-build-time-quality-gates.md) fails the build if a bundled locale is missing keys, has extra keys, or uses different placeholders from `en` for a key, or if `index.json` and the files in `web/locales/` disagree.
 - Keys are typed: `t()` accepts only `keyof typeof import("../locales/en.json")`. This is a type-only import that `tsc` erases, so a typo in a key fails compilation.
 - Messages are inserted with `textContent` only, never as HTML.
 - User content (task titles, list names, labels) is never translated.
-- `ui/i18n.ts` holds `t()`, locale negotiation and loading. Only `ui/` and `main.ts` use it.
+- `ui/i18n.ts` holds `t()` and locale negotiation. Only `ui/` and `main.ts` use it.
 
 ## Why
 

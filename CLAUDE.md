@@ -18,8 +18,10 @@ These outrank every other consideration, including feature velocity.
 1. **No data loss.**
    - Never overwrite a server resource blindly. Every write uses
      `If-Match` with the last known ETag (or `If-None-Match: *` on create).
-   - On `412 Precondition Failed`, fetch the server version and merge or
-     surface a conflict to the user. Never drop either side silently.
+   - On `412 Precondition Failed`, fetch the server version and merge it
+     as defined in `ADR-20261103-sync-strategy`: per property, the newer
+     edit wins and the losing value is kept as a conflict note on the task.
+     No conflict dialog. Never drop either side silently.
    - Local edits are persisted (IndexedDB) *before* the UI reports success
      and before any network attempt.
    - Preserve unknown iCalendar properties and parameters on round-trip.
@@ -68,6 +70,8 @@ current.
 - Update the affected chapters and ADRs in the same change as the code.
 - UI rules, screens and design tokens: [`08-crosscutting-concepts.md`](docs/arc42/08-crosscutting-concepts.md).
   Follow it for every UI change; update it when the design changes.
+- Questions still waiting for a decision live in [`OPEN.md`](OPEN.md).
+  Do not implement anything listed there before it is decided.
 
 ## Working conventions
 
@@ -76,6 +80,14 @@ current.
 - Tests are required for anything touching sync, conflict handling,
   iCalendar parsing/serialisation or local persistence. Round-trip tests
   with real-world `VTODO` samples from other clients are especially valuable.
+- Be strict: unexpected behaviour throws, never a silent fallback. Every
+  unexpected error becomes a precise task in the list "errorlogs"
+  (`ADR-20261104-strict-errors`): enough context to analyse and fix it,
+  never credentials or task content. Throwing must never lose data.
+- Be strict with input too: validate every input against an explicit
+  expectation where it enters; unexpected input is an error, never guessed
+  around. Unknown iCalendar properties are expected and preserved; invalid
+  values in properties haken interprets are errors.
 - Small, focused commits with descriptive messages.
 - The repo is private now and will become public: write everything
   (code, comments, commit messages, docs) as if it were public already.

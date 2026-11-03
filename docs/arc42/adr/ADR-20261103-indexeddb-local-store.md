@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Decision
 
-All tasks, the sync outbox and attachments live in IndexedDB, accessed through a small own wrapper (no library). The app requests `navigator.storage.persist()` on first start.
+All tasks, the sync outbox and attachments live in IndexedDB, accessed through a small own wrapper (no library). The app requests `navigator.storage.persist()` in the last setup step ([first start](ADR-20261103-first-start-setup.md)).
 
 ## Why
 
