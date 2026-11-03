@@ -21,7 +21,7 @@ Status: Accepted
 - **Conflict (412):** three-way merge per property against the last server version kept locally.
   - Property changed on one side only: that change is taken.
   - Same property changed on both sides: the newer edit wins. Local time = the outbox operation's edit time. Server time = the component's `LAST-MODIFIED`, else `DTSTAMP`; neither present: the server wins.
-  - The losing value is kept as a **conflict note**: stored locally with the task (not synced), shown in the task detail with *Use this value*.
+  - The losing value is kept as a **conflict note**: stored locally with the task (not synced), shown in the task detail with *Use this value* and *Dismiss*. It stays until the user picks one of them; nothing removes it automatically. *Use this value* is an ordinary edit through the outbox.
   - If the app is visible, a non-blocking notice names the task. No dialog.
   - Delete against a changed server version: the change wins, the task is restored locally, and a notice says so. A deleted server resource (`404`) against a local edit: the edit is re-created with `If-None-Match: *`.
 - **Time:** all comparisons are on UTC instants. Device and server clocks are assumed to be in sync. `DATE-TIME` values with `TZID` are resolved via their `VTIMEZONE`; floating times and `DATE` values are read in the device's time zone. haken writes `LAST-MODIFIED` and `DTSTAMP` in UTC on every change.
