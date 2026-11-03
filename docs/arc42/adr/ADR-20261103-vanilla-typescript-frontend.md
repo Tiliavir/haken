@@ -4,11 +4,11 @@ Status: Accepted
 
 ## Decision
 
-- TypeScript, strictest flags (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`).
+- TypeScript 7 (native compiler), strictest flags (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`).
 - UI as Custom Elements; state changes re-render explicitly. No framework, no virtual DOM.
 - `tsc` emits ES modules; the browser loads them natively. No bundler.
 - Runtime dependency: `ical.js` (Mozilla, used by Thunderbird) only, vendored and pinned.
-- Dev dependencies: `typescript`, a test runner. Nothing else without a new ADR.
+- Dev tools: `typescript`, plus those in [quality gates](ADR-20261103-build-time-quality-gates.md). Nothing else without a new ADR.
 - Drag and drop: own Pointer Events code (native HTML5 DnD fails on touch).
 
 ## Why
