@@ -1,6 +1,6 @@
 # ADR-20261103: First start and setup
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 
