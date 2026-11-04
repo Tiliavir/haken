@@ -39,6 +39,7 @@
   "import.problems.one": "{count} elemento no se puede leer y se omitirá:",
   "import.problems.other": "{count} elementos no se pueden leer y se omitirán:",
   "list.add": "Añadir una tarea",
+  "list.addTo": "Añadir a {list}",
   "list.delete": "Eliminar lista",
   "list.rename": "Renombrar lista",
   "list.name": "Nombre",

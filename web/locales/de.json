@@ -39,6 +39,7 @@
   "import.problems.one": "{count} Eintrag kann nicht gelesen werden und wird übersprungen:",
   "import.problems.other": "{count} Einträge können nicht gelesen werden und werden übersprungen:",
   "list.add": "Aufgabe hinzufügen",
+  "list.addTo": "Zu {list} hinzufügen",
   "list.delete": "Liste löschen",
   "list.rename": "Liste umbenennen",
   "list.name": "Name",

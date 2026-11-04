@@ -39,6 +39,7 @@
   "import.problems.one": "{count} élément ne peut pas être lu et sera ignoré :",
   "import.problems.other": "{count} éléments ne peuvent pas être lus et seront ignorés :",
   "list.add": "Ajouter une tâche",
+  "list.addTo": "Ajouter à {list}",
   "list.delete": "Supprimer la liste",
   "list.rename": "Renommer la liste",
   "list.name": "Nom",

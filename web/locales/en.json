@@ -39,6 +39,7 @@
   "import.problems.one": "{count} item cannot be read and will be skipped:",
   "import.problems.other": "{count} items cannot be read and will be skipped:",
   "list.add": "Add a task",
+  "list.addTo": "Add to {list}",
   "list.delete": "Delete list",
   "list.rename": "Rename list",
   "list.name": "Name",

@@ -39,6 +39,7 @@
   "import.problems.one": "{count} elemento non può essere letto e verrà saltato:",
   "import.problems.other": "{count} elementi non possono essere letti e verranno saltati:",
   "list.add": "Aggiungi un'attività",
+  "list.addTo": "Aggiungi a {list}",
   "list.delete": "Elimina elenco",
   "list.rename": "Rinomina elenco",
   "list.name": "Nome",

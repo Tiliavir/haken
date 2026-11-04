@@ -49,7 +49,7 @@ export async function setupLocal(page: Page): Promise<void> {
 }
 
 export async function addTask(page: Page, title: string): Promise<void> {
-  await page.getByPlaceholder("Add a task").fill(title);
+  await page.getByPlaceholder(/^Add (a task|to )/).fill(title);
   await page.keyboard.press("Enter");
   await expect(page.locator(".task-row .title", { hasText: title })).toBeVisible();
 }
