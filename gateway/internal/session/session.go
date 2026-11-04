@@ -196,7 +196,7 @@ func (m *Manager) login(w http.ResponseWriter, r *http.Request) {
 	m.limiter.Reset(keys...)
 	id := newID()
 	m.mu.Lock()
-	m.sessions[id] = &entry{creds: Credentials{User: req.User, Password: req.Password}, lastSeen: m.now()}
+	m.sessions[id] = &entry{creds: Credentials(req), lastSeen: m.now()}
 	m.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{
 		Name:     CookieName,
