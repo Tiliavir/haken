@@ -140,6 +140,24 @@ export class AccountStore {
     return v;
   }
 
+  async allState(): Promise<Map<string, string | number | null>> {
+    const rows = (await transact(this.db, ["state"], "readonly", (tx) =>
+      request(tx.objectStore("state").getAll()),
+    )) as unknown[];
+    const out = new Map<string, string | number | null>();
+    for (const row of rows) {
+      const { key, value } = (row ?? {}) as { key?: unknown; value?: unknown };
+      if (
+        typeof key !== "string" ||
+        (value !== null && typeof value !== "string" && typeof value !== "number")
+      ) {
+        throw new HakenError("store", "Stored state has an unexpected value", { store: "state" });
+      }
+      out.set(key, value);
+    }
+    return out;
+  }
+
   /** Applies all changes atomically. Resolves after the data is on disk. */
   async commit(changes: Changes): Promise<void> {
     for (const l of changes.putLists ?? []) toList(l);

@@ -211,8 +211,9 @@ export class AppService extends EventTarget implements ErrorSink {
     ]);
     const lastSync = await this.store.state("lastSync");
     const tooLarge = new Set<string>();
-    for (const t of tasks) {
-      if ((await this.store.state(`tooLarge:${t.href}`)) !== null) tooLarge.add(t.href);
+    for (const [key, value] of await this.store.allState()) {
+      if (key.startsWith("tooLarge:") && value !== null)
+        tooLarge.add(key.slice("tooLarge:".length));
     }
     const pending = outbox.length;
     const pendingHrefs = new Set(outbox.map((o) => o.href));
@@ -255,11 +256,16 @@ export class AppService extends EventTarget implements ErrorSink {
     }
   }
 
-  private async changed(changes: Changes): Promise<void> {
+  /**
+   * Commits and refreshes. `edited` schedules a sync 2 s later; error tasks
+   * pass `false` so a failing sync cannot re-trigger itself through its own
+   * error task.
+   */
+  private async changed(changes: Changes, triggerSync = true): Promise<void> {
     await this.requireStore().commit(changes);
     this.channel?.postMessage("changed");
     await this.refresh();
-    if (this.isServer) this.dispatchEvent(new Event("edited"));
+    if (this.isServer && triggerSync) this.dispatchEvent(new Event("edited"));
   }
 
   // ------------------------------------------------------------ settings
@@ -834,20 +840,23 @@ export class AppService extends EventTarget implements ErrorSink {
       if (open !== undefined) {
         const now = new Date();
         const ics = bumpErrorTask(open.ics, report, now);
-        await this.changed({
-          putTasks: [{ ...open, ics }],
-          addOps: this.isServer
-            ? [
-                {
-                  kind: "put",
-                  href: open.href,
-                  groups: ["DESCRIPTION", "X-HAKEN-ERROR-COUNT"],
-                  editedAt: now.getTime(),
-                },
-              ]
-            : [],
-          expect: [{ href: open.href, ics: open.ics }],
-        });
+        await this.changed(
+          {
+            putTasks: [{ ...open, ics }],
+            addOps: this.isServer
+              ? [
+                  {
+                    kind: "put",
+                    href: open.href,
+                    groups: ["DESCRIPTION", "X-HAKEN-ERROR-COUNT"],
+                    editedAt: now.getTime(),
+                  },
+                ]
+              : [],
+            expect: [{ href: open.href, ics: open.ics }],
+          },
+          false,
+        );
         return true;
       }
     }
@@ -863,24 +872,27 @@ export class AppService extends EventTarget implements ErrorSink {
     const href = `${list.href}${uid}.ics`;
     await this.meta.set("errorDay", today);
     await this.meta.set("errorCount", count + 1);
-    await this.changed({
-      putTasks: [
-        {
-          schema: SCHEMA,
-          href,
-          list: list.href,
-          uid,
-          ics,
-          etag: null,
-          deleted: false,
-          invalid: null,
-        },
-      ],
-      addOps: this.isServer
-        ? [{ kind: "put", href, groups: resourceGroups(ics), editedAt: now.getTime() }]
-        : [],
-      expect: [{ href, ics: null }],
-    });
+    await this.changed(
+      {
+        putTasks: [
+          {
+            schema: SCHEMA,
+            href,
+            list: list.href,
+            uid,
+            ics,
+            etag: null,
+            deleted: false,
+            invalid: null,
+          },
+        ],
+        addOps: this.isServer
+          ? [{ kind: "put", href, groups: resourceGroups(ics), editedAt: now.getTime() }]
+          : [],
+        expect: [{ href, ics: null }],
+      },
+      false,
+    );
     return true;
   }
 
