@@ -7,6 +7,15 @@
  */
 import ICAL from "../../vendor/ical.js/ical.js";
 import { HakenError, InvalidInputError, unreachable } from "./errors.js";
+import {
+  advance,
+  dueTime,
+  followDue,
+  type Recurrence,
+  readRecurrence,
+  sameRecurrence,
+  writeRecurrence,
+} from "./recurrence.js";
 
 export type Component = InstanceType<typeof ICAL.Component>;
 export type Property = InstanceType<typeof ICAL.Property>;
@@ -63,12 +72,31 @@ export interface TaskView {
   readonly lastModified: number | null;
   /** Has `RRULE`/`RDATE`: haken shows it read-only (recurrence is not supported). */
   readonly repeats: boolean;
+  /** The rule if haken can edit it; `repeats` without `recurrence` means read-only. */
+  readonly recurrence: Recurrence | null;
   readonly prodid: string | null;
 }
 
 export interface ParsedResource {
   readonly calendar: Component;
   readonly todo: Component;
+  /** `RRULE` values as written (ical.js repairs some invalid ones; validation needs the original). */
+  readonly rawRules: readonly string[];
+}
+
+/** `RRULE` values of the VTODO itself (not of VTIMEZONE or VALARM), from the unfolded raw text. */
+function rawRulesOf(ics: string): string[] {
+  const out: string[] = [];
+  const stack: string[] = [];
+  for (const line of ics.replace(/\r?\n[ \t]/g, "").split(/\r?\n/)) {
+    const upper = line.toUpperCase();
+    if (upper.startsWith("BEGIN:")) stack.push(upper.slice(6));
+    else if (upper.startsWith("END:")) stack.pop();
+    else if (stack[stack.length - 1] === "VTODO" && /^RRULE[;:]/.test(upper)) {
+      out.push(line.slice(line.indexOf(":") + 1));
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------- parsing
@@ -108,7 +136,7 @@ export function parseResource(ics: string): ParsedResource {
     });
   }
   const todo = todos[0] as Component;
-  return { calendar, todo };
+  return { calendar, todo, rawRules: rawRulesOf(ics) };
 }
 
 export function serialize(resource: ParsedResource): string {
@@ -331,6 +359,8 @@ export function readTask(resource: ParsedResource): TaskView {
     parentUid = value;
   }
 
+  const recurrence = readRecurrence(todo, resource.rawRules, prodid);
+
   const attachments = todo
     .getAllProperties("attach")
     .map((prop, index) => readAttachment(prop, index, prodid));
@@ -350,7 +380,8 @@ export function readTask(resource: ParsedResource): TaskView {
     attachments,
     created,
     lastModified,
-    repeats: todo.hasProperty("rrule") || todo.hasProperty("rdate"),
+    repeats: recurrence.repeats,
+    recurrence: recurrence.rule,
     prodid,
   };
 }
@@ -423,6 +454,8 @@ export type TaskEdit =
   | { readonly kind: "done"; readonly value: boolean }
   | { readonly kind: "important"; readonly value: boolean }
   | { readonly kind: "due"; readonly value: Due | null }
+  /** `today` (device date) becomes the due date if the task has none. */
+  | { readonly kind: "recurrence"; readonly value: Recurrence | null; readonly today: string }
   | { readonly kind: "categories"; readonly value: readonly string[] }
   | { readonly kind: "sortOrder"; readonly value: number }
   | { readonly kind: "parent"; readonly value: string | null }
@@ -483,14 +516,14 @@ export interface EditResult {
 }
 
 /**
- * Applies one edit to a resource. Throws for read-only tasks (repeating) and
+ * Applies one edit to a resource. Throws for read-only tasks (repeating in a way haken cannot edit) and
  * for edits that do not fit the resource.
  */
 export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
   const resource = parseResource(ics);
   const view = readTask(resource);
-  if (view.repeats) {
-    throw new HakenError("domain", "Repeating tasks are read-only", { uid: view.uid });
+  if (view.repeats && view.recurrence === null) {
+    throw new HakenError("domain", "This repeating task is read-only", { uid: view.uid });
   }
   const todo = resource.todo;
   const groups = new Set<string>();
@@ -506,6 +539,21 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
       mark(setText(todo, "description", edit.value), "description");
       break;
     case "done":
+      if (edit.value && !view.done && view.recurrence !== null) {
+        // Completing a repeating task advances it; it stays open.
+        for (const name of advance(todo, view.recurrence)) groups.add(groupOf(name));
+        if (
+          todo.hasProperty("percent-complete") ||
+          todo.hasProperty("completed") ||
+          view.status !== "NEEDS-ACTION"
+        ) {
+          todo.updatePropertyWithValue("status", "NEEDS-ACTION");
+          todo.removeAllProperties("completed");
+          todo.removeAllProperties("percent-complete");
+          groups.add("COMPLETION");
+        }
+        break;
+      }
       if (edit.value !== view.done || (edit.value && view.status === "CANCELLED")) {
         if (edit.value) {
           todo.updatePropertyWithValue("status", "COMPLETED");
@@ -525,9 +573,33 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
         groups.add("PRIORITY");
       }
       break;
-    case "due":
-      mark(setDue(todo, view.due, edit.value), "due");
+    case "due": {
+      const previous = dueTime(todo);
+      if (!setDue(todo, view.due, edit.value)) break;
+      groups.add("DUE");
+      if (view.recurrence !== null) {
+        if (edit.value === null) {
+          // No due date, no schedule: removing the date ends the repetition.
+          writeRecurrence(todo, null);
+          groups.add("RRULE");
+        } else if (followDue(todo, previous)) {
+          groups.add("DTSTART");
+        }
+      }
       break;
+    }
+    case "recurrence": {
+      if (sameRecurrence(view.recurrence, edit.value)) break;
+      if (edit.value !== null && view.due === null) {
+        setDue(todo, null, { kind: "date", date: edit.today });
+        groups.add("DUE");
+      }
+      const hadStart = todo.hasProperty("dtstart");
+      writeRecurrence(todo, edit.value);
+      groups.add("RRULE");
+      if (!hadStart && todo.hasProperty("dtstart")) groups.add("DTSTART");
+      break;
+    }
     case "categories":
       mark(setCategories(todo, view.categories, edit.value), "categories");
       break;
@@ -729,7 +801,7 @@ export function createTask(task: NewTask, now: Date): string {
   }
   todo.addPropertyWithValue("x-apple-sort-order", String(task.sortOrder));
   setDue(todo, null, task.due);
-  const resource: ParsedResource = { calendar, todo };
+  const resource: ParsedResource = { calendar, todo, rawRules: [] };
   const ics = serialize(resource);
   readTask(parseResource(ics));
   return ics;

@@ -172,7 +172,9 @@ describe("edits", () => {
     const removed = applyEdit(a, { kind: "removeAttachment", index: 0 }, NOW).ics;
     assert.equal(readTask(parseResource(removed)).attachments.length, 0);
   });
-  test("repeating tasks are read-only", () => {
-    assert.throws(() => applyEdit(fixture("repeating.ics"), { kind: "summary", value: "x" }, NOW));
+  test("repeating tasks outside the supported rules are read-only", () => {
+    assert.throws(() =>
+      applyEdit(fixture("recurring-count.ics"), { kind: "summary", value: "x" }, NOW),
+    );
   });
 });
