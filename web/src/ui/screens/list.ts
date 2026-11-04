@@ -166,7 +166,7 @@ export class HakenList extends HTMLElement {
 }
 
 function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
-  const dialog = h("dialog", { class: "dialog" });
+  const dialog = ctx.dialog;
   const renameInput = h("input", {
     type: "text",
     name: "name",
@@ -249,6 +249,5 @@ function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
       { class: "icon-button", type: "button", "aria-label": t("list.delete"), onclick: remove },
       icon("trash"),
     ),
-    dialog,
   );
 }

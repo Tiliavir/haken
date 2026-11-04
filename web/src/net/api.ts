@@ -84,10 +84,7 @@ export async function login(user: string, password: string): Promise<Login> {
       return { kind: "rate-limited", retryAfterSeconds: retry };
     }
     case 404:
-    case 502:
-    case 503:
-    case 504:
-      // No gateway (static host) or Radicale down.
+      // No gateway (static host).
       return { kind: "unreachable" };
     default:
       throw new HakenError("net", "Unexpected /api/session status", {

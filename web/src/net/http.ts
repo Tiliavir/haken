@@ -61,6 +61,10 @@ export async function server(
     throw cause;
   }
   const text = await response.text();
+  // The gateway answers 502/503/504 when Radicale is down: unreachable, like a network error.
+  if (response.status === 502 || response.status === 503 || response.status === 504) {
+    throw new UnreachableError(`${method} ${response.status}`);
+  }
   return { status: response.status, headers: response.headers, text };
 }
 

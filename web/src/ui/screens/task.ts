@@ -437,7 +437,7 @@ export class HakenTask extends HTMLElement {
         ),
     });
     note.value = view.description;
-    const deleteDialog = h("dialog", { class: "dialog" });
+    const deleteDialog = ctx.dialog;
     const confirmDelete = (): void => {
       fill(
         deleteDialog,
@@ -515,7 +515,6 @@ export class HakenTask extends HTMLElement {
               icon("trash"),
             ),
       ),
-      deleteDialog,
     );
   }
 }

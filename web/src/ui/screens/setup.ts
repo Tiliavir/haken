@@ -184,7 +184,7 @@ export class HakenSetup extends HTMLElement {
             try {
               if (ctx.snapshot.account === null) await ctx.app.createLocalAccount();
               await ctx.app.setSetupStep(afterAccount());
-              if (withImport) chooseImport(ctx, this.dialog());
+              if (withImport) chooseImport(ctx, ctx.dialog);
             } finally {
               this.busy = false;
             }
@@ -203,7 +203,6 @@ export class HakenSetup extends HTMLElement {
               button(t("setup.local.empty"), () => start(false), "primary"),
             ),
           ),
-          this.dialog(),
         );
         return;
       }
@@ -269,7 +268,7 @@ export class HakenSetup extends HTMLElement {
                           return;
                         }
                         this.persistDenied = true;
-                        this.render(ctx);
+                        ctx.rerender();
                       }),
                     "primary",
                   ),
@@ -279,13 +278,6 @@ export class HakenSetup extends HTMLElement {
         return;
       }
     }
-  }
-
-  private dialogEl: HTMLDialogElement | null = null;
-
-  private dialog(): HTMLDialogElement {
-    this.dialogEl ??= h("dialog", { class: "dialog" });
-    return this.dialogEl;
   }
 
   private renderSignIn(ctx: Ctx, go: (s: SetupStep) => void, afterAccount: () => SetupStep): void {
@@ -344,7 +336,7 @@ export class HakenSetup extends HTMLElement {
               }
             } finally {
               this.busy = false;
-              this.render(ctx);
+              ctx.rerender();
             }
           });
         },

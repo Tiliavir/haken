@@ -30,8 +30,8 @@ validate: build
 		dist/web/index.html dist/web/styles dist/web/icons
 
 gateway: build
-	rm -rf gateway/internal/static/dist && mkdir -p gateway/internal/static/dist
-	cp -r dist/web/. gateway/internal/static/dist/
+	find gateway/cmd/haken/dist -mindepth 1 ! -name README -delete
+	cp -r dist/web/. gateway/cmd/haken/dist/
 	cd gateway && CGO_ENABLED=0 go build -trimpath -o ../dist/haken ./cmd/haken
 
 test-go: gateway
@@ -47,4 +47,4 @@ run: gateway
 	tools/dev-run.sh
 
 clean:
-	rm -rf dist gateway/internal/static/dist test-results
+	rm -rf dist test-results && git checkout -- gateway/cmd/haken/dist

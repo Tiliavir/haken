@@ -43,6 +43,7 @@ export class HakenApp extends HTMLElement {
   private readonly setup = new HakenSetup();
   private readonly toast = h("div", { class: "toast", role: "status", "aria-live": "polite" });
   private readonly reauth = h("dialog", { class: "dialog" });
+  private readonly dialog = h("dialog", { class: "dialog" });
   private pending = false;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -86,6 +87,8 @@ export class HakenApp extends HTMLElement {
       },
       notify: (text) => this.notify(text),
       signIn: () => reauthDialog(this.ctx(app, route), this.reauth),
+      rerender: () => this.schedule(),
+      dialog: this.dialog,
     };
   }
 
@@ -99,7 +102,7 @@ export class HakenApp extends HTMLElement {
     const account = snapshot.account;
     if (account === null || !account.ready) {
       this.setup.render(this.ctx(app, route));
-      fill(this, this.setup, this.toast);
+      fill(this, this.setup, this.toast, this.dialog);
       this.restoreFocus(focus);
       return;
     }
@@ -128,7 +131,13 @@ export class HakenApp extends HTMLElement {
     } else {
       view = "lists";
     }
-    fill(this, h("div", { class: "shell", "data-view": view }, panes), this.toast, this.reauth);
+    fill(
+      this,
+      h("div", { class: "shell", "data-view": view }, panes),
+      this.toast,
+      this.reauth,
+      this.dialog,
+    );
     this.restoreFocus(focus);
   }
 

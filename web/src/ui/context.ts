@@ -13,6 +13,10 @@ export interface Ctx {
   readonly run: (operation: string, fn: () => Promise<unknown>) => void;
   readonly notify: (text: string) => void;
   readonly signIn: () => void;
+  /** Renders again from the current snapshot (for screen-local state changes after an await). */
+  readonly rerender: () => void;
+  /** One modal dialog owned by the root; it survives re-renders, so a refresh never closes it. */
+  readonly dialog: HTMLDialogElement;
 }
 
 export function statusText(status: SyncStatus): string {

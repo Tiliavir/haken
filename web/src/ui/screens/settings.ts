@@ -242,7 +242,7 @@ export class HakenSettings extends HTMLElement {
   render(ctx: Ctx): void {
     const s = ctx.snapshot;
     const account = s.account;
-    const dialog = h("dialog", { class: "dialog" });
+    const dialog = ctx.dialog;
     const themeOptions: readonly Theme[] = ["system", "light", "dark"];
     const themeLabel = (v: Theme): string =>
       v === "system" ? t("theme.system") : v === "light" ? t("theme.light") : t("theme.dark");
@@ -415,7 +415,6 @@ export class HakenSettings extends HTMLElement {
       appearance,
       data,
       h("p", { class: "muted version" }, t("settings.version", { version: APP_VERSION })),
-      dialog,
     );
   }
 }
