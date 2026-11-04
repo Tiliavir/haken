@@ -39,11 +39,6 @@ browser vendors' push services (third-party requests). Options:
 2. Drop reminders from haken's UI; keep `VALARM` untouched on round-trip.
 3. Fire reminders only while haken is open.
 
-## My Day vs. *Today*
-
-*Today* is now "due today or overdue". The mapping still has
-`X-HAKEN-MYDAY` for a hand-picked My Day list, but no screen uses it.
-Keep it as a separate smart list, or drop it?
 
 ## Sort order semantics (`X-APPLE-SORT-ORDER`)
 

@@ -16,7 +16,7 @@ Status: Accepted
 | Manual order | `X-APPLE-SORT-ORDER` |
 | Steps | Child `VTODO` with `RELATED-TO` (RFC 9253) |
 | Attachments | `ATTACH;VALUE=BINARY;ENCODING=BASE64;FMTTYPE=…;FILENAME=…` (see below) |
-| My Day | `X-HAKEN-MYDAY:<date>` |
+| On *Today* | `X-HAKEN-MYDAY:<YYYYMMDD>` ([Today](ADR-20261104-today.md)) |
 | Modification time | `LAST-MODIFIED`, `DTSTAMP` (UTC, written on every change) |
 
 Edits modify the parsed component in place; unknown properties are written back unchanged.
@@ -31,7 +31,7 @@ RFC 5545 defines `PRIORITY` 1–4 as high, 5 as medium, 6–9 as low and 0 or ab
 ### Due dates and *Today*
 
 - `DUE` may be a `DATE` or a `DATE-TIME` (UTC, with `TZID`, or floating). haken writes a `DATE` unless the user sets a time.
-- The smart list *Today* shows open tasks due today or overdue, by the device's time zone.
+- The smart list *Today* shows open tasks due today or overdue, by the device's time zone, followed by the tasks put on Today ([Today](ADR-20261104-today.md)).
 
 ### Attachments
 
@@ -46,4 +46,4 @@ RFC 5545 defines `PRIORITY` 1–4 as high, 5 as medium, 6–9 as low and 0 or ab
 - Following the RFC 5545 priority ranges means a high priority set elsewhere shows as *Important*, and unstarring never rewrites medium or low priorities.
 - Inline attachments need no second store and travel with the task. The whole `VTODO` is transferred on every change and pull, so files stay small. Tasks.org does not sync attachments ([Tasks.org sync](https://tasks.org/docs/sync.html)); whether it keeps haken's `ATTACH` on its own writes is covered by the interop round-trip tests.
 - Fetching URI attachments automatically would contact hosts other than the user's server.
-- No standard exists for My Day; an `X-` property is ignored by others.
+- No standard exists for *Today*; an `X-` property is ignored by others.

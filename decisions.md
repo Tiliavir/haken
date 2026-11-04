@@ -52,7 +52,16 @@ carry real risk. Questions that still need an answer are in
 | D55 | Steps are reopened, not deleted or copied, when the task advances. | The checklist belongs to the task and is needed again next time. | `app/service.ts` |
 | D56 | Only top-level tasks get a *Repeat* row; repeating steps written by other clients follow the same rules but have no picker. | Steps are one level and part of their task's occurrence. | `ui/screens/task.ts` |
 
-## Gateway
+## Today (details below the ADR)
+
+| # | Decision | Why | Where |
+| --- | --- | --- | --- |
+| D57 | **Review.** Inside *Today* the order is fixed (due date, then day added); no manual reordering there. | Manual order would need a second order property just for Today. | `ui/views.ts` |
+| D58 | Completed tasks show in *Today* only on the day they were completed; the `X-HAKEN-MYDAY` mark stays on them. | No ever-growing completed section, and nothing is deleted from the task. | `ui/views.ts` |
+| D59 | Dragging to *Today* works from real lists on the desktop; on mobile (one screen, no sidebar) the task screen's button is the way. | The sidebar is not visible on a phone while a list is open. | `ui/dnd/sortable.ts` |
+| D60 | App commands run strictly one after another; a command that loses a race against sync (`StaleError`) runs again on the fresh state, at most 3 times. | Two quick edits of one task lost the second edit; re-running is correct because every command reads what it changes. Found through an error task. | `app/service.ts` |
+
+
 
 | # | Decision | Why | Where |
 | --- | --- | --- | --- |
@@ -73,9 +82,9 @@ carry real risk. Questions that still need an answer are in
 | D35 | Hash routes (`#/list/<href>`, `#/smart/today`, `…/task/<href>`, `#/settings`). | Work on any static host, including GitHub Pages; the back button works. | `ui/route.ts` |
 | D36 | **Review.** Mobile shows one screen at a time through **one CSS media query** (720 px). Chapter 8 says the panes stack "without breakpoint code"; there is no JS for it, but there is this one CSS rule. | Stacking all panes on a phone would show sidebar, list and task at once. | `web/styles/app.css` |
 | D37 | One root-owned `<dialog>` for every modal; text typed in a focused field survives a re-render. | A background sync re-renders the screen; a dialog inside it would vanish, a half-typed title would be reset. | `ui/app-root.ts` |
-| D38 | **Review.** Smart lists: *Today* = open, due ≤ today; *Planned* sorted by due date; *All* = every task except errorlogs, completed ones collapsed. Adding from a smart list goes into the first user list; *Important* stars it, *Today*/*Planned* set due today. Smart lists cannot be reordered. | Mirrors the familiar behaviour; manual order belongs to a real list. | `ui/views.ts`, `ui/screens/list.ts` |
+| D38 | Smart lists: *Planned* sorted by due date; *All* = every task except errorlogs, completed ones collapsed; smart lists cannot be reordered. *Today*: see [ADR-20261104-today](docs/arc42/adr/ADR-20261104-today.md). Adding from *Important* or *Planned* goes into the first user list and stars it or sets due today. | Mirrors the familiar behaviour; manual order belongs to a real list. | `ui/views.ts`, `ui/screens/list.ts` |
 | D39 | Steps are one level deep; deleting a task deletes its steps. | Matches the design; nested steps from other clients are kept, not shown. | `app/service.ts` |
-| D40 | Overdue dates are bold `--text-2`, no red. | One accent colour (chapter 8). | `web/styles/app.css` |
+| D40 | ~~Overdue dates bold, no red.~~ Superseded by [ADR-20261104-today](docs/arc42/adr/ADR-20261104-today.md): overdue is red. | One accent colour (chapter 8). | `web/styles/app.css` |
 | D41 | Changing the language reloads the page. | `t()` is resolved at render time from one loaded locale; a reload is the simplest correct switch. | `ui/screens/settings.ts` |
 | D42 | `de.json` uses standard German spelling (ß). A Swiss variant would be `de-CH.json`. | Default for "Deutsch". | `web/locales/de.json` |
 | D43 | Setup: the account record has `ready`; install and persistent-storage steps run with the account active but not ready. *I installed it* (separate app storage) can only show a hint to open the app. | Resumable setup with one state flag; the install cannot be detected from the tab. | `store/records.ts`, `ui/screens/setup.ts` |
