@@ -14,6 +14,7 @@ import { HakenSettings } from "./screens/settings.js";
 import { HakenSetup, reauthDialog } from "./screens/setup.js";
 import { HakenSidebar } from "./screens/sidebar.js";
 import { HakenTask } from "./screens/task.js";
+import { dueLabel } from "./screens/taskparts.js";
 import { applyTheme } from "./theme.js";
 import { defaultList } from "./views.js";
 
@@ -50,6 +51,7 @@ export class HakenApp extends HTMLElement {
     this.app = app;
     app.addEventListener("change", () => this.schedule());
     app.addEventListener("notice", (e) => this.onNotice((e as CustomEvent<Notice>).detail));
+    app.addEventListener("advanced", (e) => this.onAdvanced((e as CustomEvent<string>).detail));
     window.addEventListener("hashchange", () => this.schedule());
     window
       .matchMedia("(prefers-color-scheme: dark)")
@@ -190,6 +192,14 @@ export class HakenApp extends HTMLElement {
     this.toast.classList.add("visible");
     if (this.toastTimer !== null) clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => this.toast.classList.remove("visible"), 5000);
+  }
+
+  /** A repeating task was completed and moved to its next occurrence. */
+  private onAdvanced(href: string): void {
+    const view = this.app?.findItem(href)?.view ?? null;
+    if (view === null) return;
+    const due = dueLabel(view, Date.now());
+    this.notify(t("notice.advanced", { title: view.summary, date: due ?? "" }));
   }
 
   private onNotice(notice: Notice): void {

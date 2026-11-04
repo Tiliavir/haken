@@ -58,14 +58,18 @@ To decide after checking Tasks.org's source and a real export:
 
 ## Strictness for other clients' data
 
-Two rules can turn real-world data into *Cannot be read* tasks
-([D09, D11](decisions.md)):
+`TZID` without a matching `VTIMEZONE` turns real-world data into *Cannot be
+read* tasks ([D11](decisions.md)). Keep it strict and learn from error
+tasks, or accept IANA time-zone names via `Intl`?
 
-- `TZID` without a matching `VTIMEZONE`.
-- Recurrence overrides (`RECURRENCE-ID`, several VTODOs per resource).
+(Recurrence overrides were decided: they stay unreadable,
+[ADR-20261104-recurrence](docs/arc42/adr/ADR-20261104-recurrence.md).)
 
-Keep them strict and learn from error tasks, or accept them now (IANA
-time-zone names via `Intl`; show the master and keep overrides untouched)?
+## Repeat after completion
+
+Not implemented ([recurrence ADR](docs/arc42/adr/ADR-20261104-recurrence.md)).
+Tasks.org supports it; how it encodes the choice in the `VTODO` has to be
+checked before haken writes or reads it.
 
 ## Local account outbox
 

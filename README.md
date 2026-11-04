@@ -32,6 +32,7 @@ first and foremost. No accounts, no cloud, no tracking.
 - [x] Labels
 - [x] Attachments (inline, up to 5 MB)
 - [x] Due dates — reminders are still open
+- [x] Repeating tasks (daily, weekdays, weekly, monthly, yearly, custom)
 - [x] Smart lists: Today, Important, Planned, All
 - [ ] "My Day"-style hand-picked list
 - [x] Offline queue with conflict handling

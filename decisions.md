@@ -20,7 +20,7 @@ carry real risk. Questions that still need an answer are in
 | D06 | **Review.** `X-APPLE-SORT-ORDER`: ascending integer. Absent → seconds from 2001-01-01 to `CREATED` (else `DTSTAMP`). | This is the Nextcloud Tasks convention (Apple reference date). Not verified against Tasks.org's code; see `OPEN.md`. | `domain/vtodo.ts` `readTask` |
 | D07 | New tasks go **on top** (min − 1), new steps **at the end** (max + 1). A move writes only the moved task; without an integer gap it shifts the following tasks by the minimum needed. | Same as the familiar list apps; minimal writes avoid ordering fights between clients. | `domain/order.ts` |
 | D08 | Written as plain `X-APPLE-SORT-ORDER:<n>`, no `VALUE=INTEGER`. | Other clients write it that way. | `domain/vtodo.ts` |
-| D09 | **Review.** Repeating tasks (`RRULE`/`RDATE`) are shown **read-only** with a hint. Resources with `RECURRENCE-ID` overrides (more than one VTODO) are *Cannot be read*. | Completing a series in haken would complete it everywhere, which is not what Tasks.org does. Recurrence is not supported yet. | `domain/vtodo.ts` |
+| D09 | ~~Repeating tasks read-only.~~ Superseded by [ADR-20261104-recurrence](docs/arc42/adr/ADR-20261104-recurrence.md). | Decided 2026-11-04. | — |
 | D10 | `STATUS:CANCELLED` counts as done (shown under *Completed*). Un-completing writes `NEEDS-ACTION`. | haken has no "cancelled" state; hiding such tasks would be worse. | `domain/vtodo.ts` |
 | D11 | **Review.** `DATE-TIME` with `TZID` but no matching `VTIMEZONE` is invalid input. | RFC 5545 requires the VTIMEZONE; per the strict-input rule this is an error, not a guess. Some clients may rely on IANA names; we would learn it from error tasks. | `domain/vtodo.ts` |
 | D12 | The UI sets dates only (`DUE;VALUE=DATE`). `DATE-TIME` values from others are read and shown; if haken writes one it is UTC. | Matches the current design (no time picker). | `ui/screens/task.ts` |
@@ -42,6 +42,15 @@ carry real risk. Questions that still need an answer are in
 | D23 | `413` sets a per-task flag; the change stays in the outbox and the task shows the error. The push is retried every run. | ADR says "keeps the change in the outbox". Retrying forever is in the backlog. | `sync/runner.ts` |
 | D24 | Error tasks: fingerprint = FNV-1a 64 of name, message, top stack frame. Context keys that look like secrets or content (`pass`, `auth`, `cookie`, `token`, `session`, `summary`, `description`, `title`, `label`, `categor`, `content`) are dropped; query strings are cut. Writing an error task **does not trigger a sync**. | No crypto needed for dedupe. Without the last rule a failing sync would re-trigger itself every 2 s through its own error task. | `app/errors.ts`, `app/service.ts` |
 | D25 | Orphaned steps (`RELATED-TO` to a missing parent) are shown as top-level tasks and reported once per session. | Visible data, one error task, no flood on every refresh. | `app/service.ts` |
+
+## Recurrence (details below the ADR)
+
+| # | Decision | Why | Where |
+| --- | --- | --- | --- |
+| D53 | The next occurrence counts from the **current due date**, not from today. An overdue daily task completed late can still be overdue. | Predictable, and the same rule for every client; "from today" is close to *repeat after completion*, which is not decided. | `domain/recurrence.ts` |
+| D54 | Weekly with weekdays and an interval: the next day in the same week, else the first chosen day `interval` weeks later (week starts Monday). Rules with another `WKST` are read-only. | RFC 5545 semantics with DTSTART moving along the series. | `domain/recurrence.ts` |
+| D55 | Steps are reopened, not deleted or copied, when the task advances. | The checklist belongs to the task and is needed again next time. | `app/service.ts` |
+| D56 | Only top-level tasks get a *Repeat* row; repeating steps written by other clients follow the same rules but have no picker. | Steps are one level and part of their task's occurrence. | `ui/screens/task.ts` |
 
 ## Gateway
 

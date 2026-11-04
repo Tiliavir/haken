@@ -7,6 +7,7 @@ import { formatDate, locale, t } from "../i18n.js";
 import { icon } from "../icons.js";
 import type { ListId } from "../route.js";
 import { dueDate } from "../views.js";
+import { repeatRow } from "./repeat.js";
 import { checkCircle, formatSize, starButton } from "./taskparts.js";
 
 /** Human-readable value of a conflict note's lines. */
@@ -43,6 +44,10 @@ function groupName(group: string): string {
       return t("conflict.group.attachments");
     case "X-APPLE-SORT-ORDER":
       return t("conflict.group.order");
+    case "RRULE":
+      return t("conflict.group.repeat");
+    case "DTSTART":
+      return t("conflict.group.start");
     case "*":
       return t("conflict.group.whole");
     default:
@@ -398,7 +403,7 @@ export class HakenTask extends HTMLElement {
       return;
     }
     const view = item.view;
-    const readonly = view.repeats;
+    const readonly = view.repeats && view.recurrence === null;
     const listName = ctx.snapshot.lists.find((l) => l.href === item.list)?.name ?? "";
     const back = h("a", { class: "back", href: closeHref }, icon("back"), h("span", {}, listName));
     const title = h("textarea", {
@@ -488,6 +493,7 @@ export class HakenTask extends HTMLElement {
         "section",
         { class: "group" },
         dueRow(ctx, item, view, readonly),
+        view.parentUid === null && !readonly ? repeatRow(ctx, item, view) : null,
         labelsRow(ctx, item, view, readonly),
         attachmentsRow(ctx, item, view, readonly),
       ),

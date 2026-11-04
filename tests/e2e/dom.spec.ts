@@ -30,6 +30,11 @@ test("every screen renders valid HTML", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(page.locator(".chip", { hasText: "tag" }).first()).toBeVisible();
   files.push(await snapshot(page, "task"));
+  await page.getByLabel("Repeat").selectOption("custom");
+  await expect(page.locator(".repeat-custom")).toBeVisible();
+  await page.locator(".weekday", { hasText: "Mon" }).click();
+  await expect(page.locator(".weekday input:checked")).toHaveCount(1);
+  files.push(await snapshot(page, "task-repeat"));
   await page.getByRole("link", { name: "Settings" }).click();
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   files.push(await snapshot(page, "settings"));

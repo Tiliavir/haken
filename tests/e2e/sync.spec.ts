@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
-import { addTask, button, setupServer, waitSynced } from "./helpers.js";
+import { addTask, setupServer, waitSynced } from "./helpers.js";
 
 // Sync paths that need a second writer: the test itself plays "another
 // CalDAV client" (Basic auth through the gateway, like DAVx⁵ would).
@@ -148,7 +148,7 @@ test("unknown properties written by another client survive a haken edit", async 
   expect(put.status()).toBe(201);
   await syncNow(page);
   await page.locator(".task-row .title", { hasText: "Foreign task" }).click({ timeout: 15_000 });
-  await button(page, "Mark as important");
+  await page.locator(".task-head").getByRole("button", { name: "Mark as important" }).click();
   await expect
     .poll(
       async () => (await findResource(request, list, "Foreign task")).ics.includes("PRIORITY:1"),

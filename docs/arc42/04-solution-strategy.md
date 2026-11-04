@@ -7,6 +7,7 @@
 | No data leak, no CORS | Same-origin Go gateway; HttpOnly session cookie | [Gateway](adr/ADR-20261103-go-stdlib-gateway.md) |
 | Simplicity | TypeScript + platform APIs, no framework, no bundler; `ical.js` only runtime dependency | [Frontend](adr/ADR-20261103-vanilla-typescript-frontend.md) |
 | Interoperability | Standard `VTODO` properties; `X-APPLE-SORT-ORDER` for order | [Data mapping](adr/ADR-20261103-vtodo-mapping.md) |
+| Repeating tasks like Tasks.org | Completing advances the same `VTODO`; editable `RRULE` subset | [Recurrence](adr/ADR-20261104-recurrence.md) |
 | One sync path | haken syncs CalDAV itself; DAVx⁵ only for other apps | [Own sync](adr/ADR-20261103-own-caldav-sync.md) |
 | Optional server | Local account, `.ics` export | [Browser-only](adr/ADR-20261103-browser-only-mode.md) |
 | One credential authority | Radicale authenticates and authorizes; gateway holds sessions | [Auth](adr/ADR-20261103-authentication.md) |

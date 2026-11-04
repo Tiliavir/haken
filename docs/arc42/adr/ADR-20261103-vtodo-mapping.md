@@ -11,6 +11,7 @@ Status: Accepted
 | Done | `STATUS:COMPLETED`, `COMPLETED`, `PERCENT-COMPLETE:100` |
 | Important | `PRIORITY` 1–4 (see below) |
 | Due / reminder | `DUE` / `VALARM` |
+| Repeat | `RRULE` + `DTSTART` ([recurrence](ADR-20261104-recurrence.md)) |
 | Labels | `CATEGORIES` |
 | Manual order | `X-APPLE-SORT-ORDER` |
 | Steps | Child `VTODO` with `RELATED-TO` (RFC 9253) |

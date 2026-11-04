@@ -16,7 +16,8 @@ Work that is not done yet, to plan. Undecided questions are in
 
 - Replace the synthetic fixtures with anonymised real exports from Tasks.org (via DAVx⁵), Thunderbird and Apple Reminders; add a round-trip test per client version.
 - Verify against Tasks.org that it keeps haken's `ATTACH` and `X-APPLE-SORT-ORDER` when it writes (ADR mapping, "covered by interop tests").
-- Recurring tasks: complete one occurrence like Tasks.org does, or keep read-only (D09).
+- Repeating tasks, next steps: *repeat after completion* (after `OPEN.md`), end after N times or on a date (`COUNT`/`UNTIL`), monthly by weekday ("second Tuesday"), editing `RECURRENCE-ID` overrides if ever needed.
+- Verify with a real Tasks.org export that it reads haken's advanced `DUE`/`DTSTART` the same way, especially for weekly rules with weekdays.
 - CalDAV discovery (`/.well-known/caldav`, `current-user-principal`, `calendar-home-set`) instead of the fixed `/dav/<user>/` (D14).
 - Relax or confirm the `TZID` without `VTIMEZONE` rule once error tasks show real-world data (D11).
 
