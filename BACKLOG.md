@@ -22,7 +22,8 @@ Work that is not done yet, to plan. Undecided questions are in
 
 ## Sync and store
 
-- Browser-run unit tests for `store/` (record validation, `commit` expectations, abort on throw) and `sync/` with a mocked `net/` (412 loops, `StaleError` retries, invalid-token fallback). Today these paths are covered by E2E only.
+- List deleted while another client edits one of its tasks: the restored task is hidden and the `deletelist` operation never drains.
+- Check the total resource size against the gateway's 32 MiB body limit before attaching. Radicale answers `412`, not `413`, for a resource between `max_resource_size` (80 % of `max_content_length`) and `max_content_length`.
 - `413`: stop retrying every run; retry after the task changed (D23).
 - Storage quota: warn when `navigator.storage.estimate()` is near the limit (ADR strict errors lists quota warnings as expected states).
 - Move a task to another list (new href, delete + create with the same UID, conditional on both sides).
@@ -46,7 +47,7 @@ Work that is not done yet, to plan. Undecided questions are in
 
 - `make check` in pinned containers as the ADR says; today `make check` runs on the host and only CI uses a container.
 - Verify the pinned versions in CI and compose: Playwright image `v1.63.0-noble`, `staticcheck 2025.1.1`, `tomsquest/docker-radicale` tag. Pin images by digest.
-- E2E for import/export, attachments (add, download, 5 MB limit), theme and accent, language switch, setup on WebKit (Safari behaviour), install flow.
+- E2E for the 5 MB attachment limit, theme and accent, language switch, setup on WebKit (Safari behaviour), install flow.
 - Coverage report for unit tests (`node --test --experimental-test-coverage`).
 - Type-check the E2E sources with `tsc` (today Playwright transpiles them without type checking).
 - Release process: version number in `app/errors.ts` `APP_VERSION` from the build, changelog, container tags.

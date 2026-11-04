@@ -17,17 +17,17 @@ const base = createTask(
   NOW,
 );
 
-describe("X-HAKEN-MYDAY", () => {
+describe("X-HAKEN-FOCUS", () => {
   test("put on Focus, keep the first day, take off", () => {
     const on = applyEdit(base, { kind: "focus", value: "2026-11-04" }, NOW);
-    assert.deepEqual(on.groups, ["X-HAKEN-MYDAY"]);
-    assert.match(on.ics, /X-HAKEN-MYDAY:20261104\r\n/);
+    assert.deepEqual(on.groups, ["X-HAKEN-FOCUS"]);
+    assert.match(on.ics, /X-HAKEN-FOCUS:20261104\r\n/);
     assert.equal(readTask(parseResource(on.ics)).focus, "2026-11-04");
     // Adding again on a later day does not reset it: it stays from the first day.
     assert.deepEqual(applyEdit(on.ics, { kind: "focus", value: "2026-11-09" }, NOW).groups, []);
     const off = applyEdit(on.ics, { kind: "focus", value: null }, NOW);
     assert.equal(readTask(parseResource(off.ics)).focus, null);
-    assert.doesNotMatch(off.ics, /X-HAKEN-MYDAY/);
+    assert.doesNotMatch(off.ics, /X-HAKEN-FOCUS/);
   });
   test("createTask can put a task on Focus", () => {
     const ics = createTask(
@@ -46,7 +46,7 @@ describe("X-HAKEN-MYDAY", () => {
   });
   test("an invalid value is invalid input", () => {
     for (const value of ["2026-11-04", "20261345", "yes"]) {
-      const ics = base.replace("END:VTODO", `X-HAKEN-MYDAY:${value}\r\nEND:VTODO`);
+      const ics = base.replace("END:VTODO", `X-HAKEN-FOCUS:${value}\r\nEND:VTODO`);
       assert.throws(() => readTask(parseResource(ics)), InvalidInputError, value);
     }
   });

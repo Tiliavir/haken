@@ -23,7 +23,7 @@ export type Property = InstanceType<typeof ICAL.Property>;
 export const PRODID = "-//haken//haken//EN";
 
 /** Marks a task as put on *Focus* by the user; the value is that day ([Focus ADR](../../../docs/arc42/adr/ADR-20261104-focus.md)). */
-export const FOCUS_PROP = "x-haken-myday";
+export const FOCUS_PROP = "x-haken-focus";
 
 /** Apple's reference date (2001-01-01T00:00:00Z) in Unix seconds; base of `X-APPLE-SORT-ORDER` defaults. */
 export const APPLE_EPOCH_SECONDS = 978_307_200;
@@ -372,7 +372,7 @@ export function readTask(resource: ParsedResource): TaskView {
     const raw = String(focusProp.getFirstValue());
     const m = /^(\d{4})(\d{2})(\d{2})$/.exec(raw);
     if (m === null || !validDate(Number(m[1]), Number(m[2]), Number(m[3]))) {
-      invalid("X-HAKEN-MYDAY must be a date YYYYMMDD", ctx(FOCUS_PROP, raw, prodid));
+      invalid("X-HAKEN-FOCUS must be a date YYYYMMDD", ctx(FOCUS_PROP, raw, prodid));
     }
     focus = `${m[1]}-${m[2]}-${m[3]}`;
   }
@@ -615,7 +615,7 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
           throw new HakenError("domain", "Invalid Focus date", { value: edit.value });
         todo.addPropertyWithValue(FOCUS_PROP, edit.value.replaceAll("-", ""));
       }
-      groups.add("X-HAKEN-MYDAY");
+      groups.add("X-HAKEN-FOCUS");
       break;
     }
     case "recurrence": {

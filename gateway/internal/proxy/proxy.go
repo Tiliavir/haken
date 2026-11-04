@@ -21,9 +21,18 @@ const Prefix = "/dav"
 // MaxBody caps request bodies (inline attachments are at most 5 MB each before encoding).
 const MaxBody = 32 << 20
 
+// expectAbove: larger (or unknown-length) bodies are sent with "Expect:
+// 100-continue". Radicale rejects too large bodies (413) from the headers and
+// closes without reading; without the wait, the body write fails first and the
+// client would get 502 instead of 413. Radicale's HTTP/1.0 server never sends
+// 100, so accepted bodies wait the Transport's ExpectContinueTimeout (1 s).
+const expectAbove = 64 << 10
+
+// methods is the allowlist. MOVE and COPY are excluded: their Destination
+// header names a second path that allowedPath does not check.
 var methods = map[string]bool{
 	http.MethodGet: true, http.MethodHead: true, http.MethodOptions: true, http.MethodPut: true, http.MethodDelete: true,
-	"PROPFIND": true, "PROPPATCH": true, "REPORT": true, "MKCALENDAR": true, "MKCOL": true, "MOVE": true, "COPY": true,
+	"PROPFIND": true, "PROPPATCH": true, "REPORT": true, "MKCALENDAR": true, "MKCOL": true,
 }
 
 // New returns the /dav/ handler.
@@ -36,6 +45,9 @@ func New(radicale *url.URL, sessions *session.Manager) http.Handler {
 			pr.Out.URL.RawQuery = ""
 			pr.Out.Header.Del("Cookie")
 			pr.Out.Header.Set("X-Script-Name", Prefix)
+			if pr.In.ContentLength > expectAbove || pr.In.ContentLength < 0 {
+				pr.Out.Header.Set("Expect", "100-continue")
+			}
 			pr.Out.Host = radicale.Host
 		},
 		ModifyResponse: func(resp *http.Response) error {

@@ -89,7 +89,7 @@ test("Focus: overdue (red) and due (!) on top, then tasks put on Focus; they sta
   await expect(page.getByRole("link", { name: /errorlogs/ })).toHaveCount(0);
 });
 
-test("drag a task onto Focus in the sidebar; it syncs as X-HAKEN-MYDAY", async ({ page }) => {
+test("drag a task onto Focus in the sidebar; it syncs as X-HAKEN-FOCUS", async ({ page }) => {
   await setupServer(page);
   await addTask(page, "Drag me to Focus");
   const grip = page.getByRole("button", { name: "Move “Drag me to Focus”" });
@@ -111,7 +111,7 @@ test("drag a task onto Focus in the sidebar; it syncs as X-HAKEN-MYDAY", async (
     .poll(
       () =>
         serverFiles("dev").some(
-          (f) => f.includes("SUMMARY:Drag me to Focus") && /X-HAKEN-MYDAY:\d{8}/.test(f),
+          (f) => f.includes("SUMMARY:Drag me to Focus") && /X-HAKEN-FOCUS:\d{8}/.test(f),
         ),
       {
         timeout: 15_000,
@@ -120,4 +120,21 @@ test("drag a task onto Focus in the sidebar; it syncs as X-HAKEN-MYDAY", async (
     .toBe(true);
   await target.click();
   await expect(page.locator(".task-row .title", { hasText: "Drag me to Focus" })).toBeVisible();
+});
+
+test("adding in Planned names the target list and takes the date at submit time", async ({
+  page,
+}) => {
+  const start = new Date("2026-11-04T23:59:00").getTime();
+  await page.clock.install({ time: start });
+  await setupLocal(page);
+  await page.getByRole("link", { name: /^Planned/ }).click();
+  const add = page.getByPlaceholder(/^Add to /);
+  await expect(add).toBeVisible();
+  // Midnight passes while the screen stays open; nothing re-renders it.
+  await page.clock.setSystemTime(start + 2 * 60_000);
+  await add.fill("After midnight");
+  await page.keyboard.press("Enter");
+  await page.locator(".task-row .title", { hasText: "After midnight" }).click();
+  await expect(page.locator("#due-input")).toHaveValue(ymd(start + DAY));
 });

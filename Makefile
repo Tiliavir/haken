@@ -3,7 +3,7 @@ SHELL := /bin/sh
 NPX := npx --no-install
 CONFIG ?= web/config.json
 
-.PHONY: build build-demo test test-unit test-go lint fmt validate e2e check run clean gateway
+.PHONY: build build-demo test test-unit test-browser test-go lint fmt validate e2e check run clean gateway
 
 build:
 	rm -rf dist
@@ -16,6 +16,10 @@ build-demo:
 
 test-unit: build
 	node --test "dist/tests/unit/*.test.js"
+
+# Store and sync modules in the browser against a CalDAV stub (no servers).
+test-browser: build
+	$(NPX) playwright test -c playwright.browser.config.ts
 
 lint:
 	$(NPX) biome ci .
@@ -40,7 +44,7 @@ test-go: gateway
 e2e: gateway
 	$(NPX) playwright test
 
-check: lint test-unit validate test-go e2e
+check: lint test-unit test-browser validate test-go e2e
 
 # Local development: Radicale (pip) on :5232, gateway on :8080.
 run: gateway

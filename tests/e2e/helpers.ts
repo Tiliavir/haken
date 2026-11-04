@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
-export const ORIGIN = "http://127.0.0.1:8181";
+export const ORIGIN = `http://127.0.0.1:${process.env["E2E_PORT"] ?? "8181"}`;
 
 /** Fails the test on any request to another origin or any page error. */
 export function guard(page: Page): string[] {
@@ -49,7 +49,7 @@ export async function setupLocal(page: Page): Promise<void> {
 }
 
 export async function addTask(page: Page, title: string): Promise<void> {
-  await page.getByPlaceholder("Add a task").fill(title);
+  await page.getByPlaceholder(/^Add (a task|to )/).fill(title);
   await page.keyboard.press("Enter");
   await expect(page.locator(".task-row .title", { hasText: title })).toBeVisible();
 }

@@ -16,7 +16,7 @@ Status: Accepted
 | Manual order | `X-APPLE-SORT-ORDER` |
 | Steps | Child `VTODO` with `RELATED-TO` (RFC 9253) |
 | Attachments | `ATTACH;VALUE=BINARY;ENCODING=BASE64;FMTTYPE=…;FILENAME=…` (see below) |
-| On *Focus* | `X-HAKEN-MYDAY:<YYYYMMDD>` ([Focus](ADR-20261104-focus.md)) |
+| On *Focus* | `X-HAKEN-FOCUS:<YYYYMMDD>` ([Focus](ADR-20261104-focus.md)) |
 | Modification time | `LAST-MODIFIED`, `DTSTAMP` (UTC, written on every change) |
 
 Edits modify the parsed component in place; unknown properties are written back unchanged.

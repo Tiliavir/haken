@@ -165,3 +165,39 @@ test("unknown properties written by another client survive a haken edit", async 
     expect(ics, line).toContain(line);
   }
 });
+
+test("a local edit lost to an unreadable server version can be exported", async ({
+  page,
+  context,
+  request,
+}) => {
+  await setupServer(page);
+  await addTask(page, "Whole");
+  await waitSynced(page);
+  const list = await listHref(request, "Haken");
+  const res = await findResource(request, list, "Whole");
+  await context.setOffline(true);
+  await page.locator(".task-row .title", { hasText: "Whole" }).click();
+  await page.getByLabel("Title").fill("Whole edited offline");
+  await page.getByLabel("Title").press("Enter");
+  const put = await request.fetch(res.href, {
+    method: "PUT",
+    headers: { ...AUTH, "Content-Type": "text/calendar", "If-Match": res.etag },
+    data: res.ics.replace(/PRIORITY:\d+\r\n/, "").replace("END:VTODO", "PRIORITY:12\r\nEND:VTODO"),
+  });
+  expect(put.status()).toBeLessThan(300);
+  await context.setOffline(false);
+  await syncNow(page);
+  await page
+    .locator(`.task-row.invalid a[href$="${encodeURIComponent(res.href)}"]`)
+    .click({ timeout: 15_000 });
+  const note = page.locator(".conflict");
+  await expect(note).toContainText("cannot read");
+  await expect(note).not.toContainText("BEGIN:");
+  const [file] = await Promise.all([
+    page.waitForEvent("download"),
+    note.getByRole("button", { name: "Export (.ics)" }).click(),
+  ]);
+  const text = readFileSync(await file.path(), "utf8");
+  expect(text).toContain("SUMMARY:Whole edited offline");
+});

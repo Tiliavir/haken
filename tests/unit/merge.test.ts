@@ -79,6 +79,87 @@ describe("merge", () => {
     assert.equal(view(r.ics).summary, "Mine");
     assert.ok(r.notes.some((n) => n.group === "SUMMARY" && n.lost === "server"));
   });
+  describe("labels and attachments merge as sets, without notes", () => {
+    const labels = (ics: string, value: string[]) =>
+      applyEdit(ics, { kind: "categories", value }, T1).ics;
+    const attach = (ics: string, filename: string, base64 = "aGk=") =>
+      applyEdit(ics, { kind: "addAttachment", filename, mediaType: "text/plain", base64 }, T1).ics;
+    const names = (ics: string) =>
+      view(ics).attachments.map((a) => (a.kind === "binary" ? a.filename : a.uri));
+    const labelled = labels(base, ["a", "b"]);
+
+    test("change on one side only is taken", () => {
+      const local = labels(labelled, ["a", "b", "c"]);
+      const r = merge(labelled, local, labelled, new Map([["CATEGORIES", T2.getTime()]]));
+      assert.deepEqual(view(r.ics).categories, ["a", "b", "c"]);
+      assert.deepEqual(r.notes, []);
+      const server = labels(labelled, ["a"]);
+      const r2 = merge(labelled, labelled, server, new Map());
+      assert.equal(r2.ics, server);
+      assert.deepEqual(r2.localWins, []);
+    });
+    test("both sides add: union", () => {
+      const local = labels(labelled, ["a", "b", "local"]);
+      const server = labels(labelled, ["a", "b", "server"]);
+      const r = merge(labelled, local, server, new Map([["CATEGORIES", T1.getTime()]]));
+      assert.deepEqual(view(r.ics).categories, ["a", "b", "server", "local"]);
+      assert.deepEqual(r.notes, []);
+      assert.deepEqual(r.localWins, ["CATEGORIES"]);
+    });
+    test("local remove and server add: both applied", () => {
+      const local = labels(labelled, ["b"]);
+      const server = labels(labelled, ["a", "b", "server"]);
+      const r = merge(labelled, local, server, new Map([["CATEGORIES", T1.getTime()]]));
+      assert.deepEqual(view(r.ics).categories, ["b", "server"]);
+      assert.deepEqual(r.notes, []);
+    });
+    test("removal keeps other labels and parameters of a server property", () => {
+      const server = labelled.replace("CATEGORIES:a,b", "CATEGORIES;LANGUAGE=de:a,b,x");
+      const local = labels(labelled, ["b"]);
+      const r = merge(labelled, local, server, new Map([["CATEGORIES", T1.getTime()]]));
+      assert.ok(lines(r.ics).includes("CATEGORIES;LANGUAGE=de:b,x"));
+    });
+    test("both sides add the same label: nothing to push", () => {
+      const local = labels(labelled, ["a", "b", "c"]);
+      const server = applyEdit(labelled, { kind: "categories", value: ["a", "b", "c"] }, T2).ics;
+      const r = merge(labelled, local, server, new Map([["CATEGORIES", T1.getTime()]]));
+      assert.equal(r.ics, server);
+      assert.deepEqual(r.localWins, []);
+    });
+    test("no merge base: union", () => {
+      const local = labels(base, ["a", "local"]);
+      const server = labels(base, ["a", "server"]);
+      const r = merge(null, local, server, new Map([["CATEGORIES", T1.getTime()]]));
+      assert.deepEqual(view(r.ics).categories, ["a", "server", "local"]);
+      assert.deepEqual(r.notes, []);
+    });
+    test("attachments: both add, local removes one the server kept", () => {
+      const withOne = attach(base, "one.txt");
+      const local = applyEdit(
+        attach(withOne, "local.txt"),
+        { kind: "removeAttachment", index: 0 },
+        T1,
+      ).ics;
+      const server = attach(withOne, "server.txt");
+      const r = merge(withOne, local, server, new Map([["ATTACH", T1.getTime()]]));
+      assert.deepEqual(names(r.ics), ["server.txt", "local.txt"]);
+      assert.deepEqual(r.notes, []);
+    });
+    test("attachment with different parameters counts as different", () => {
+      const withOne = attach(base, "one.txt");
+      const local = withOne.replace("FILENAME=one.txt", "FILENAME=renamed.txt");
+      const server = attach(withOne, "server.txt");
+      const r = merge(withOne, local, server, new Map([["ATTACH", T1.getTime()]]));
+      assert.deepEqual(names(r.ics), ["server.txt", "renamed.txt"]);
+      assert.deepEqual(r.notes, []);
+    });
+    test("no merge base: attachments are united", () => {
+      const local = attach(base, "local.txt");
+      const server = attach(base, "server.txt", "aGkh");
+      const r = merge(null, local, server, new Map([["ATTACH", T1.getTime()]]));
+      assert.deepEqual(names(r.ics), ["server.txt", "local.txt"]);
+    });
+  });
   test("different UIDs throw", () => {
     const other = createTask(
       { uid: "other", summary: "", sortOrder: 1, parentUid: null, important: false, due: null },

@@ -1,8 +1,10 @@
 /** Task detail (chapter 8, Screens: Task; States: conflict notes). */
 import { ATTACHMENT_LIMIT, type TaskItem } from "../../app/service.js";
+import { HakenError } from "../../domain/errors.js";
 import type { Attachment, TaskView } from "../../domain/vtodo.js";
 import type { Ctx } from "../context.js";
 import { fill, h } from "../dom.js";
+import { autosave, submitField } from "../fields.js";
 import { formatDate, locale, t } from "../i18n.js";
 import { icon } from "../icons.js";
 import type { ListId } from "../route.js";
@@ -65,17 +67,40 @@ function conflicts(ctx: Ctx, item: TaskItem): HTMLElement | null {
         "div",
         { class: "conflict" },
         h("p", { class: "conflict-head" }, icon("merge", "icon small"), groupName(c.group)),
-        h(
-          "p",
-          { class: "conflict-why" },
-          c.lost === "local" ? t("conflict.local") : t("conflict.server"),
-        ),
-        h("p", { class: "conflict-value" }, conflictValue(c.lines)),
+        c.group === "*"
+          ? h("p", { class: "conflict-why" }, t("conflict.wholeText"))
+          : [
+              h(
+                "p",
+                { class: "conflict-why" },
+                c.lost === "local" ? t("conflict.local") : t("conflict.server"),
+              ),
+              h("p", { class: "conflict-value" }, conflictValue(c.lines)),
+            ],
         h(
           "div",
           { class: "actions" },
           c.group === "*"
-            ? null
+            ? h(
+                "button",
+                {
+                  type: "button",
+                  class: "button",
+                  onclick: () =>
+                    ctx.run("ui.exportConflict", async () => {
+                      // The note holds a whole resource: the local version that lost.
+                      if (!c.lines.startsWith("BEGIN:VCALENDAR\r\n"))
+                        throw new HakenError("ui", "Whole-resource note is not a calendar", {
+                          id: c.id,
+                        });
+                      download(
+                        new Blob([c.lines], { type: "text/calendar" }),
+                        `haken-conflict-${c.id}.ics`,
+                      );
+                    }),
+                },
+                t("settings.export"),
+              )
             : h(
                 "button",
                 {
@@ -127,11 +152,11 @@ function steps(ctx: Ctx, item: TaskItem, readonly: boolean): HTMLElement {
           "data-focus": `step-${step.href}`,
           maxlength: "1000",
           disabled: readonly,
-          onchange: (e: Event) => {
-            const value = (e.target as HTMLInputElement).value.trim();
-            if (value === "") return;
-            ctx.run("ui.editStep", () => ctx.app.edit(step.href, { kind: "summary", value }));
-          },
+        });
+        autosave(title, `${step.href} summary`, (raw) => {
+          const value = raw.trim();
+          if (value === "") return;
+          ctx.run("ui.editStep", () => ctx.app.edit(step.href, { kind: "summary", value }));
         });
         return h(
           "li",
@@ -161,11 +186,10 @@ function steps(ctx: Ctx, item: TaskItem, readonly: boolean): HTMLElement {
             class: "add-step",
             onsubmit: (e: Event) => {
               e.preventDefault();
-              const value = input.value.trim();
-              if (value === "") return;
-              input.value = "";
               ctx.run("ui.addStep", () =>
-                ctx.app.addTask(item.list, value, { parentHref: item.href }),
+                submitField(input, (value) =>
+                  ctx.app.addTask(item.list, value, { parentHref: item.href }),
+                ),
               );
             },
           },
@@ -288,11 +312,13 @@ function labelsRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean):
             class: "add-label",
             onsubmit: (e: Event) => {
               e.preventDefault();
-              const value = input.value.trim();
-              if (value === "") return;
-              input.value = "";
               ctx.run("ui.addLabel", () =>
-                ctx.app.edit(item.href, { kind: "categories", value: [...view.categories, value] }),
+                submitField(input, (value) =>
+                  ctx.app.edit(item.href, {
+                    kind: "categories",
+                    value: [...view.categories, value],
+                  }),
+                ),
               );
             },
           },
@@ -442,13 +468,13 @@ export class HakenTask extends HTMLElement {
           (e.target as HTMLTextAreaElement).blur();
         }
       },
-      onchange: (e: Event) => {
-        const value = (e.target as HTMLTextAreaElement).value.replace(/\s*\n\s*/g, " ").trim();
-        if (value === "") return;
-        ctx.run("ui.editTitle", () => ctx.app.edit(item.href, { kind: "summary", value }));
-      },
     });
     title.value = view.summary;
+    autosave(title, `${item.href} summary`, (raw) => {
+      const value = raw.replace(/\s*\n\s*/g, " ").trim();
+      if (value === "") return;
+      ctx.run("ui.editTitle", () => ctx.app.edit(item.href, { kind: "summary", value }));
+    });
     const note = h("textarea", {
       class: "note",
       rows: "4",
@@ -456,15 +482,11 @@ export class HakenTask extends HTMLElement {
       "aria-label": t("task.note"),
       "data-focus": "note",
       disabled: readonly,
-      onchange: (e: Event) =>
-        ctx.run("ui.editNote", () =>
-          ctx.app.edit(item.href, {
-            kind: "description",
-            value: (e.target as HTMLTextAreaElement).value,
-          }),
-        ),
     });
     note.value = view.description;
+    autosave(note, `${item.href} description`, (value) =>
+      ctx.run("ui.editNote", () => ctx.app.edit(item.href, { kind: "description", value })),
+    );
     const deleteDialog = ctx.dialog;
     const confirmDelete = (): void => {
       fill(

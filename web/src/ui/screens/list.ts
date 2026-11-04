@@ -3,6 +3,7 @@ import type { TaskItem } from "../../app/service.js";
 import type { Ctx } from "../context.js";
 import { makeSortable } from "../dnd/sortable.js";
 import { fill, h } from "../dom.js";
+import { submitField } from "../fields.js";
 import { t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
 import type { ListId } from "../route.js";
@@ -76,12 +77,17 @@ export class HakenList extends HTMLElement {
     const open = shown.tasks.filter((x) => x.view === null || !x.view.done);
     const done = shown.tasks.filter((x) => x.view?.done === true);
 
+    // A smart list is a view: say which list the new task goes to.
+    const addLabel =
+      shown.smart !== null && target !== null
+        ? t("list.addTo", { list: target.name })
+        : t("list.add");
     const input = h("input", {
       class: "add-input",
       type: "text",
       name: "task",
-      placeholder: t("list.add"),
-      "aria-label": t("list.add"),
+      placeholder: addLabel,
+      "aria-label": addLabel,
       maxlength: "1000",
       autocomplete: "off",
       enterkeyhint: "done",
@@ -92,25 +98,21 @@ export class HakenList extends HTMLElement {
         class: "add-task",
         onsubmit: (e: Event) => {
           e.preventDefault();
-          const value = input.value.trim();
-          if (value === "" || target === null) return;
-          input.value = "";
-          const today = new Date(ctx.now);
-          const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+          if (target === null) return;
           ctx.run("ui.addTask", () =>
-            ctx.app.addTask(target.href, value, {
-              important: shown.smart === "important",
-              due: shown.smart === "planned" ? { kind: "date", date } : null,
-              focus: shown.smart === "focus" ? date : null,
+            submitField(input, (value) => {
+              // Today at submit time: the screen may have been rendered before midnight.
+              const date = localDate(Date.now());
+              return ctx.app.addTask(target.href, value, {
+                important: shown.smart === "important",
+                due: shown.smart === "planned" ? { kind: "date", date } : null,
+                focus: shown.smart === "focus" ? date : null,
+              });
             }),
           );
         },
       },
-      h(
-        "button",
-        { class: "icon-button", type: "submit", "aria-label": t("list.add") },
-        icon("plus"),
-      ),
+      h("button", { class: "icon-button", type: "submit", "aria-label": addLabel }, icon("plus")),
       input,
     );
 

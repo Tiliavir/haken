@@ -2,9 +2,9 @@
  * Strict error handling (ADR-20261104-strict-errors).
  *
  * `HakenError` is thrown for every unexpected situation. Its context holds
- * only technical data (UIDs, paths, status codes, property names), never
- * credentials or task content. The error-task writer in `app/errors.ts`
- * copies the context into the task description as is.
+ * what is needed to analyse it (UIDs, paths, status codes, property names
+ * and values), never credentials (ADR-20261104-error-task-content). The
+ * error-task writer in `app/errors.ts` copies it into the task description.
  */
 
 export type Layer = "domain" | "store" | "net" | "sync" | "app" | "ui" | "sw" | "main";

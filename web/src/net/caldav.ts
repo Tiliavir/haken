@@ -19,6 +19,8 @@ export interface RemoteList {
   readonly displayName: string;
   readonly color: string | null;
   readonly order: number | null;
+  /** Current `DAV:sync-token` (RFC 6578 4); `null` if the server does not offer it. */
+  readonly syncToken: string | null;
 }
 
 export interface RemoteResource {
@@ -92,17 +94,31 @@ function okProps(response: Element): Element | null {
   return null;
 }
 
+export interface Collections {
+  readonly lists: readonly RemoteList[];
+  /** Task collections whose properties failed validation; each is skipped on its own. */
+  readonly invalid: readonly InvalidList[];
+}
+
+export interface InvalidList {
+  readonly href: string;
+  readonly error: InvalidInputError;
+  /** The raw values of the validated properties; changes when they change on the server. */
+  readonly signature: string;
+}
+
 /** Task collections in the calendar home (`/dav/<user>/`). */
-export async function listCollections(home: string): Promise<RemoteList[]> {
+export async function listCollections(home: string): Promise<Collections> {
   const body = `<?xml version="1.0" encoding="utf-8"?>
 <d:propfind xmlns:d="DAV:" xmlns:c="${CALDAV}" xmlns:a="${APPLE}">
-  <d:prop><d:resourcetype/><d:displayname/><c:supported-calendar-component-set/><a:calendar-color/><a:calendar-order/></d:prop>
+  <d:prop><d:resourcetype/><d:displayname/><c:supported-calendar-component-set/><a:calendar-color/><a:calendar-order/><d:sync-token/></d:prop>
 </d:propfind>`;
   const response = await server("PROPFIND", home, {
     headers: { ...XML_HEADERS, Depth: "1" },
     body,
   });
-  const out: RemoteList[] = [];
+  const lists: RemoteList[] = [];
+  const invalid: InvalidList[] = [];
   for (const r of parseMultistatus("PROPFIND", home, response)) {
     const href = hrefOf(r, "PROPFIND", home);
     if (href === encodeURI(decodeURI(home))) continue;
@@ -117,25 +133,44 @@ export async function listCollections(home: string): Promise<RemoteList[]> {
         : children(components, CALDAV, "comp").map((c) => c.getAttribute("name"));
     // Without the property the collection accepts every component type (RFC 4791 5.2.3).
     if (names !== null && !names.includes("VTODO")) continue;
-    const displayName = child(prop, DAV, "displayname")?.textContent ?? "";
-    const color = child(prop, APPLE, "calendar-color")?.textContent?.trim() || null;
-    const orderText = child(prop, APPLE, "calendar-order")?.textContent?.trim() ?? "";
-    const order = orderText === "" ? null : Number(orderText);
-    if (order !== null && !Number.isFinite(order)) {
-      throw new InvalidInputError("net", "calendar-order is not a number", {
-        method: "PROPFIND",
-        path: href,
-      });
+    const list = href.endsWith("/") ? href : `${href}/`;
+    try {
+      lists.push(collection(list, prop));
+    } catch (error) {
+      if (!(error instanceof InvalidInputError)) throw error;
+      const raw = (ns: string, name: string): string | null =>
+        child(prop, ns, name)?.textContent ?? null;
+      const signature = JSON.stringify([
+        raw(APPLE, "calendar-color"),
+        raw(APPLE, "calendar-order"),
+      ]);
+      invalid.push({ href: list, error, signature });
     }
-    if (color !== null && !/^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/.test(color)) {
-      throw new InvalidInputError("net", "calendar-color is not a hex colour", {
-        method: "PROPFIND",
-        path: href,
-      });
-    }
-    out.push({ href: href.endsWith("/") ? href : `${href}/`, displayName, color, order });
   }
-  return out;
+  return { lists, invalid };
+}
+
+function collection(href: string, prop: Element): RemoteList {
+  const displayName = child(prop, DAV, "displayname")?.textContent ?? "";
+  const color = child(prop, APPLE, "calendar-color")?.textContent?.trim() || null;
+  const orderText = child(prop, APPLE, "calendar-order")?.textContent?.trim() ?? "";
+  const order = orderText === "" ? null : Number(orderText);
+  if (order !== null && !Number.isFinite(order)) {
+    throw new InvalidInputError("net", "calendar-order is not a number", {
+      method: "PROPFIND",
+      path: href,
+      value: orderText,
+    });
+  }
+  if (color !== null && !/^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/.test(color)) {
+    throw new InvalidInputError("net", "calendar-color is not a hex colour", {
+      method: "PROPFIND",
+      path: href,
+      value: color,
+    });
+  }
+  const syncToken = child(prop, DAV, "sync-token")?.textContent?.trim() || null;
+  return { href, displayName, color, order, syncToken };
 }
 
 export async function makeCalendar(
@@ -324,7 +359,8 @@ export type PutResult =
   | { readonly kind: "ok"; readonly etag: string | null }
   | { readonly kind: "precondition" }
   | { readonly kind: "too-large" }
-  | { readonly kind: "not-found" };
+  | { readonly kind: "not-found" }
+  | { readonly kind: "uid-conflict" };
 
 /** Conditional PUT: `etag` `null` creates (`If-None-Match: *`), otherwise `If-Match`. Never unconditional. */
 export async function put(href: string, ics: string, etag: string | null): Promise<PutResult> {
@@ -343,8 +379,12 @@ export async function put(href: string, ics: string, etag: string | null): Promi
       return { kind: "precondition" };
     case 413:
       return { kind: "too-large" };
-    case 404:
     case 409:
+      // Another resource in the collection has the same UID (RFC 4791 5.3.2.1).
+      if (/no-uid-conflict/.test(response.text)) return { kind: "uid-conflict" };
+      // Otherwise the collection is gone (RFC 4918 9.7.1).
+      return { kind: "not-found" };
+    case 404:
       // The collection is gone (deleted by another client).
       return { kind: "not-found" };
     default:

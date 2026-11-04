@@ -122,3 +122,36 @@ func TestCrossSiteRejected(t *testing.T) {
 		t.Fatalf("cross-site: %d", rec.Code)
 	}
 }
+
+func TestLimiterPerKey(t *testing.T) {
+	l := NewLimiter(2, time.Minute)
+	now := time.Now()
+	l.now = func() time.Time { return now }
+	l.Fail("ip:a", "user:alice")
+	l.Fail("ip:a", "user:alice")
+	if l.Blocked("ip:a") == 0 || l.Blocked("user:alice") == 0 {
+		t.Fatal("keys at the limit must be blocked")
+	}
+	if l.Blocked("ip:b", "user:bob") != 0 {
+		t.Fatal("other keys must not be blocked")
+	}
+	if l.Blocked("ip:b", "user:alice") == 0 {
+		t.Fatal("one blocked key blocks the attempt")
+	}
+	l.Fail("ip:b")
+	if l.Blocked("ip:b") != 0 {
+		t.Fatal("one failure is below the limit")
+	}
+	l.Reset("user:alice")
+	if l.Blocked("user:alice") != 0 || l.Blocked("ip:a") == 0 {
+		t.Fatal("reset must clear only the given key")
+	}
+	now = now.Add(30 * time.Second)
+	if w := l.Blocked("ip:a"); w != 30*time.Second {
+		t.Fatalf("wait %v, want 30s", w)
+	}
+	now = now.Add(30 * time.Second)
+	if l.Blocked("ip:a") != 0 {
+		t.Fatal("failures older than the window must expire")
+	}
+}

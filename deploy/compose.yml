@@ -16,7 +16,8 @@ services:
     depends_on: [radicale]
 
   radicale:
-    image: tomsquest/docker-radicale:3.5.4.0
+    # Same Radicale version as dev, E2E and CI (pip radicale==3.9.0).
+    image: tomsquest/docker-radicale:3.9.0.0
     volumes:
       - ./radicale/config:/config:ro
       - ./radicale/collections:/data

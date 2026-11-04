@@ -358,7 +358,8 @@ label {
   background: var(--accent);
 }
 
-.dot-error {
+.dot-error,
+.dot-quarantined {
   background: var(--danger);
 }
 

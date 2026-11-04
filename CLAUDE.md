@@ -7,9 +7,8 @@ Guidance for Claude (and other coding agents) working in this repository.
 **haken** is a to-do web app, delivered as an installable PWA, that uses a
 CalDAV server (primarily Radicale) as its single source of truth. It must work
 offline and sync back when a connection is available. UX and feature set are
-modelled on mainstream list-based to-do apps (lists, My Day, steps, drag-and-
-drop ordering), but the design, code, names, icons and assets must be
-original.
+list-based (lists, a *Focus* view, checklists, drag-and-drop ordering);
+design, code, names, icons and assets are original.
 
 ## Non-negotiables
 
@@ -20,7 +19,8 @@ These outrank every other consideration, including feature velocity.
      `If-Match` with the last known ETag (or `If-None-Match: *` on create).
    - On `412 Precondition Failed`, fetch the server version and merge it
      as defined in `ADR-20261103-sync-strategy`: per property, the newer
-     edit wins and the losing value is kept as a conflict note on the task.
+     edit wins and the losing value is kept as a conflict note on the task;
+     labels and attachments merge as sets (`ADR-20261104-set-merge`).
      No conflict dialog. Never drop either side silently.
    - Local edits are persisted (IndexedDB) *before* the UI reports success
      and before any network attempt.
@@ -62,7 +62,7 @@ Planned work: [`BACKLOG.md`](BACKLOG.md).
 
 ## Commands
 
-Needs Node 22, Go 1.24, Java (for `vnu`), `radicale` (`pip install radicale`)
+Needs Node 22, Go 1.24, Java (for `vnu`), `radicale` (`pip install radicale==3.9.0`, same as `deploy/compose.yml`)
 and Chrome (or `PLAYWRIGHT_CHANNEL=chromium` with Playwright's browser).
 
 | Command | Does |
@@ -70,6 +70,7 @@ and Chrome (or `PLAYWRIGHT_CHANNEL=chromium` with Playwright's browser).
 | `npm ci` | Dev tools (TypeScript, Biome, vnu, Playwright) |
 | `make build` | `tsc` + assemble `dist/web` (`make build-demo`: GitHub Pages build) |
 | `make test-unit` | Unit and architecture tests (`node:test`) |
+| `make test-browser` | Store and sync modules in the browser against a CalDAV stub (Playwright, no servers) |
 | `make lint` / `make fmt` | Biome, `gofmt`, `go vet` / fix formatting |
 | `make validate` | W3C validator on HTML, CSS, SVG |
 | `make test-go` | Gateway tests (builds `dist/haken`) |
@@ -112,7 +113,8 @@ Then push new branches with `git push -u origin <branch>`.
 - Be strict: unexpected behaviour throws, never a silent fallback. Every
   unexpected error becomes a precise task in the list "errorlogs"
   (`ADR-20261104-strict-errors`): enough context to analyse and fix it,
-  never credentials or task content. Throwing must never lose data.
+  task values allowed, never credentials
+  (`ADR-20261104-error-task-content`). Throwing must never lose data.
 - Be strict with input too: validate every input against an explicit
   expectation where it enters; unexpected input is an error, never guessed
   around. Unknown iCalendar properties are expected and preserved; invalid
