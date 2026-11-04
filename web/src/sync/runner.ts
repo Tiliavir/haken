@@ -703,17 +703,28 @@ export class SyncRunner {
           etag = remote.etag;
           serverIcs = remote.ics;
         }
-        const current = await this.store.task(href);
-        if (current === null)
-          throw new RunError("sync", "Task vanished during push", { path: href });
-        const unchanged = current.ics === sent;
-        await this.store.commit({
-          putTasks: [{ ...current, etag, ics: unchanged ? serverIcs : current.ics }],
-          putBase: [{ schema: SCHEMA, href, ics: serverIcs, etag }],
-          deleteOps: ids,
-          putState: { [`tooLarge:${href}`]: null },
-          expect: [{ href, ics: current.ics }],
-          expectOps: ids,
+        // The server has the new version now. An edit made during the PUT makes the commit
+        // stale; it is retried on the fresh record, which keeps that edit and its outbox
+        // entries for the next push.
+        const confirmed = etag;
+        await this.retryStale(async () => {
+          const current = await this.store.task(href);
+          if (current === null)
+            throw new RunError("sync", "Task vanished during push", { path: href });
+          await this.store.commit({
+            putTasks: [
+              {
+                ...current,
+                etag: confirmed,
+                ics: current.ics === sent ? serverIcs : current.ics,
+              },
+            ],
+            putBase: [{ schema: SCHEMA, href, ics: serverIcs, etag: confirmed }],
+            deleteOps: ids,
+            putState: { [`tooLarge:${href}`]: null },
+            expect: [{ href, ics: current.ics }],
+            expectOps: ids,
+          });
         });
         return true;
       }
