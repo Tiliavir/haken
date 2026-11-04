@@ -639,8 +639,22 @@ haken-task {
 }
 
 .meta-item.overdue {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.meta-item.due-today {
   color: var(--text-2);
   font-weight: 600;
+}
+
+.meta-item.due-today .icon {
+  color: var(--accent);
+  stroke-width: 3;
+}
+
+.meta-item.on-today .icon {
+  color: var(--accent);
 }
 
 .conflict-marker {
@@ -1215,4 +1229,27 @@ haken-setup {
 .weekday input:focus-visible + span {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.row-button {
+  flex: 1;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 15px;
+  text-align: start;
+}
+
+.row-button.on {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.list-row.drop-target {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--selected);
 }

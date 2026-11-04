@@ -6,7 +6,7 @@ import { fill, h } from "../dom.js";
 import { formatDate, locale, t } from "../i18n.js";
 import { icon } from "../icons.js";
 import type { ListId } from "../route.js";
-import { dueDate } from "../views.js";
+import { dueDate, localDate } from "../views.js";
 import { repeatRow } from "./repeat.js";
 import { checkCircle, formatSize, starButton } from "./taskparts.js";
 
@@ -172,6 +172,29 @@ function steps(ctx: Ctx, item: TaskItem, readonly: boolean): HTMLElement {
           h("span", { class: "icon-slot" }, icon("plus")),
           input,
         ),
+  );
+}
+
+/** *Add to Today* / *Remove from Today*: the task stays on Today until taken off. */
+function todayRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
+  const on = view.today !== null;
+  return h(
+    "div",
+    { class: "group-row" },
+    icon("sun"),
+    h(
+      "button",
+      {
+        type: "button",
+        class: on ? "row-button on" : "row-button",
+        "aria-pressed": on ? "true" : "false",
+        onclick: () =>
+          ctx.run("ui.today", () =>
+            ctx.app.edit(item.href, { kind: "today", value: on ? null : localDate(ctx.now) }),
+          ),
+      },
+      on ? t("today.remove") : t("today.add"),
+    ),
   );
 }
 
@@ -492,6 +515,7 @@ export class HakenTask extends HTMLElement {
       h(
         "section",
         { class: "group" },
+        view.parentUid === null && !readonly ? todayRow(ctx, item, view) : null,
         dueRow(ctx, item, view, readonly),
         view.parentUid === null && !readonly ? repeatRow(ctx, item, view) : null,
         labelsRow(ctx, item, view, readonly),

@@ -39,7 +39,12 @@ function row(ctx: Ctx, id: ListId, iconName: IconName, name: string, count: numb
     {},
     h(
       "a",
-      { class: "list-row", href, "aria-current": selected(ctx, id) ? "page" : undefined },
+      {
+        class: "list-row",
+        href,
+        "aria-current": selected(ctx, id) ? "page" : undefined,
+        "data-drop": id.kind === "smart" && id.id === "today" ? "today" : undefined,
+      },
       icon(iconName),
       h("span", { class: "list-name" }, name),
       count > 0 ? h("span", { class: "count" }, String(count)) : null,

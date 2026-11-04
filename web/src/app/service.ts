@@ -31,7 +31,7 @@ import {
 import * as api from "../net/api.js";
 import * as caldav from "../net/caldav.js";
 import { setBasePath, staticJson, UnreachableError } from "../net/http.js";
-import { AccountStore, type Changes } from "../store/account.js";
+import { AccountStore, type Changes, StaleError } from "../store/account.js";
 import { usable } from "../store/idb.js";
 import { MetaStore, type Settings } from "../store/meta.js";
 import {
@@ -257,6 +257,32 @@ export class AppService extends EventTarget implements ErrorSink {
     }
   }
 
+  /** Tail of the command queue: commands run one after another, never interleaved. */
+  private tail: Promise<unknown> = Promise.resolve();
+
+  /**
+   * Runs one command after the previous one finished. A command that loses a
+   * race against sync (`StaleError`) runs again on the fresh state: every
+   * command reads what it changes, so re-running it is correct. At most 3 times.
+   */
+  private exclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const run = async (): Promise<T> => {
+      for (let attempt = 1; ; attempt++) {
+        try {
+          return await fn();
+        } catch (error) {
+          if (!(error instanceof StaleError) || attempt >= 3) throw error;
+        }
+      }
+    };
+    const result = this.tail.then(run, run);
+    this.tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
   /**
    * Commits and refreshes. `edited` schedules a sync 2 s later; error tasks
    * pass `false` so a failing sync cannot re-trigger itself through its own
@@ -422,7 +448,11 @@ export class AppService extends EventTarget implements ErrorSink {
 
   // ------------------------------------------------------------ lists
 
-  async createList(name: string): Promise<string> {
+  createList(name: string): Promise<string> {
+    return this.exclusive(() => this.createListNow(name));
+  }
+
+  private async createListNow(name: string): Promise<string> {
     const account = this.requireAccount();
     const trimmed = name.trim();
     if (trimmed === "") throw new HakenError("app", "Empty list name");
@@ -451,7 +481,11 @@ export class AppService extends EventTarget implements ErrorSink {
     return href;
   }
 
-  async renameList(href: string, name: string): Promise<void> {
+  renameList(href: string, name: string): Promise<void> {
+    return this.exclusive(() => this.renameListNow(href, name));
+  }
+
+  private async renameListNow(href: string, name: string): Promise<void> {
     const list = await this.listRecord(href);
     const trimmed = name.trim();
     if (trimmed === "" || trimmed === list.displayName) return;
@@ -464,7 +498,11 @@ export class AppService extends EventTarget implements ErrorSink {
     });
   }
 
-  async deleteList(href: string): Promise<void> {
+  deleteList(href: string): Promise<void> {
+    return this.exclusive(() => this.deleteListNow(href));
+  }
+
+  private async deleteListNow(href: string): Promise<void> {
     const store = this.requireStore();
     const list = await this.listRecord(href);
     const tasks = (await store.tasks()).filter((t) => t.list === href);
@@ -507,13 +545,29 @@ export class AppService extends EventTarget implements ErrorSink {
 
   // ------------------------------------------------------------ tasks
 
-  async addTask(
+  addTask(
     listHref: string,
     summary: string,
     options: {
       readonly important?: boolean;
       readonly due?: Due | null;
       readonly parentHref?: string;
+      /** Put the new task on *Today* (`YYYY-MM-DD`). */
+      readonly today?: string | null;
+    } = {},
+  ): Promise<AddResult> {
+    return this.exclusive(() => this.addTaskNow(listHref, summary, options));
+  }
+
+  private async addTaskNow(
+    listHref: string,
+    summary: string,
+    options: {
+      readonly important?: boolean;
+      readonly due?: Due | null;
+      readonly parentHref?: string;
+      /** Put the new task on *Today* (`YYYY-MM-DD`). */
+      readonly today?: string | null;
     } = {},
   ): Promise<AddResult> {
     const trimmed = summary.trim();
@@ -545,6 +599,7 @@ export class AppService extends EventTarget implements ErrorSink {
         parentUid,
         important: options.important ?? false,
         due: options.due ?? null,
+        today: options.today ?? null,
       },
       now,
     );
@@ -569,7 +624,11 @@ export class AppService extends EventTarget implements ErrorSink {
     return { kind: "ok", href };
   }
 
-  async edit(href: string, edit: TaskEdit): Promise<void> {
+  edit(href: string, edit: TaskEdit): Promise<void> {
+    return this.exclusive(() => this.editNow(href, edit));
+  }
+
+  private async editNow(href: string, edit: TaskEdit): Promise<void> {
     const record = await this.taskRecord(href);
     const now = new Date();
     const before = readTask(parseResource(record.ics));
@@ -613,7 +672,11 @@ export class AppService extends EventTarget implements ErrorSink {
     );
   }
 
-  async deleteTask(href: string): Promise<void> {
+  deleteTask(href: string): Promise<void> {
+    return this.exclusive(() => this.deleteTaskNow(href));
+  }
+
+  private async deleteTaskNow(href: string): Promise<void> {
     const store = this.requireStore();
     const record = await this.taskRecord(href);
     const uid = record.uid;
@@ -644,7 +707,11 @@ export class AppService extends EventTarget implements ErrorSink {
   }
 
   /** Moves an open top-level task (or a step among its siblings) to `targetIndex`. */
-  async move(href: string, targetIndex: number): Promise<void> {
+  move(href: string, targetIndex: number): Promise<void> {
+    return this.exclusive(() => this.moveNow(href, targetIndex));
+  }
+
+  private async moveNow(href: string, targetIndex: number): Promise<void> {
     const item = this.findItem(href);
     if (item === null || item.view === null)
       throw new HakenError("app", "Unknown task", { path: href });
@@ -684,7 +751,11 @@ export class AppService extends EventTarget implements ErrorSink {
     await this.changed({ putTasks, expect, addOps });
   }
 
-  async useConflict(id: number): Promise<void> {
+  useConflict(id: number): Promise<void> {
+    return this.exclusive(() => this.useConflictNow(id));
+  }
+
+  private async useConflictNow(id: number): Promise<void> {
     const conflict = await this.conflict(id);
     if (conflict.group === "*")
       throw new HakenError("app", "Whole-resource notes cannot be applied", { id });
@@ -713,7 +784,11 @@ export class AppService extends EventTarget implements ErrorSink {
     });
   }
 
-  async dismissConflict(id: number): Promise<void> {
+  dismissConflict(id: number): Promise<void> {
+    return this.exclusive(() => this.dismissConflictNow(id));
+  }
+
+  private async dismissConflictNow(id: number): Promise<void> {
     await this.conflict(id);
     await this.changed({ deleteConflicts: [id] });
   }
@@ -724,10 +799,14 @@ export class AppService extends EventTarget implements ErrorSink {
     return c;
   }
 
-  async attach(href: string, file: File): Promise<AttachResult> {
+  attach(href: string, file: File): Promise<AttachResult> {
+    return this.exclusive(() => this.attachNow(href, file));
+  }
+
+  private async attachNow(href: string, file: File): Promise<AttachResult> {
     if (file.size > ATTACHMENT_LIMIT) return { kind: "too-large" };
     const bytes = new Uint8Array(await file.arrayBuffer());
-    await this.edit(href, {
+    await this.editNow(href, {
       kind: "addAttachment",
       filename: file.name === "" ? "attachment" : file.name,
       mediaType: file.type === "" ? "application/octet-stream" : file.type,
@@ -801,7 +880,11 @@ export class AppService extends EventTarget implements ErrorSink {
     return { result, replacing: result.items.filter((i) => existing.has(i.view.uid)).length };
   }
 
-  async confirmImport(listHref: string, preview: ImportPreview): Promise<void> {
+  confirmImport(listHref: string, preview: ImportPreview): Promise<void> {
+    return this.exclusive(() => this.confirmImportNow(listHref, preview));
+  }
+
+  private async confirmImportNow(listHref: string, preview: ImportPreview): Promise<void> {
     const store = this.requireStore();
     await this.listRecord(listHref);
     const byUid = new Map((await store.tasks()).filter((t) => !t.deleted).map((t) => [t.uid, t]));
@@ -851,7 +934,11 @@ export class AppService extends EventTarget implements ErrorSink {
 
   // ------------------------------------------------------------ ErrorSink
 
-  async writeErrorTask(report: ErrorReport, print: string): Promise<boolean> {
+  writeErrorTask(report: ErrorReport, print: string): Promise<boolean> {
+    return this.exclusive(() => this.writeErrorTaskNow(report, print));
+  }
+
+  private async writeErrorTaskNow(report: ErrorReport, print: string): Promise<boolean> {
     if (this.store === null) return false;
     const store = this.store;
     const settings = await this.meta.settings();
@@ -894,7 +981,7 @@ export class AppService extends EventTarget implements ErrorSink {
     const count = settings.errorDay === today ? settings.errorCount : 0;
     if (count >= ERROR_TASKS_PER_DAY) return false;
     if (list === undefined) {
-      const href = await this.createList(ERRORLOGS);
+      const href = await this.createListNow(ERRORLOGS);
       list = await this.listRecord(href);
     }
     const uid = crypto.randomUUID();
