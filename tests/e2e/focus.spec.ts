@@ -26,6 +26,8 @@ function ymd(t: number): string {
 
 async function setDue(page: Page, title: string, date: string): Promise<void> {
   await page.locator("haken-list .task-row .title", { hasText: title }).click();
+  // The detail pane switches asynchronously; fill only once it shows this task.
+  await expect(page.getByLabel("Title")).toHaveValue(title);
   await page.locator("#due-input").fill(date);
   // Several change events at once (fill, blur, a fast second tap): commands must queue, not race.
   await page.locator("#due-input").evaluate((el, final) => {
@@ -53,6 +55,7 @@ test("Focus: overdue (red) and due (!) on top, then tasks put on Focus; they sta
   await setDue(page, "Overdue", ymd(start - 2 * DAY));
   await setDue(page, "Due today", ymd(start));
   await page.locator("haken-list .task-row .title", { hasText: "Pinned" }).click();
+  await expect(page.getByLabel("Title")).toHaveValue("Pinned");
   await page.getByRole("button", { name: "Add to Focus" }).click();
   await expect(page.getByRole("button", { name: "Remove from Focus" })).toBeVisible();
 
