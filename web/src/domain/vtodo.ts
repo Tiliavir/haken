@@ -22,6 +22,9 @@ export type Property = InstanceType<typeof ICAL.Property>;
 
 export const PRODID = "-//haken//haken//EN";
 
+/** Marks a task as put on *Focus* by the user; the value is that day ([Focus ADR](../../../docs/arc42/adr/ADR-20261104-focus.md)). */
+export const FOCUS_PROP = "x-haken-myday";
+
 /** Apple's reference date (2001-01-01T00:00:00Z) in Unix seconds; base of `X-APPLE-SORT-ORDER` defaults. */
 export const APPLE_EPOCH_SECONDS = 978_307_200;
 
@@ -74,6 +77,8 @@ export interface TaskView {
   readonly repeats: boolean;
   /** The rule if haken can edit it; `repeats` without `recurrence` means read-only. */
   readonly recurrence: Recurrence | null;
+  /** Day the task was put on *Focus* (`YYYY-MM-DD`), `null` if not. It stays until removed. */
+  readonly focus: string | null;
   readonly prodid: string | null;
 }
 
@@ -361,6 +366,17 @@ export function readTask(resource: ParsedResource): TaskView {
 
   const recurrence = readRecurrence(todo, resource.rawRules, prodid);
 
+  const focusProp = single(todo, FOCUS_PROP, prodid);
+  let focus: string | null = null;
+  if (focusProp !== null) {
+    const raw = String(focusProp.getFirstValue());
+    const m = /^(\d{4})(\d{2})(\d{2})$/.exec(raw);
+    if (m === null || !validDate(Number(m[1]), Number(m[2]), Number(m[3]))) {
+      invalid("X-HAKEN-MYDAY must be a date YYYYMMDD", ctx(FOCUS_PROP, raw, prodid));
+    }
+    focus = `${m[1]}-${m[2]}-${m[3]}`;
+  }
+
   const attachments = todo
     .getAllProperties("attach")
     .map((prop, index) => readAttachment(prop, index, prodid));
@@ -382,6 +398,7 @@ export function readTask(resource: ParsedResource): TaskView {
     lastModified,
     repeats: recurrence.repeats,
     recurrence: recurrence.rule,
+    focus,
     prodid,
   };
 }
@@ -454,6 +471,8 @@ export type TaskEdit =
   | { readonly kind: "done"; readonly value: boolean }
   | { readonly kind: "important"; readonly value: boolean }
   | { readonly kind: "due"; readonly value: Due | null }
+  /** Put on *Focus* (`value`: that day, `YYYY-MM-DD`) or take it off (`null`). */
+  | { readonly kind: "focus"; readonly value: string | null }
   /** `today` (device date) becomes the due date if the task has none. */
   | { readonly kind: "recurrence"; readonly value: Recurrence | null; readonly today: string }
   | { readonly kind: "categories"; readonly value: readonly string[] }
@@ -586,6 +605,17 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
           groups.add("DTSTART");
         }
       }
+      break;
+    }
+    case "focus": {
+      if (edit.value === view.focus || (edit.value !== null && view.focus !== null)) break;
+      todo.removeAllProperties(FOCUS_PROP);
+      if (edit.value !== null) {
+        if (!checkDateString(edit.value))
+          throw new HakenError("domain", "Invalid Focus date", { value: edit.value });
+        todo.addPropertyWithValue(FOCUS_PROP, edit.value.replaceAll("-", ""));
+      }
+      groups.add("X-HAKEN-MYDAY");
       break;
     }
     case "recurrence": {
@@ -779,6 +809,8 @@ export interface NewTask {
   readonly parentUid: string | null;
   readonly important: boolean;
   readonly due: Due | null;
+  /** Put on *Focus* on this day (`YYYY-MM-DD`). */
+  readonly focus?: string | null;
 }
 
 export function createTask(task: NewTask, now: Date): string {
@@ -801,6 +833,11 @@ export function createTask(task: NewTask, now: Date): string {
   }
   todo.addPropertyWithValue("x-apple-sort-order", String(task.sortOrder));
   setDue(todo, null, task.due);
+  if (task.focus !== undefined && task.focus !== null) {
+    if (!checkDateString(task.focus))
+      throw new HakenError("domain", "Invalid Focus date", { value: task.focus });
+    todo.addPropertyWithValue(FOCUS_PROP, task.focus.replaceAll("-", ""));
+  }
   const resource: ParsedResource = { calendar, todo, rawRules: [] };
   const ics = serialize(resource);
   readTask(parseResource(ics));

@@ -54,13 +54,15 @@ export function starButton(
   );
 }
 
-export function dueLabel(view: TaskView, now: number): string | null {
+/** The due day alone: "Today", "Tomorrow" or the formatted date. */
+export function dueText(view: TaskView, now: number): string | null {
   if (view.due === null) return null;
   const day = dueDate(view.due);
   const today = localDate(now);
   const tomorrow = localDate(now + 86_400_000);
   if (day === today) return t("due.today");
   if (day === tomorrow) return t("due.tomorrow");
+  if (day === localDate(now - 86_400_000)) return t("due.yesterday");
   const date =
     view.due.kind === "date"
       ? formatDate(new Date(`${view.due.date}T12:00:00`), {
@@ -75,7 +77,23 @@ export function dueLabel(view: TaskView, now: number): string | null {
           hour: "2-digit",
           minute: "2-digit",
         });
-  return t("task.due", { date });
+  return date;
+}
+
+/** "Today", "Tomorrow" or "Due Mon, 9 Nov". */
+export function dueLabel(view: TaskView, now: number): string | null {
+  const text = dueText(view, now);
+  if (text === null || view.due === null) return null;
+  const day = dueDate(view.due);
+  const near =
+    day === localDate(now) ||
+    day === localDate(now + 86_400_000) ||
+    day === localDate(now - 86_400_000);
+  return near ? text : t("task.due", { date: text });
+}
+
+export function isDueToday(view: TaskView, now: number): boolean {
+  return view.due !== null && !view.done && dueDate(view.due) === localDate(now);
 }
 
 export function isOverdue(view: TaskView, now: number): boolean {
@@ -96,14 +114,26 @@ export function metaLine(
       h("span", { class: "meta-item" }, t("task.steps", { done, total: item.steps.length })),
     );
   }
-  const due = dueLabel(view, now);
-  if (due !== null) {
+  if (view.focus !== null && !view.done) {
     parts.push(
       h(
         "span",
-        { class: isOverdue(view, now) ? "meta-item overdue" : "meta-item" },
-        icon("calendar", "icon small"),
-        due,
+        { class: "meta-item on-focus", title: t("focus.marker") },
+        icon("focus", "icon small"),
+        t("focus.marker"),
+      ),
+    );
+  }
+  const due = isOverdue(view, now) ? dueText(view, now) : dueLabel(view, now);
+  if (due !== null) {
+    const overdue = isOverdue(view, now);
+    const dueToday = isDueToday(view, now);
+    parts.push(
+      h(
+        "span",
+        { class: overdue ? "meta-item overdue" : dueToday ? "meta-item due-today" : "meta-item" },
+        icon(dueToday ? "exclaim" : "calendar", "icon small"),
+        overdue ? t("due.overdue", { date: due }) : due,
       ),
     );
   }

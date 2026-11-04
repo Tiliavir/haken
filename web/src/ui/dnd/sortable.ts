@@ -8,6 +8,18 @@
 
 export type MoveHandler = (href: string, index: number) => void;
 
+/**
+ * Drop on an element outside the list marked `data-drop="<target>"` (the
+ * sidebar's *Focus*). Keyboard users use the task screen's button instead.
+ */
+export type DropHandler = (href: string, target: string) => void;
+
+/** The drop target under the pointer, looking past the dragged row (it covers what is below it). */
+function dropTargetAt(x: number, y: number, dragged: HTMLElement): HTMLElement | null {
+  const below = document.elementsFromPoint(x, y).find((el) => !dragged.contains(el));
+  return below?.closest<HTMLElement>("[data-drop]") ?? null;
+}
+
 let active = false;
 
 /** True while a drag is in progress; the UI defers re-rendering until it ends. */
@@ -30,14 +42,18 @@ function rows(container: HTMLElement): HTMLElement[] {
   return [...container.querySelectorAll<HTMLElement>(":scope > [data-sortable]")];
 }
 
-export function makeSortable(container: HTMLElement, onMove: MoveHandler): void {
+export function makeSortable(
+  container: HTMLElement,
+  onMove: MoveHandler,
+  onDrop?: DropHandler,
+): void {
   container.addEventListener("pointerdown", (event) => {
     const grip = (event.target as Element | null)?.closest(".grip");
     if (!(grip instanceof HTMLElement) || event.button !== 0) return;
     const row = grip.closest<HTMLElement>("[data-sortable]");
     if (row === null || row.parentElement !== container) return;
     event.preventDefault();
-    startPointerDrag(container, row, grip, event, onMove);
+    startPointerDrag(container, row, grip, event, onMove, onDrop);
   });
   container.addEventListener("keydown", (event) => {
     const grip = (event.target as Element | null)?.closest(".grip");
@@ -54,6 +70,7 @@ function startPointerDrag(
   grip: HTMLElement,
   start: PointerEvent,
   onMove: MoveHandler,
+  onDrop: DropHandler | undefined,
 ): void {
   active = true;
   grip.setPointerCapture(start.pointerId);
@@ -66,10 +83,19 @@ function startPointerDrag(
   row.classList.add("dragging");
   const containerTop = container.getBoundingClientRect().top;
   let index = originalIndex;
+  let target: HTMLElement | null = null;
 
-  const place = (clientY: number): void => {
+  const place = (clientX: number, clientY: number): void => {
     const dy = clientY - start.clientY;
-    row.style.transform = `translateY(${dy}px) rotate(-1deg)`;
+    const dx = onDrop === undefined ? 0 : clientX - start.clientX;
+    row.style.transform = `translate(${dx}px, ${dy}px) rotate(-1deg)`;
+    const over = onDrop === undefined ? null : dropTargetAt(clientX, clientY, row);
+    if (over !== target) {
+      target?.classList.remove("drop-target");
+      over?.classList.add("drop-target");
+      target = over;
+    }
+    line.hidden = target !== null;
     index = others.filter((r) => {
       const rect = r.getBoundingClientRect();
       return rect.top + rect.height / 2 < clientY;
@@ -81,9 +107,9 @@ function startPointerDrag(
         : ref.getBoundingClientRect().bottom - containerTop;
     line.style.transform = `translateY(${y}px)`;
   };
-  place(start.clientY);
+  place(start.clientX, start.clientY);
 
-  const move = (e: PointerEvent): void => place(e.clientY);
+  const move = (e: PointerEvent): void => place(e.clientX, e.clientY);
   const end = (e: PointerEvent): void => {
     grip.removeEventListener("pointermove", move);
     grip.removeEventListener("pointerup", end);
@@ -92,9 +118,12 @@ function startPointerDrag(
     row.style.transform = "";
     line.remove();
     const href = row.dataset["href"];
-    const moved = e.type === "pointerup" && index !== originalIndex && href !== undefined;
+    const dropped = target?.dataset["drop"];
+    target?.classList.remove("drop-target");
+    const up = e.type === "pointerup" && href !== undefined;
     finish();
-    if (moved) onMove(href, index);
+    if (up && dropped !== undefined && onDrop !== undefined) onDrop(href, dropped);
+    else if (up && index !== originalIndex) onMove(href, index);
   };
   grip.addEventListener("pointermove", move);
   grip.addEventListener("pointerup", end);

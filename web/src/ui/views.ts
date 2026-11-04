@@ -17,12 +17,52 @@ function open(item: TaskItem): boolean {
   return item.view !== null && !item.view.done;
 }
 
+/** Due today or overdue, open. */
+export function dueNow(item: TaskItem, today: string): boolean {
+  const v = item.view;
+  return v !== null && !v.done && v.due !== null && dueDate(v.due) <= today;
+}
+
+/**
+ * *Focus*: first everything due today or overdue (oldest due date first),
+ * then the tasks the user put on Focus (most recently added first). The
+ * second part does not reset at midnight; a task stays until it is taken
+ * off. Completed: tasks completed today that were due or put on Focus.
+ */
+export function focusTasks(snapshot: Snapshot, now: number): TaskItem[] {
+  const today = localDate(now);
+  const all = snapshot.lists.filter((l) => !l.errorlogs).flatMap((l) => l.tasks);
+  const due = all
+    .filter((t) => dueNow(t, today))
+    .sort((a, b) => {
+      const da = a.view?.due ? dueDate(a.view.due) : "";
+      const db = b.view?.due ? dueDate(b.view.due) : "";
+      return da < db ? -1 : da > db ? 1 : 0;
+    });
+  const pinned = all
+    .filter((t) => t.view !== null && !t.view.done && t.view.focus !== null && !dueNow(t, today))
+    .sort((a, b) =>
+      (a.view?.focus ?? "") < (b.view?.focus ?? "")
+        ? 1
+        : (a.view?.focus ?? "") > (b.view?.focus ?? "")
+          ? -1
+          : 0,
+    );
+  const completed = all.filter((t) => {
+    const v = t.view;
+    if (v === null || !v.done || v.completedAt === null || localDate(v.completedAt) !== today)
+      return false;
+    return v.focus !== null || (v.due !== null && dueDate(v.due) <= today);
+  });
+  return [...due, ...pinned, ...completed];
+}
+
 function matches(id: SmartId, item: TaskItem, today: string): boolean {
   const v = item.view;
   if (v === null) return false;
   switch (id) {
-    case "today":
-      return !v.done && v.due !== null && dueDate(v.due) <= today;
+    case "focus":
+      return dueNow(item, today);
     case "important":
       return !v.done && v.important;
     case "planned":
@@ -43,11 +83,12 @@ export interface ShownList {
 }
 
 export function smartTasks(snapshot: Snapshot, id: SmartId, now: number): TaskItem[] {
+  if (id === "focus") return focusTasks(snapshot, now);
   const today = localDate(now);
   const all = snapshot.lists
     .filter((l) => !l.errorlogs)
     .flatMap((l) => l.tasks.filter((t) => matches(id, t, today)));
-  if (id === "planned" || id === "today") {
+  if (id === "planned") {
     return all.sort((a, b) => {
       const da = a.view?.due ? dueDate(a.view.due) : "";
       const db = b.view?.due ? dueDate(b.view.due) : "";

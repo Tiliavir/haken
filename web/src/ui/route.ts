@@ -1,8 +1,8 @@
 /** Hash routes: they work on any static host (GitHub Pages) and keep the back button useful. */
 import { HakenError } from "../domain/errors.js";
 
-export type SmartId = "today" | "important" | "planned" | "all";
-export const SMART: readonly SmartId[] = ["today", "important", "planned", "all"];
+export type SmartId = "focus" | "important" | "planned" | "all";
+export const SMART: readonly SmartId[] = ["focus", "important", "planned", "all"];
 
 export type ListId =
   | { readonly kind: "smart"; readonly id: SmartId }

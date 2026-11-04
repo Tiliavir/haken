@@ -6,7 +6,7 @@ import { fill, h } from "../dom.js";
 import { t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
 import type { ListId } from "../route.js";
-import { defaultList, show } from "../views.js";
+import { defaultList, localDate, show } from "../views.js";
 import { smartName } from "./sidebar.js";
 import { checkCircle, metaLine, starButton } from "./taskparts.js";
 
@@ -100,10 +100,8 @@ export class HakenList extends HTMLElement {
           ctx.run("ui.addTask", () =>
             ctx.app.addTask(target.href, value, {
               important: shown.smart === "important",
-              due:
-                shown.smart === "today" || shown.smart === "planned"
-                  ? { kind: "date", date }
-                  : null,
+              due: shown.smart === "planned" ? { kind: "date", date } : null,
+              focus: shown.smart === "focus" ? date : null,
             }),
           );
         },
@@ -122,7 +120,17 @@ export class HakenList extends HTMLElement {
       open.map((item) => taskRow(ctx, listId, item, shown.sortable, shown.smart !== null)),
     );
     if (shown.sortable) {
-      makeSortable(openList, (href, index) => ctx.run("ui.move", () => ctx.app.move(href, index)));
+      makeSortable(
+        openList,
+        (href, index) => ctx.run("ui.move", () => ctx.app.move(href, index)),
+        (href, target) => {
+          if (target !== "focus") return;
+          ctx.run("ui.dropFocus", async () => {
+            await ctx.app.edit(href, { kind: "focus", value: localDate(ctx.now) });
+            ctx.notify(t("focus.added"));
+          });
+        },
+      );
     }
 
     const back = h(
