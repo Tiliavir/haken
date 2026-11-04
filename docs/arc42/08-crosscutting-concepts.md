@@ -8,7 +8,7 @@ This chapter is the binding reference. The [sketches](sketches/README.md) illust
 
 - Simple and minimal. Every element on screen has a job. No decoration, gradients or illustrations.
 - What is shown works. There are no half features and no settings without effect.
-- One accent colour; everything else is neutral. One exception: overdue dates are red (`--danger`), and red means nothing else ([Today](adr/ADR-20261104-today.md)).
+- One accent colour; everything else is neutral. Red (`--danger`) is the one exception, and only for "needs attention": overdue dates, errors, destructive actions ([Today](adr/ADR-20261104-today.md)).
 - System font stack (`system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`). No web fonts.
 - Icons are own inline stroke SVGs: `viewBox="0 0 24 24"`, stroke 1.75, round caps and joins, `currentColor`. No emoji.
 - Touch targets are at least 44 × 44 px. Text contrast is at least 4.5:1 in both schemes.
