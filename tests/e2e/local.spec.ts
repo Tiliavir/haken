@@ -50,3 +50,22 @@ test("pointer drag reorders", async ({ page }) => {
   await page.mouse.up();
   await expect.poll(() => titles(page)).toEqual(["B", "A", "C"]);
 });
+
+test("note and title save while typing, without a blur", async ({ page, context }) => {
+  const problems = guard(page);
+  await setupLocal(page);
+  await addTask(page, "Autosave");
+  await page.locator(".task-row .title", { hasText: "Autosave" }).click();
+  // A second tab on the same task shows when the edit is stored.
+  const other = await context.newPage();
+  await other.goto(page.url());
+  await page.getByLabel("Title").pressSequentially(" now");
+  await page.getByLabel("Note").pressSequentially("typed, never blurred");
+  await expect(page.getByLabel("Note")).toBeFocused();
+  await expect(other.getByLabel("Note")).toHaveValue("typed, never blurred");
+  await expect(other.getByLabel("Title")).toHaveValue("Autosave now");
+  await page.reload();
+  await expect(page.getByLabel("Note")).toHaveValue("typed, never blurred");
+  await expect(page.getByLabel("Title")).toHaveValue("Autosave now");
+  expect(problems).toEqual([]);
+});
