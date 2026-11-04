@@ -3,8 +3,7 @@
  * re-rendering. Every snapshot change renders the visible panes again;
  * nothing updates itself implicitly.
  */
-import type { AppService } from "../app/service.js";
-import type { Notice } from "../sync/runner.js";
+import type { AppService, Notice } from "../app/service.js";
 import type { Ctx } from "./context.js";
 import { isDragging, onDragEnd } from "./dnd/sortable.js";
 import { fill, h } from "./dom.js";

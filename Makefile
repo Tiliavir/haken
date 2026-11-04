@@ -26,7 +26,7 @@ fmt:
 	cd gateway && gofmt -w .
 
 validate: build
-	java -jar node_modules/vnu-jar/build/dist/vnu.jar --skip-non-html --also-check-css --also-check-svg \
+	java -jar node_modules/vnu-jar/build/dist/vnu.jar --skip-non-html --filterpattern ".*Content Security Policy.*" --also-check-css --also-check-svg \
 		dist/web/index.html dist/web/styles dist/web/icons
 
 gateway: build

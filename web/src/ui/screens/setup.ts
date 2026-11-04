@@ -2,7 +2,7 @@
  * First start and setup ([runtime view](../../../../docs/arc42/06-runtime-view.md#first-start-and-setup)).
  * Every step is stored before the next one is shown, so a reload resumes.
  */
-import type { SetupStep } from "../../store/records.js";
+import type { SetupStep } from "../../app/service.js";
 import type { Ctx } from "../context.js";
 import { fill, h } from "../dom.js";
 import { t } from "../i18n.js";

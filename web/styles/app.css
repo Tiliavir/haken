@@ -16,6 +16,7 @@
   --accent: light-dark(#1f4d45, #618f86);
   --on-accent: light-dark(#ffffff, #000000);
   --danger: light-dark(#a1262b, #f08a8e);
+  --segment-active: light-dark(#ffffff, #2e3338);
   --shadow: light-dark(rgb(0 0 0 / 16%), rgb(0 0 0 / 50%));
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   accent-color: var(--accent);
@@ -725,7 +726,6 @@ haken-task {
   font-size: 22px;
   font-weight: 700;
   resize: none;
-  field-sizing: content;
 }
 
 .task-heading-input.done {
@@ -980,7 +980,7 @@ haken-task {
 }
 
 .segment input:checked + span {
-  background: light-dark(var(--bg), var(--selected));
+  background: var(--segment-active);
   box-shadow: 0 1px 2px var(--shadow);
 }
 

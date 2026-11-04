@@ -2,7 +2,7 @@
 import { APP_VERSION } from "../../app/errors.js";
 import type { ImportPreview } from "../../app/service.js";
 import { InvalidInputError } from "../../domain/errors.js";
-import type { Theme } from "../../store/meta.js";
+import type { Theme } from "../../app/service.js";
 import type { Ctx } from "../context.js";
 import { statusText } from "../context.js";
 import { fill, h } from "../dom.js";

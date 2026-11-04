@@ -45,6 +45,10 @@ import {
 import { homeOf, type Notice, SyncRunner } from "../sync/runner.js";
 import { APP_VERSION, ErrorReporter, type ErrorSink } from "./errors.js";
 
+export type { Theme } from "../store/meta.js";
+export type { SetupStep } from "../store/records.js";
+export type { Notice } from "../sync/runner.js";
+
 export const DEFAULT_LIST = "Haken";
 export const ATTACHMENT_LIMIT = 5 * 1024 * 1024;
 const ERROR_TASKS_PER_DAY = 20;
