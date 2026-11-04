@@ -24,12 +24,12 @@ export function dueNow(item: TaskItem, today: string): boolean {
 }
 
 /**
- * *Today*: first everything due today or overdue (oldest due date first),
- * then the tasks the user put on Today (most recently added first). The
+ * *Focus*: first everything due today or overdue (oldest due date first),
+ * then the tasks the user put on Focus (most recently added first). The
  * second part does not reset at midnight; a task stays until it is taken
- * off. Completed: tasks completed today that were due or put on Today.
+ * off. Completed: tasks completed today that were due or put on Focus.
  */
-export function todayTasks(snapshot: Snapshot, now: number): TaskItem[] {
+export function focusTasks(snapshot: Snapshot, now: number): TaskItem[] {
   const today = localDate(now);
   const all = snapshot.lists.filter((l) => !l.errorlogs).flatMap((l) => l.tasks);
   const due = all
@@ -40,11 +40,11 @@ export function todayTasks(snapshot: Snapshot, now: number): TaskItem[] {
       return da < db ? -1 : da > db ? 1 : 0;
     });
   const pinned = all
-    .filter((t) => t.view !== null && !t.view.done && t.view.today !== null && !dueNow(t, today))
+    .filter((t) => t.view !== null && !t.view.done && t.view.focus !== null && !dueNow(t, today))
     .sort((a, b) =>
-      (a.view?.today ?? "") < (b.view?.today ?? "")
+      (a.view?.focus ?? "") < (b.view?.focus ?? "")
         ? 1
-        : (a.view?.today ?? "") > (b.view?.today ?? "")
+        : (a.view?.focus ?? "") > (b.view?.focus ?? "")
           ? -1
           : 0,
     );
@@ -52,7 +52,7 @@ export function todayTasks(snapshot: Snapshot, now: number): TaskItem[] {
     const v = t.view;
     if (v === null || !v.done || v.completedAt === null || localDate(v.completedAt) !== today)
       return false;
-    return v.today !== null || (v.due !== null && dueDate(v.due) <= today);
+    return v.focus !== null || (v.due !== null && dueDate(v.due) <= today);
   });
   return [...due, ...pinned, ...completed];
 }
@@ -61,7 +61,7 @@ function matches(id: SmartId, item: TaskItem, today: string): boolean {
   const v = item.view;
   if (v === null) return false;
   switch (id) {
-    case "today":
+    case "focus":
       return dueNow(item, today);
     case "important":
       return !v.done && v.important;
@@ -83,7 +83,7 @@ export interface ShownList {
 }
 
 export function smartTasks(snapshot: Snapshot, id: SmartId, now: number): TaskItem[] {
-  if (id === "today") return todayTasks(snapshot, now);
+  if (id === "focus") return focusTasks(snapshot, now);
   const today = localDate(now);
   const all = snapshot.lists
     .filter((l) => !l.errorlogs)

@@ -653,7 +653,7 @@ haken-task {
   stroke-width: 3;
 }
 
-.meta-item.on-today .icon {
+.meta-item.on-focus .icon {
   color: var(--accent);
 }
 

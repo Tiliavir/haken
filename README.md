@@ -33,7 +33,7 @@ first and foremost. No accounts, no cloud, no tracking.
 - [x] Attachments (inline, up to 5 MB)
 - [x] Due dates — reminders are still open
 - [x] Repeating tasks (daily, weekdays, weekly, monthly, yearly, custom)
-- [x] Today: due and overdue first (overdue in red), then the tasks you put there — they stay until you take them off
+- [x] Focus: due and overdue first (overdue in red), then the tasks you put there — they stay until you take them off
 - [x] Smart lists: Important, Planned, All
 - [x] Offline queue with conflict handling
 - [x] Interop with other CalDAV clients (Tasks.org, Thunderbird, …) — tested with synthetic samples so far

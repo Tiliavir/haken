@@ -8,7 +8,7 @@ import { type ListId, SMART, type SmartId, sameList } from "../route.js";
 import { smartCount } from "../views.js";
 
 const SMART_ICON: Readonly<Record<SmartId, IconName>> = {
-  today: "sun",
+  focus: "focus",
   important: "star",
   planned: "calendar",
   all: "inbox",
@@ -16,8 +16,8 @@ const SMART_ICON: Readonly<Record<SmartId, IconName>> = {
 
 export function smartName(id: SmartId): string {
   switch (id) {
-    case "today":
-      return t("smart.today");
+    case "focus":
+      return t("smart.focus");
     case "important":
       return t("smart.important");
     case "planned":
@@ -43,7 +43,7 @@ function row(ctx: Ctx, id: ListId, iconName: IconName, name: string, count: numb
         class: "list-row",
         href,
         "aria-current": selected(ctx, id) ? "page" : undefined,
-        "data-drop": id.kind === "smart" && id.id === "today" ? "today" : undefined,
+        "data-drop": id.kind === "smart" && id.id === "focus" ? "focus" : undefined,
       },
       icon(iconName),
       h("span", { class: "list-name" }, name),

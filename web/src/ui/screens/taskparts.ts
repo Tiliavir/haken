@@ -114,13 +114,13 @@ export function metaLine(
       h("span", { class: "meta-item" }, t("task.steps", { done, total: item.steps.length })),
     );
   }
-  if (view.today !== null && !view.done) {
+  if (view.focus !== null && !view.done) {
     parts.push(
       h(
         "span",
-        { class: "meta-item on-today", title: t("today.marker") },
-        icon("sun", "icon small"),
-        t("today.marker"),
+        { class: "meta-item on-focus", title: t("focus.marker") },
+        icon("focus", "icon small"),
+        t("focus.marker"),
       ),
     );
   }

@@ -34,7 +34,7 @@ Work that is not done yet, to plan. Undecided questions are in
 ## UI
 
 - Design the screens chapter 8 lists as *Not designed yet* (setup, empty list, offline, conflict note and notice, logout confirmation); the current versions follow chapter 8 but are not designed. Update the sketches.
-- Today: drag onto *Today* on mobile (e.g. a long-press menu), manual order inside *Today* (D57, D59).
+- Focus: drag onto *Focus* on mobile (e.g. a long-press menu), manual order inside *Focus* (D57, D59).
 - Due time of day (time picker), reminder field (after `OPEN.md`).
 - List colour and list order (read from `calendar-color` / `calendar-order`, not editable yet); reorder lists by drag and drop.
 - Accessibility pass: announce drag-and-drop moves in a live region, focus management after deleting a task, screen-reader test.

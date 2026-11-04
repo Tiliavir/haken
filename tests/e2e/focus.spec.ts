@@ -40,10 +40,10 @@ async function setDue(page: Page, title: string, date: string): Promise<void> {
   ).toBeVisible();
 }
 
-const todayTitles = (page: Page) =>
+const focusTitles = (page: Page) =>
   page.locator("haken-list > .tasks .task-row .title").allInnerTexts();
 
-test("Today: overdue (red) and due (!) on top, then tasks put on Today; they stay the next day", async ({
+test("Focus: overdue (red) and due (!) on top, then tasks put on Focus; they stay the next day", async ({
   page,
 }) => {
   const start = new Date("2026-11-04T09:00:00").getTime();
@@ -53,11 +53,11 @@ test("Today: overdue (red) and due (!) on top, then tasks put on Today; they sta
   await setDue(page, "Overdue", ymd(start - 2 * DAY));
   await setDue(page, "Due today", ymd(start));
   await page.locator("haken-list .task-row .title", { hasText: "Pinned" }).click();
-  await page.getByRole("button", { name: "Add to Today" }).click();
-  await expect(page.getByRole("button", { name: "Remove from Today" })).toBeVisible();
+  await page.getByRole("button", { name: "Add to Focus" }).click();
+  await expect(page.getByRole("button", { name: "Remove from Focus" })).toBeVisible();
 
-  await page.getByRole("link", { name: /^Today/ }).click();
-  await expect.poll(() => todayTitles(page)).toEqual(["Overdue", "Due today", "Pinned"]);
+  await page.getByRole("link", { name: /^Focus/ }).click();
+  await expect.poll(() => focusTitles(page)).toEqual(["Overdue", "Due today", "Pinned"]);
   const overdue = page.locator(".task-row", { hasText: "Overdue" }).locator(".meta-item.overdue");
   await expect(overdue).toContainText("Overdue");
   expect(await overdue.evaluate((el) => getComputedStyle(el).color)).toBe("rgb(161, 38, 43)");
@@ -68,29 +68,29 @@ test("Today: overdue (red) and due (!) on top, then tasks put on Today; they sta
   // Next day: due-today is now overdue, the pinned task is still there.
   await page.clock.setFixedTime(start + DAY);
   await page.reload();
-  await page.getByRole("link", { name: /^Today/ }).click();
-  await expect.poll(() => todayTitles(page)).toEqual(["Overdue", "Due today", "Pinned"]);
+  await page.getByRole("link", { name: /^Focus/ }).click();
+  await expect.poll(() => focusTitles(page)).toEqual(["Overdue", "Due today", "Pinned"]);
   await expect(
     page.locator(".task-row", { hasText: "Due today" }).locator(".meta-item.overdue"),
   ).toBeVisible();
 
-  // A task added in Today goes on Today without a due date.
+  // A task added in Focus goes on Focus without a due date.
   await addTask(page, "Added here");
   await expect
-    .poll(() => todayTitles(page))
+    .poll(() => focusTitles(page))
     .toEqual(["Overdue", "Due today", "Added here", "Pinned"]);
   await expect(
-    page.locator(".task-row", { hasText: "Added here" }).locator(".meta-item.on-today"),
+    page.locator(".task-row", { hasText: "Added here" }).locator(".meta-item.on-focus"),
   ).toBeVisible();
   // No unexpected error anywhere in this flow.
   await expect(page.getByRole("link", { name: /errorlogs/ })).toHaveCount(0);
 });
 
-test("drag a task onto Today in the sidebar; it syncs as X-HAKEN-MYDAY", async ({ page }) => {
+test("drag a task onto Focus in the sidebar; it syncs as X-HAKEN-MYDAY", async ({ page }) => {
   await setupServer(page);
-  await addTask(page, "Drag me to Today");
-  const grip = page.getByRole("button", { name: "Move “Drag me to Today”" });
-  const target = page.getByRole("link", { name: /^Today/ });
+  await addTask(page, "Drag me to Focus");
+  const grip = page.getByRole("button", { name: "Move “Drag me to Focus”" });
+  const target = page.getByRole("link", { name: /^Focus/ });
   const from = await grip.boundingBox();
   const to = await target.boundingBox();
   if (from === null || to === null) throw new Error("no boxes");
@@ -99,16 +99,16 @@ test("drag a task onto Today in the sidebar; it syncs as X-HAKEN-MYDAY", async (
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
   await expect(target).toHaveClass(/drop-target/);
   await page.mouse.up();
-  await expect(page.locator(".toast")).toHaveText("Added to Today.");
+  await expect(page.locator(".toast")).toHaveText("Added to Focus.");
   await expect(
-    page.locator(".task-row", { hasText: "Drag me to Today" }).locator(".meta-item.on-today"),
+    page.locator(".task-row", { hasText: "Drag me to Focus" }).locator(".meta-item.on-focus"),
   ).toBeVisible();
   await waitSynced(page);
   await expect
     .poll(
       () =>
         serverFiles("dev").some(
-          (f) => f.includes("SUMMARY:Drag me to Today") && /X-HAKEN-MYDAY:\d{8}/.test(f),
+          (f) => f.includes("SUMMARY:Drag me to Focus") && /X-HAKEN-MYDAY:\d{8}/.test(f),
         ),
       {
         timeout: 15_000,
@@ -116,5 +116,5 @@ test("drag a task onto Today in the sidebar; it syncs as X-HAKEN-MYDAY", async (
     )
     .toBe(true);
   await target.click();
-  await expect(page.locator(".task-row .title", { hasText: "Drag me to Today" })).toBeVisible();
+  await expect(page.locator(".task-row .title", { hasText: "Drag me to Focus" })).toBeVisible();
 });

@@ -101,7 +101,7 @@ export class HakenList extends HTMLElement {
             ctx.app.addTask(target.href, value, {
               important: shown.smart === "important",
               due: shown.smart === "planned" ? { kind: "date", date } : null,
-              today: shown.smart === "today" ? date : null,
+              focus: shown.smart === "focus" ? date : null,
             }),
           );
         },
@@ -124,10 +124,10 @@ export class HakenList extends HTMLElement {
         openList,
         (href, index) => ctx.run("ui.move", () => ctx.app.move(href, index)),
         (href, target) => {
-          if (target !== "today") return;
-          ctx.run("ui.dropToday", async () => {
-            await ctx.app.edit(href, { kind: "today", value: localDate(ctx.now) });
-            ctx.notify(t("today.added"));
+          if (target !== "focus") return;
+          ctx.run("ui.dropFocus", async () => {
+            await ctx.app.edit(href, { kind: "focus", value: localDate(ctx.now) });
+            ctx.notify(t("focus.added"));
           });
         },
       );

@@ -175,13 +175,13 @@ function steps(ctx: Ctx, item: TaskItem, readonly: boolean): HTMLElement {
   );
 }
 
-/** *Add to Today* / *Remove from Today*: the task stays on Today until taken off. */
-function todayRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
-  const on = view.today !== null;
+/** *Add to Focus* / *Remove from Focus*: the task stays on Focus until taken off. */
+function focusRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
+  const on = view.focus !== null;
   return h(
     "div",
     { class: "group-row" },
-    icon("sun"),
+    icon("focus"),
     h(
       "button",
       {
@@ -189,11 +189,11 @@ function todayRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
         class: on ? "row-button on" : "row-button",
         "aria-pressed": on ? "true" : "false",
         onclick: () =>
-          ctx.run("ui.today", () =>
-            ctx.app.edit(item.href, { kind: "today", value: on ? null : localDate(ctx.now) }),
+          ctx.run("ui.focus", () =>
+            ctx.app.edit(item.href, { kind: "focus", value: on ? null : localDate(ctx.now) }),
           ),
       },
-      on ? t("today.remove") : t("today.add"),
+      on ? t("focus.remove") : t("focus.add"),
     ),
   );
 }
@@ -515,7 +515,7 @@ export class HakenTask extends HTMLElement {
       h(
         "section",
         { class: "group" },
-        view.parentUid === null && !readonly ? todayRow(ctx, item, view) : null,
+        view.parentUid === null && !readonly ? focusRow(ctx, item, view) : null,
         dueRow(ctx, item, view, readonly),
         view.parentUid === null && !readonly ? repeatRow(ctx, item, view) : null,
         labelsRow(ctx, item, view, readonly),

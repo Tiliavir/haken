@@ -10,7 +10,7 @@ export type MoveHandler = (href: string, index: number) => void;
 
 /**
  * Drop on an element outside the list marked `data-drop="<target>"` (the
- * sidebar's *Today*). Keyboard users use the task screen's button instead.
+ * sidebar's *Focus*). Keyboard users use the task screen's button instead.
  */
 export type DropHandler = (href: string, target: string) => void;
 

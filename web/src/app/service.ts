@@ -552,8 +552,8 @@ export class AppService extends EventTarget implements ErrorSink {
       readonly important?: boolean;
       readonly due?: Due | null;
       readonly parentHref?: string;
-      /** Put the new task on *Today* (`YYYY-MM-DD`). */
-      readonly today?: string | null;
+      /** Put the new task on *Focus* (`YYYY-MM-DD`). */
+      readonly focus?: string | null;
     } = {},
   ): Promise<AddResult> {
     return this.exclusive(() => this.addTaskNow(listHref, summary, options));
@@ -566,8 +566,8 @@ export class AppService extends EventTarget implements ErrorSink {
       readonly important?: boolean;
       readonly due?: Due | null;
       readonly parentHref?: string;
-      /** Put the new task on *Today* (`YYYY-MM-DD`). */
-      readonly today?: string | null;
+      /** Put the new task on *Focus* (`YYYY-MM-DD`). */
+      readonly focus?: string | null;
     } = {},
   ): Promise<AddResult> {
     const trimmed = summary.trim();
@@ -599,7 +599,7 @@ export class AppService extends EventTarget implements ErrorSink {
         parentUid,
         important: options.important ?? false,
         due: options.due ?? null,
-        today: options.today ?? null,
+        focus: options.focus ?? null,
       },
       now,
     );

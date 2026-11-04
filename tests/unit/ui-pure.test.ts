@@ -44,7 +44,7 @@ test("routes round-trip; garbage goes to the lists screen", () => {
   const routes = [
     { kind: "lists" },
     { kind: "settings" },
-    { kind: "list", list: { kind: "smart", id: "today" } },
+    { kind: "list", list: { kind: "smart", id: "focus" } },
     { kind: "list", list: { kind: "list", href: "/dav/u/a b/" } },
     { kind: "task", list: { kind: "list", href: "/dav/u/x/" }, task: "/dav/u/x/1.ics" },
   ] as const;
