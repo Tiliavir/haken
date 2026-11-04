@@ -14,7 +14,7 @@ export interface ErrorReport {
   readonly name: string;
   readonly message: string;
   readonly layer: string;
-  /** Plain-text lines `key: value`, already free of credentials and task content. */
+  /** Plain-text lines `key: value`, already free of credentials. */
   readonly details: readonly string[];
   readonly stack: string;
 }

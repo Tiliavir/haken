@@ -1,8 +1,8 @@
 /**
  * Turns unexpected errors into tasks in the list "errorlogs"
- * (ADR-20261104-strict-errors). Only technical context goes into the task:
- * the context of a `HakenError` (UIDs, paths, statuses, property names) and
- * a few environment facts. Never credentials, never task content.
+ * (ADR-20261104-strict-errors, ADR-20261104-error-task-content): the
+ * context of a `HakenError` and a few environment facts. Task values may be
+ * included; credentials and query strings never.
  */
 
 import { HakenError } from "../domain/errors.js";
@@ -18,10 +18,9 @@ export interface ErrorSink {
   environment(): Readonly<Record<string, string | number | boolean>>;
 }
 
-const SECRET_KEY =
-  /pass|auth|cookie|token|session|secret|summary|description|title|label|categor|content/i;
+const SECRET_KEY = /pass|auth|cookie|token|session|secret/i;
 
-/** Builds the report. Context values that could carry credentials or content are dropped. */
+/** Builds the report. Context values that could carry credentials are dropped. */
 export function buildReport(
   error: unknown,
   operation: string,
