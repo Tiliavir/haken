@@ -100,6 +100,30 @@ test("logout with pending changes asks and can keep data", async ({ page, contex
   await expect(page.getByRole("heading", { name: "Where should your tasks live?" })).toBeVisible();
 });
 
+test("export pending changes deletes only after the user confirms the file is saved", async ({
+  page,
+  context,
+}) => {
+  await setupServer(page);
+  await context.setOffline(true);
+  await addTask(page, "Export me");
+  await page.getByRole("link", { name: "Settings" }).click();
+  await button(page, "Log out");
+  const [file] = await Promise.all([
+    page.waitForEvent("download"),
+    button(page, "Export pending changes, then delete"),
+  ]);
+  expect(file.suggestedFilename()).toBe("haken-pending.ics");
+  await expect(page.getByText("Is the file haken-pending.ics saved?")).toBeVisible();
+  // Cancel keeps everything.
+  await page.locator("dialog").getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByText("1 change pending")).toBeVisible();
+  await button(page, "Log out");
+  await button(page, "Export pending changes, then delete");
+  await button(page, "Saved, delete and log out");
+  await expect(page.getByRole("heading", { name: "Where should your tasks live?" })).toBeVisible();
+});
+
 test("gateway refuses another user's collection", async ({ page, request }) => {
   await setupServer(page);
   const status = await page.evaluate(

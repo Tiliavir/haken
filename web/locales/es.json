@@ -62,6 +62,8 @@
   "logout.pending.other": "{count} cambios aún no están en el servidor.",
   "logout.keep": "Cerrar sesión y conservar los datos en este dispositivo",
   "logout.export": "Exportar los cambios pendientes y luego eliminar",
+  "logout.savedPrompt": "¿Se guardó el archivo {file}? Solo entonces elimina los datos de este navegador.",
+  "logout.savedDelete": "Guardado, eliminar y cerrar sesión",
   "logout.discardPrompt": "Escribe {count} para descartar los cambios:",
   "logout.discard": "Descartar los cambios y cerrar sesión",
   "logout.local": "Al cerrar sesión se eliminan todas las tareas de este navegador. No hay copia en un servidor. Expórtalas antes si quieres conservarlas.",

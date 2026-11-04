@@ -62,6 +62,8 @@
   "logout.pending.other": "{count} modifiche non sono ancora sul server.",
   "logout.keep": "Esci e conserva i dati su questo dispositivo",
   "logout.export": "Esporta le modifiche in sospeso, poi elimina",
+  "logout.savedPrompt": "Il file {file} è stato salvato? Solo allora elimina i dati in questo browser.",
+  "logout.savedDelete": "Salvato, elimina ed esci",
   "logout.discardPrompt": "Digita {count} per scartare le modifiche:",
   "logout.discard": "Scarta le modifiche ed esci",
   "logout.local": "Uscendo vengono eliminate tutte le attività in questo browser. Non esiste una copia sul server. Esportale prima se vuoi conservarle.",

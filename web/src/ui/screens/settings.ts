@@ -116,6 +116,30 @@ export function chooseImport(ctx: Ctx, dialog: HTMLDialogElement, done?: () => v
   input.click();
 }
 
+const PENDING_FILE = "haken-pending.ics";
+
+function confirmSaved(dialog: HTMLDialogElement, discard: () => void): void {
+  fill(
+    dialog,
+    h(
+      "form",
+      { method: "dialog" },
+      h("h2", {}, t("logout.title")),
+      h("p", {}, t("logout.savedPrompt", { file: PENDING_FILE })),
+      h(
+        "div",
+        { class: "actions" },
+        h("button", { type: "submit", class: "button", autofocus: true }, t("common.cancel")),
+        h(
+          "button",
+          { type: "button", class: "button danger", onclick: discard },
+          t("logout.savedDelete"),
+        ),
+      ),
+    ),
+  );
+}
+
 function logoutFlow(ctx: Ctx, dialog: HTMLDialogElement): void {
   const account = ctx.snapshot.account;
   if (account === null) return;
@@ -220,10 +244,9 @@ function logoutFlow(ctx: Ctx, dialog: HTMLDialogElement): void {
               onclick: () =>
                 ctx.run("ui.exportPending", async () => {
                   const text = await ctx.app.exportPendingIcs();
-                  download(new Blob([text], { type: "text/calendar" }), "haken-pending.ics");
-                  dialog.close();
-                  await ctx.app.logout("discard");
-                  ctx.navigate({ kind: "lists" });
+                  download(new Blob([text], { type: "text/calendar" }), PENDING_FILE);
+                  // A download can be cancelled or fail unseen: delete only once the user says it is saved.
+                  confirmSaved(dialog, () => finish("discard"));
                 }),
             },
             t("logout.export"),

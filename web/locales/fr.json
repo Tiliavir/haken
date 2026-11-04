@@ -62,6 +62,8 @@
   "logout.pending.other": "{count} modifications ne sont pas encore sur le serveur.",
   "logout.keep": "Se déconnecter, garder les données sur cet appareil",
   "logout.export": "Exporter les modifications en attente, puis supprimer",
+  "logout.savedPrompt": "Le fichier {file} est-il enregistré ? Supprimez les données de ce navigateur seulement après.",
+  "logout.savedDelete": "Enregistré, supprimer et se déconnecter",
   "logout.discardPrompt": "Saisissez {count} pour abandonner les modifications :",
   "logout.discard": "Abandonner les modifications et se déconnecter",
   "logout.local": "La déconnexion supprime toutes les tâches de ce navigateur. Il n'y a pas de copie sur un serveur. Exportez-les d'abord si vous voulez les garder.",

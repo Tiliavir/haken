@@ -62,6 +62,8 @@
   "logout.pending.other": "{count} Änderungen sind noch nicht auf dem Server.",
   "logout.keep": "Abmelden, Daten auf diesem Gerät behalten",
   "logout.export": "Ausstehende Änderungen exportieren, dann löschen",
+  "logout.savedPrompt": "Ist die Datei {file} gespeichert? Erst dann die Daten in diesem Browser löschen.",
+  "logout.savedDelete": "Gespeichert, löschen und abmelden",
   "logout.discardPrompt": "Gib {count} ein, um die Änderungen zu verwerfen:",
   "logout.discard": "Änderungen verwerfen und abmelden",
   "logout.local": "Beim Abmelden werden alle Aufgaben in diesem Browser gelöscht. Es gibt keine Kopie auf einem Server. Exportiere sie vorher, wenn du sie behalten willst.",

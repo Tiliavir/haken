@@ -62,6 +62,8 @@
   "logout.pending.other": "{count} changes are not on the server yet.",
   "logout.keep": "Log out, keep data on this device",
   "logout.export": "Export pending changes, then delete",
+  "logout.savedPrompt": "Is the file {file} saved? Only then delete the data in this browser.",
+  "logout.savedDelete": "Saved, delete and log out",
   "logout.discardPrompt": "Type {count} to discard the changes:",
   "logout.discard": "Discard changes and log out",
   "logout.local": "Logging out deletes all tasks in this browser. There is no server copy. Export first if you want to keep them.",
