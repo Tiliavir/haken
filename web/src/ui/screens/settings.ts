@@ -31,7 +31,7 @@ export function importDialog(
   const lists = ctx.snapshot.lists.filter((l) => !l.errorlogs);
   const select = h(
     "select",
-    { name: "list", "aria-label": t("import.list") },
+    { name: "import-list", "aria-label": t("import.list") },
     lists.map((l) => h("option", { value: l.href }, l.name)),
   );
   const problems = preview.result.problems;

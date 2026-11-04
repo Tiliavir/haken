@@ -143,7 +143,14 @@ export class HakenApp extends HTMLElement {
   private captureFocus(): Focus | null {
     const el = document.activeElement;
     if (!(el instanceof HTMLElement) || !this.contains(el)) return null;
-    const key = el.dataset["focus"] ?? (el.id === "" ? null : `#${el.id}`);
+    // Key by data-focus, then id, then form-field name (add-task, add-step, label, new-list).
+    // Only free-text fields: a radio group shares one name, and restoring a value there would corrupt it.
+    const textual =
+      el instanceof HTMLTextAreaElement ||
+      (el instanceof HTMLInputElement && ["text", "password", "search"].includes(el.type));
+    const name = textual ? el.getAttribute("name") : null;
+    const key =
+      el.dataset["focus"] ?? (el.id !== "" ? `#${el.id}` : name !== null ? `@${name}` : null);
     if (key === null) return null;
     const editable =
       el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el : null;
@@ -160,7 +167,9 @@ export class HakenApp extends HTMLElement {
     if (focus === null) return;
     const el = focus.key.startsWith("#")
       ? document.getElementById(focus.key.slice(1))
-      : this.querySelector(`[data-focus="${CSS.escape(focus.key)}"]`);
+      : focus.key.startsWith("@")
+        ? this.querySelector(`[name="${CSS.escape(focus.key.slice(1))}"]`)
+        : this.querySelector(`[data-focus="${CSS.escape(focus.key)}"]`);
     if (!(el instanceof HTMLElement)) return;
     if (
       (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) &&
