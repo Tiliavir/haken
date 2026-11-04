@@ -42,7 +42,7 @@ import {
   type SetupStep,
   type TaskRecord,
 } from "../store/records.js";
-import { homeOf, type Notice, SyncRunner } from "../sync/runner.js";
+import { homeOf, type Notice, QUARANTINE, SyncRunner } from "../sync/runner.js";
 import { APP_VERSION, ErrorReporter, type ErrorSink } from "./errors.js";
 
 export type { Frequency, Recurrence, Weekday } from "../domain/recurrence.js";
@@ -80,6 +80,8 @@ export type SyncStatus =
   | { readonly kind: "local" }
   | { readonly kind: "synced" }
   | { readonly kind: "pending"; readonly count: number }
+  /** Items sync skips after an unexpected error (ADR-20261104-sync-quarantine). */
+  | { readonly kind: "quarantined"; readonly count: number }
   | { readonly kind: "syncing"; readonly count: number }
   | { readonly kind: "offline"; readonly count: number }
   | { readonly kind: "signin"; readonly count: number }
@@ -212,9 +214,11 @@ export class AppService extends EventTarget implements ErrorSink {
     ]);
     const lastSync = await this.store.state("lastSync");
     const tooLarge = new Set<string>();
+    let quarantined = 0;
     for (const [key, value] of await this.store.allState()) {
       if (key.startsWith("tooLarge:") && value !== null)
         tooLarge.add(key.slice("tooLarge:".length));
+      if (key.startsWith(QUARANTINE) && value !== null) quarantined++;
     }
     const pending = outbox.length;
     const pendingHrefs = new Set(outbox.map((o) => o.href));
@@ -223,7 +227,7 @@ export class AppService extends EventTarget implements ErrorSink {
       account: this.account,
       settings,
       lists: built.lists,
-      status: this.statusFor(pending),
+      status: this.statusFor(pending, quarantined),
       lastSync: typeof lastSync === "number" ? lastSync : null,
       pending,
     };
@@ -241,7 +245,7 @@ export class AppService extends EventTarget implements ErrorSink {
     this.dispatchEvent(new Event("change"));
   }
 
-  private statusFor(count: number): SyncStatus {
+  private statusFor(count: number, quarantined: number): SyncStatus {
     if (!this.isServer) return { kind: "local" };
     switch (this.syncState) {
       case "syncing":
@@ -253,6 +257,7 @@ export class AppService extends EventTarget implements ErrorSink {
       case "error":
         return { kind: "error", count };
       case "idle":
+        if (quarantined > 0) return { kind: "quarantined", count: quarantined };
         return count === 0 ? { kind: "synced" } : { kind: "pending", count };
     }
   }
@@ -343,8 +348,9 @@ export class AppService extends EventTarget implements ErrorSink {
     await this.activate(account);
     this.syncState = "idle";
     if (existing === null) {
-      const lists = await caldav.listCollections(homeOf(user));
-      if (lists.length === 0) await this.createList(DEFAULT_LIST);
+      const found = await caldav.listCollections(homeOf(user));
+      if (found.lists.length === 0 && found.invalid.length === 0)
+        await this.createList(DEFAULT_LIST);
     }
     await this.syncNow();
     return result;
@@ -425,6 +431,9 @@ export class AppService extends EventTarget implements ErrorSink {
     const runner = new SyncRunner(store, account.user, {
       onInvalid: async (info) => {
         await this.reporter.report(info.error, "sync.pull");
+      },
+      onQuarantine: async (info) => {
+        await this.reporter.report(info.error, `sync.quarantine ${info.href}`);
       },
       onNotice: (notice) =>
         this.dispatchEvent(new CustomEvent<Notice>("notice", { detail: notice })),

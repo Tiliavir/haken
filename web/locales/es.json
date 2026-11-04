@@ -169,6 +169,8 @@
   "sync.localWarning": "No hay copia de estas tareas en un servidor. Expórtalas con regularidad.",
   "sync.pending.one": "{count} cambio pendiente",
   "sync.pending.other": "{count} cambios pendientes",
+  "sync.quarantined.one": "{count} elemento sin sincronizar",
+  "sync.quarantined.other": "{count} elementos sin sincronizar",
   "sync.stale.one": "Sin sincronizar desde hace {count} día",
   "sync.stale.other": "Sin sincronizar desde hace {count} días",
   "task.detail": "Tarea",

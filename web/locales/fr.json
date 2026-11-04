@@ -169,6 +169,8 @@
   "sync.localWarning": "Il n'existe pas de copie de ces tâches sur un serveur. Exportez-les régulièrement.",
   "sync.pending.one": "{count} modification en attente",
   "sync.pending.other": "{count} modifications en attente",
+  "sync.quarantined.one": "{count} élément non synchronisé",
+  "sync.quarantined.other": "{count} éléments non synchronisés",
   "sync.stale.one": "Pas synchronisé depuis {count} jour",
   "sync.stale.other": "Pas synchronisé depuis {count} jours",
   "task.detail": "Tâche",

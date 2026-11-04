@@ -16,6 +16,11 @@ export class UnreachableError extends Error {
   override readonly name: string = "UnreachableError";
 }
 
+/** `401` from `/dav`: the session ended during a sync run. An expected state, not an error. */
+export class ExpiredError extends Error {
+  override readonly name: string = "ExpiredError";
+}
+
 const TIMEOUT_MS = 30_000;
 const SERVER_PATH = /^\/(dav|api)\/[^?#]*$/;
 
@@ -65,6 +70,7 @@ export async function server(
   if (response.status === 502 || response.status === 503 || response.status === 504) {
     throw new UnreachableError(`${method} ${response.status}`);
   }
+  if (response.status === 401 && path.startsWith("/dav/")) throw new ExpiredError(method);
   return { status: response.status, headers: response.headers, text };
 }
 

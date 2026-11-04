@@ -169,6 +169,8 @@
   "sync.localWarning": "Non esiste una copia di queste attività sul server. Esportale regolarmente.",
   "sync.pending.one": "{count} modifica in sospeso",
   "sync.pending.other": "{count} modifiche in sospeso",
+  "sync.quarantined.one": "{count} elemento non sincronizzato",
+  "sync.quarantined.other": "{count} elementi non sincronizzati",
   "sync.stale.one": "Non sincronizzato da {count} giorno",
   "sync.stale.other": "Non sincronizzato da {count} giorni",
   "task.detail": "Attività",

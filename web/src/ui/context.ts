@@ -27,6 +27,8 @@ export function statusText(status: SyncStatus): string {
       return t("sync.synced");
     case "pending":
       return tp("sync.pending", status.count);
+    case "quarantined":
+      return tp("sync.quarantined", status.count);
     case "syncing":
       return t("sync.syncing");
     case "offline":
@@ -51,7 +53,7 @@ export function syncStatus(ctx: Ctx): HTMLElement {
       label,
     );
   }
-  if (status.kind === "error") {
+  if (status.kind === "error" || status.kind === "quarantined") {
     const errorlogs = ctx.snapshot.lists.find((l) => l.errorlogs);
     if (errorlogs !== undefined) {
       return h(

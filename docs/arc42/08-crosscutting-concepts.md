@@ -77,7 +77,7 @@ Colours are written as `light-dark(<light>, <dark>)` ([Theming](adr/ADR-20261103
 
 ### States
 
-- The sync status is always visible: a dot + text (*Synced*, *Offline*, *n changes pending*, *Sign in to sync*, *Sync error*, which links to the errorlogs list). In browser-only mode it says that there is no server copy ([Browser-only](adr/ADR-20261103-browser-only-mode.md)).
+- The sync status is always visible: a dot + text (*Synced*, *Offline*, *n changes pending*, *Sign in to sync*, *Sync error* and *n items not synced* ([quarantine](adr/ADR-20261104-sync-quarantine.md)), both linking to the errorlogs list). In browser-only mode it says that there is no server copy ([Browser-only](adr/ADR-20261103-browser-only-mode.md)).
 - Conflicts never open a dialog ([Sync](adr/ADR-20261103-sync-strategy.md)). The task detail lists each conflict note: property, the overwritten value, *Use this value*, *Dismiss*. A note on the whole task (the server version cannot be read) shows a short explanation instead of the value, with *Export (.ics)* and *Dismiss*. The user does not have to act; the note and its marker stay until one of the two is chosen. A task with a conflict note shows a small marker in its meta line. While the app is visible, a non-blocking notice names a task that was merged.
 - Logout with pending changes: *Export pending changes, then delete* asks after the download whether the file is saved and deletes only on confirmation.
 - A completed task or checklist item shows a filled accent circle with an `--on-accent` check, and its text is struck through and muted.
