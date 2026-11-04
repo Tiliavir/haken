@@ -1,6 +1,6 @@
 # ADR-20261103: Sync strategy
 
-Status: Accepted
+Status: Accepted; partly superseded by [ADR-20261104-set-merge](ADR-20261104-set-merge.md)
 
 ## Decision
 
