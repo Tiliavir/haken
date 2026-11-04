@@ -1,0 +1,254 @@
+/** List screen (chapter 8, Screens: List). */
+import type { TaskItem } from "../../app/service.js";
+import type { Ctx } from "../context.js";
+import { makeSortable } from "../dnd/sortable.js";
+import { fill, h } from "../dom.js";
+import { t, tp } from "../i18n.js";
+import { icon } from "../icons.js";
+import type { ListId } from "../route.js";
+import { defaultList, show } from "../views.js";
+import { smartName } from "./sidebar.js";
+import { checkCircle, metaLine, starButton } from "./taskparts.js";
+
+function taskRow(
+  ctx: Ctx,
+  listId: ListId,
+  item: TaskItem,
+  sortable: boolean,
+  showList: boolean,
+): HTMLElement {
+  const selected = ctx.route.kind === "task" && ctx.route.task === item.href;
+  const link = (children: (Node | string | null)[]) =>
+    h(
+      "a",
+      {
+        class: "task-title",
+        href: `#/${listId.kind === "smart" ? `smart/${listId.id}` : `list/${encodeURIComponent(listId.href)}`}/task/${encodeURIComponent(item.href)}`,
+      },
+      ...children,
+    );
+  if (item.view === null) {
+    return h(
+      "li",
+      { class: "task-row invalid", "aria-current": selected ? "true" : undefined },
+      h("span", { class: "check-placeholder" }, icon("alert")),
+      link([h("span", { class: "title" }, t("task.readonly"))]),
+    );
+  }
+  const view = item.view;
+  const readonly = view.repeats;
+  const listName = showList
+    ? (ctx.snapshot.lists.find((l) => l.href === item.list)?.name ?? null)
+    : null;
+  return h(
+    "li",
+    {
+      class: view.done ? "task-row done" : "task-row",
+      "data-href": item.href,
+      "data-sortable": sortable && !view.done && !readonly ? "" : undefined,
+      "aria-current": selected ? "true" : undefined,
+    },
+    sortable && !view.done && !readonly
+      ? h(
+          "button",
+          { class: "grip", type: "button", "aria-label": t("task.drag", { title: view.summary }) },
+          icon("grip"),
+        )
+      : h("span", { class: "grip-placeholder" }),
+    checkCircle(ctx, item, view, readonly),
+    link([
+      h("span", { class: "title" }, view.summary === "" ? t("task.untitled") : view.summary),
+      metaLine(item, view, ctx.now, listName),
+    ]),
+    starButton(ctx, item, view, readonly),
+  );
+}
+
+export class HakenList extends HTMLElement {
+  render(ctx: Ctx, listId: ListId): void {
+    const shown = show(ctx.snapshot, listId, ctx.now);
+    if (shown === null) {
+      fill(this, h("p", { class: "empty" }, t("list.missing")));
+      return;
+    }
+    const title = shown.smart !== null ? smartName(shown.smart) : (shown.title ?? "");
+    const target = shown.list ?? defaultList(ctx.snapshot);
+    const open = shown.tasks.filter((x) => x.view === null || !x.view.done);
+    const done = shown.tasks.filter((x) => x.view?.done === true);
+
+    const input = h("input", {
+      class: "add-input",
+      type: "text",
+      name: "task",
+      placeholder: t("list.add"),
+      "aria-label": t("list.add"),
+      maxlength: "1000",
+      autocomplete: "off",
+      enterkeyhint: "done",
+    });
+    const add = h(
+      "form",
+      {
+        class: "add-task",
+        onsubmit: (e: Event) => {
+          e.preventDefault();
+          const value = input.value.trim();
+          if (value === "" || target === null) return;
+          input.value = "";
+          const today = new Date(ctx.now);
+          const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+          ctx.run("ui.addTask", () =>
+            ctx.app.addTask(target.href, value, {
+              important: shown.smart === "important",
+              due:
+                shown.smart === "today" || shown.smart === "planned"
+                  ? { kind: "date", date }
+                  : null,
+            }),
+          );
+        },
+      },
+      h(
+        "button",
+        { class: "icon-button", type: "submit", "aria-label": t("list.add") },
+        icon("plus"),
+      ),
+      input,
+    );
+
+    const openList = h(
+      "ul",
+      { class: "tasks", "aria-label": title },
+      open.map((item) => taskRow(ctx, listId, item, shown.sortable, shown.smart !== null)),
+    );
+    if (shown.sortable) {
+      makeSortable(openList, (href, index) => ctx.run("ui.move", () => ctx.app.move(href, index)));
+    }
+
+    const back = h(
+      "a",
+      { class: "back", href: "#/", "aria-label": t("nav.backTo", { name: t("lists.title") }) },
+      icon("back"),
+      h("span", {}, t("lists.title")),
+    );
+
+    const header = h(
+      "header",
+      { class: "list-header" },
+      back,
+      h("h1", { class: "page-title" }, title),
+      h("p", { class: "subtitle" }, tp("list.open", shown.openCount)),
+      shown.list !== null && !shown.list.errorlogs
+        ? listMenu(ctx, shown.list.href, shown.list.name)
+        : null,
+    );
+
+    fill(
+      this,
+      header,
+      target === null ? null : add,
+      open.length === 0 && done.length === 0 ? h("p", { class: "empty" }, t("list.empty")) : null,
+      openList,
+      done.length > 0
+        ? h(
+            "details",
+            { class: "completed" },
+            h("summary", {}, tp("list.completed", done.length)),
+            h(
+              "ul",
+              { class: "tasks" },
+              done.map((item) => taskRow(ctx, listId, item, false, shown.smart !== null)),
+            ),
+          )
+        : null,
+    );
+  }
+}
+
+function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
+  const dialog = h("dialog", { class: "dialog" });
+  const renameInput = h("input", {
+    type: "text",
+    name: "name",
+    value: name,
+    maxlength: "200",
+    required: true,
+    autocomplete: "off",
+  });
+  const rename = (): void => {
+    fill(
+      dialog,
+      h(
+        "form",
+        {
+          method: "dialog",
+          onsubmit: () => {
+            const value = renameInput.value.trim();
+            if (value !== "") ctx.run("ui.renameList", () => ctx.app.renameList(href, value));
+          },
+        },
+        h("h2", {}, t("list.rename")),
+        h("label", {}, t("list.name"), renameInput),
+        h(
+          "div",
+          { class: "actions" },
+          h(
+            "button",
+            { type: "button", class: "button", onclick: () => dialog.close() },
+            t("common.cancel"),
+          ),
+          h("button", { type: "submit", class: "button primary" }, t("common.save")),
+        ),
+      ),
+    );
+    dialog.showModal();
+  };
+  const remove = (): void => {
+    const count = ctx.snapshot.lists.find((l) => l.href === href)?.tasks.length ?? 0;
+    fill(
+      dialog,
+      h(
+        "form",
+        { method: "dialog" },
+        h("h2", {}, t("list.delete")),
+        h("p", {}, tp("list.deleteConfirm", count, { name })),
+        h(
+          "div",
+          { class: "actions" },
+          h("button", { type: "submit", class: "button", autofocus: true }, t("common.cancel")),
+          h(
+            "button",
+            {
+              type: "button",
+              class: "button danger",
+              onclick: () => {
+                dialog.close();
+                ctx.run("ui.deleteList", async () => {
+                  await ctx.app.deleteList(href);
+                  ctx.navigate({ kind: "lists" });
+                });
+              },
+            },
+            t("common.delete"),
+          ),
+        ),
+      ),
+    );
+    dialog.showModal();
+  };
+  return h(
+    "div",
+    { class: "list-actions" },
+    h(
+      "button",
+      { class: "icon-button", type: "button", "aria-label": t("list.rename"), onclick: rename },
+      icon("edit"),
+    ),
+    h(
+      "button",
+      { class: "icon-button", type: "button", "aria-label": t("list.delete"), onclick: remove },
+      icon("trash"),
+    ),
+    dialog,
+  );
+}

@@ -313,6 +313,20 @@ export class AppService extends EventTarget implements ErrorSink {
     return result;
   }
 
+  /** New session for the active server account after the old one expired (*Sign in to sync*). */
+  async reauthenticate(password: string): Promise<api.Login> {
+    const account = this.requireAccount();
+    if (account.type !== "server" || account.user === null) {
+      throw new HakenError("app", "Re-authentication without server account");
+    }
+    const result = await api.login(account.user, password);
+    if (result.kind === "ok") {
+      this.syncState = "idle";
+      await this.syncNow();
+    }
+    return result;
+  }
+
   async finishSetup(): Promise<void> {
     const account = this.requireAccount();
     const ready: AccountRecord = { ...account, ready: true };

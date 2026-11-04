@@ -7,7 +7,18 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!web/vendor", "!dist", "!gateway/internal/static/dist", "!test-results"]
+    "includes": [
+      "web/src/**",
+      "tests/**/*.ts",
+      "tools/**/*.mjs",
+      "tests/**/*.mjs",
+      "web/styles/**",
+      "web/locales/**",
+      "*.json",
+      "playwright.config.ts",
+      "!web/vendor",
+      "!dist"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -25,7 +36,8 @@
       },
       "style": {
         "noNonNullAssertion": "error",
-        "useConst": "error"
+        "useConst": "error",
+        "noDescendingSpecificity": "off"
       },
       "correctness": {
         "noUnusedImports": "error",
@@ -36,7 +48,8 @@
         "noMisusedPromises": "error"
       },
       "complexity": {
-        "useLiteralKeys": "off"
+        "useLiteralKeys": "off",
+        "noImportantStyles": "off"
       }
     }
   },
@@ -51,6 +64,11 @@
       "source": {
         "organizeImports": "on"
       }
+    }
+  },
+  "css": {
+    "linter": {
+      "enabled": true
     }
   }
 }
