@@ -54,6 +54,12 @@ const PATHS = {
     "M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
   ],
   chevron: ["M9 6l6 6-6 6"],
+  repeat: [
+    "M4.5 11a7.5 7.5 0 0 1 13.2-4.9L19.5 8",
+    "M19.5 3.5V8H15",
+    "M19.5 13a7.5 7.5 0 0 1-13.2 4.9L4.5 16",
+    "M4.5 20.5V16H9",
+  ],
   edit: ["M4.5 19.5l1-4L15.8 5.2a2 2 0 0 1 2.8 2.8L8.3 18.3l-3.8 1.2Z"],
 } as const satisfies Record<string, readonly string[]>;
 

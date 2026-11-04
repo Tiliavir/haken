@@ -126,8 +126,7 @@ export function parseRule(text: string, prodid: string | null): Map<string, stri
   if (wkst !== undefined && !WEEKDAYS.includes(wkst as Weekday)) fail("Invalid WKST", text, prodid);
   for (const [key, re] of Object.entries(LIST_RE)) {
     const v = parts.get(key);
-    if (v !== undefined && v.split(",").some((item) => !re.test(item)))
-      fail(`Invalid ${key}`, text, prodid);
+    if (v?.split(",").some((item) => !re.test(item))) fail(`Invalid ${key}`, text, prodid);
   }
   return parts;
 }

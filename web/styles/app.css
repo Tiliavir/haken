@@ -1139,3 +1139,80 @@ haken-setup {
 .toast.visible {
   opacity: 1;
 }
+
+/* ------------------------------------------------------------ repeat */
+
+.repeat select {
+  flex: 0 1 auto;
+}
+
+.repeat-custom {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 8px 32px;
+}
+
+.repeat-custom > label {
+  font-size: 15px;
+  color: var(--text-2);
+}
+
+.interval-input {
+  width: 5em;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.weekdays {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.weekdays legend {
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.weekday {
+  display: grid;
+  cursor: pointer;
+}
+
+.weekday input {
+  position: absolute;
+  opacity: 0;
+}
+
+.weekday span {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.weekday input:checked + span {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.weekday input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

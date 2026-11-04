@@ -36,7 +36,7 @@ function taskRow(
     );
   }
   const view = item.view;
-  const readonly = view.repeats;
+  const readonly = view.repeats && view.recurrence === null;
   const listName = showList
     ? (ctx.snapshot.lists.find((l) => l.href === item.list)?.name ?? null)
     : null;

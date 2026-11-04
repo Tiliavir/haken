@@ -45,6 +45,7 @@ import {
 import { homeOf, type Notice, SyncRunner } from "../sync/runner.js";
 import { APP_VERSION, ErrorReporter, type ErrorSink } from "./errors.js";
 
+export type { Frequency, Recurrence, Weekday } from "../domain/recurrence.js";
 export type { Theme } from "../store/meta.js";
 export type { SetupStep } from "../store/records.js";
 export type { Notice } from "../sync/runner.js";
@@ -571,15 +572,45 @@ export class AppService extends EventTarget implements ErrorSink {
   async edit(href: string, edit: TaskEdit): Promise<void> {
     const record = await this.taskRecord(href);
     const now = new Date();
+    const before = readTask(parseResource(record.ics));
     const result = applyEdit(record.ics, edit, now);
     if (result.groups.length === 0) return;
-    await this.changed({
-      putTasks: [{ ...record, ics: result.ics }],
-      addOps: this.isServer
-        ? [{ kind: "put", href, groups: result.groups, editedAt: now.getTime() }]
-        : [],
-      expect: [{ href, ics: record.ics }],
-    });
+    const putTasks: TaskRecord[] = [{ ...record, ics: result.ics }];
+    const expect: { href: string; ics: string }[] = [{ href, ics: record.ics }];
+    const addOps: { kind: "put"; href: string; groups: string[]; editedAt: number }[] = [];
+    if (this.isServer)
+      addOps.push({ kind: "put", href, groups: [...result.groups], editedAt: now.getTime() });
+    const advanced =
+      edit.kind === "done" && edit.value && !before.done && before.recurrence !== null;
+    if (advanced) {
+      // The next occurrence starts with its checklist open again, in the same commit.
+      for (const step of await this.stepRecords(record.list, before.uid)) {
+        const reopened = applyEdit(step.ics, { kind: "done", value: false }, now);
+        if (reopened.groups.length === 0) continue;
+        putTasks.push({ ...step, ics: reopened.ics });
+        expect.push({ href: step.href, ics: step.ics });
+        if (this.isServer) {
+          addOps.push({
+            kind: "put",
+            href: step.href,
+            groups: [...reopened.groups],
+            editedAt: now.getTime(),
+          });
+        }
+      }
+    }
+    await this.changed({ putTasks, addOps, expect });
+    if (advanced) this.dispatchEvent(new CustomEvent<string>("advanced", { detail: href }));
+  }
+
+  private async stepRecords(list: string, parentUid: string): Promise<TaskRecord[]> {
+    return (await this.requireStore().tasks()).filter(
+      (t) =>
+        t.list === list &&
+        !t.deleted &&
+        t.invalid === null &&
+        readTask(parseResource(t.ics)).parentUid === parentUid,
+    );
   }
 
   async deleteTask(href: string): Promise<void> {
