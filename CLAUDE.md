@@ -19,7 +19,8 @@ These outrank every other consideration, including feature velocity.
      `If-Match` with the last known ETag (or `If-None-Match: *` on create).
    - On `412 Precondition Failed`, fetch the server version and merge it
      as defined in `ADR-20261103-sync-strategy`: per property, the newer
-     edit wins and the losing value is kept as a conflict note on the task.
+     edit wins and the losing value is kept as a conflict note on the task;
+     labels and attachments merge as sets (`ADR-20261104-set-merge`).
      No conflict dialog. Never drop either side silently.
    - Local edits are persisted (IndexedDB) *before* the UI reports success
      and before any network attempt.
@@ -111,7 +112,8 @@ Then push new branches with `git push -u origin <branch>`.
 - Be strict: unexpected behaviour throws, never a silent fallback. Every
   unexpected error becomes a precise task in the list "errorlogs"
   (`ADR-20261104-strict-errors`): enough context to analyse and fix it,
-  task values allowed, never credentials (`ADR-20261104-error-task-content`). Throwing must never lose data.
+  task values allowed, never credentials
+  (`ADR-20261104-error-task-content`). Throwing must never lose data.
 - Be strict with input too: validate every input against an explicit
   expectation where it enters; unexpected input is an error, never guessed
   around. Unknown iCalendar properties are expected and preserved; invalid
