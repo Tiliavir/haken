@@ -58,7 +58,7 @@ carry real risk. Questions that still need an answer are in
 | # | Decision | Why | Where |
 | --- | --- | --- | --- |
 | D57 | **Review.** Inside *Focus* the order is fixed (due date, then day added); no manual reordering there. | Manual order would need a second order property just for Today. | `ui/views.ts` |
-| D58 | Completed tasks show in *Focus* only on the day they were completed; the `X-HAKEN-MYDAY` mark stays on them. | No ever-growing completed section, and nothing is deleted from the task. | `ui/views.ts` |
+| D58 | Completed tasks show in *Focus* only on the day they were completed; the `X-HAKEN-FOCUS` mark stays on them. | No ever-growing completed section, and nothing is deleted from the task. | `ui/views.ts` |
 | D59 | Dragging to *Focus* works from real lists on the desktop; on mobile (one screen, no sidebar) the task screen's button is the way. | The sidebar is not visible on a phone while a list is open. | `ui/dnd/sortable.ts` |
 | D60 | App commands run strictly one after another; a command that loses a race against sync (`StaleError`) runs again on the fresh state, at most 3 times. | Two quick edits of one task lost the second edit; re-running is correct because every command reads what it changes. Found through an error task. | `app/service.ts` |
 

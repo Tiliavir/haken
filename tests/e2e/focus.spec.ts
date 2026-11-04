@@ -89,7 +89,7 @@ test("Focus: overdue (red) and due (!) on top, then tasks put on Focus; they sta
   await expect(page.getByRole("link", { name: /errorlogs/ })).toHaveCount(0);
 });
 
-test("drag a task onto Focus in the sidebar; it syncs as X-HAKEN-MYDAY", async ({ page }) => {
+test("drag a task onto Focus in the sidebar; it syncs as X-HAKEN-FOCUS", async ({ page }) => {
   await setupServer(page);
   await addTask(page, "Drag me to Focus");
   const grip = page.getByRole("button", { name: "Move “Drag me to Focus”" });
@@ -111,7 +111,7 @@ test("drag a task onto Focus in the sidebar; it syncs as X-HAKEN-MYDAY", async (
     .poll(
       () =>
         serverFiles("dev").some(
-          (f) => f.includes("SUMMARY:Drag me to Focus") && /X-HAKEN-MYDAY:\d{8}/.test(f),
+          (f) => f.includes("SUMMARY:Drag me to Focus") && /X-HAKEN-FOCUS:\d{8}/.test(f),
         ),
       {
         timeout: 15_000,
