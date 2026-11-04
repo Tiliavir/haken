@@ -37,3 +37,4 @@ gateway/cmd/haken/dist/*
 test-results/
 playwright-report/
 e2e-data/
+deploy/radicale/
