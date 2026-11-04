@@ -1,0 +1,2 @@
+Placeholder so go:embed finds a file on a clean checkout.
+`make gateway` copies the built app (dist/web) into this directory.
