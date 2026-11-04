@@ -20,7 +20,7 @@
 
 | Element | Configuration | Note |
 | --- | --- | --- |
-| DSM reverse proxy | Host name → `localhost:8080`; HSTS on | Terminates TLS; the gateway sets `Secure` cookies and trusts `X-Forwarded-Proto` only from it |
+| DSM reverse proxy | Host name → `localhost:8080`; HSTS on | Terminates TLS. The gateway reads no `X-Forwarded-*` header; its session cookie is always `Secure` (`__Host-`) |
 | haken gateway | One static Go binary in a `scratch` image; Radicale URL and listen address from the environment; app and `config.json` embedded | Stateless; restart ends all sessions ([Auth](adr/ADR-20261103-authentication.md)) |
 | Radicale | Official image; `htpasswd` (bcrypt), `rights = owner_only`; no published port | Reached only by the gateway |
 | Volume `collections` | Bind mount on the NAS | Included in the NAS backup (e.g. Hyper Backup). This is the server copy of all tasks |
