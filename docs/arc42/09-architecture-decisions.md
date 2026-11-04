@@ -18,3 +18,4 @@ Status: `Proposed` → `Accepted` | `Rejected` | `Superseded by …`.
 | [ADR-20261103-i18n-json-messages](adr/ADR-20261103-i18n-json-messages.md) | i18n: flat JSON per locale, `Intl`, typed keys; en/de/fr/es/it bundled | Accepted |
 | [ADR-20261103-theming](adr/ADR-20261103-theming.md) | `light-dark()` tokens, appearance override, contrast-safe custom accent | Accepted |
 | [ADR-20261104-strict-errors](adr/ADR-20261104-strict-errors.md) | Fail fast, strict input validation; unexpected errors become tasks in the list "errorlogs" | Accepted |
+| [ADR-20261104-recurrence](adr/ADR-20261104-recurrence.md) | Repeating tasks: completing advances the same task; editable `RRULE` subset; overrides stay unreadable | Accepted |
