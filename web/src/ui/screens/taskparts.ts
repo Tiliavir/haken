@@ -6,7 +6,7 @@ import { h } from "../dom.js";
 import { formatDate, t } from "../i18n.js";
 import { icon } from "../icons.js";
 import { dueDate, localDate } from "../views.js";
-import { describe } from "./repeat.js";
+import { describeRule } from "./repeat.js";
 
 export function checkCircle(
   ctx: Ctx,
@@ -113,7 +113,7 @@ export function metaLine(
         "span",
         { class: "meta-item" },
         icon("repeat", "icon small"),
-        view.recurrence === null ? t("repeat.custom") : describe(view.recurrence),
+        view.recurrence === null ? t("repeat.custom") : describeRule(view.recurrence),
       ),
     );
   }

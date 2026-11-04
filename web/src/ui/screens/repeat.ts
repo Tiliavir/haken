@@ -48,7 +48,7 @@ export function weekdayName(day: Weekday): string {
 }
 
 /** "Weekly", "Every 2 weeks · Mon, Thu", "Weekdays". */
-export function describe(rule: Recurrence): string {
+export function describeRule(rule: Recurrence): string {
   const choice = choiceOf(rule);
   if (choice !== "custom" && choice !== "never") return choiceLabel(choice);
   const every =
