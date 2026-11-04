@@ -70,6 +70,7 @@ and Chrome (or `PLAYWRIGHT_CHANNEL=chromium` with Playwright's browser).
 | `npm ci` | Dev tools (TypeScript, Biome, vnu, Playwright) |
 | `make build` | `tsc` + assemble `dist/web` (`make build-demo`: GitHub Pages build) |
 | `make test-unit` | Unit and architecture tests (`node:test`) |
+| `make test-browser` | Store and sync modules in the browser against a CalDAV stub (Playwright, no servers) |
 | `make lint` / `make fmt` | Biome, `gofmt`, `go vet` / fix formatting |
 | `make validate` | W3C validator on HTML, CSS, SVG |
 | `make test-go` | Gateway tests (builds `dist/haken`) |
