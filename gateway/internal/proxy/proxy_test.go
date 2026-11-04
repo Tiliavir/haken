@@ -1,6 +1,10 @@
 package proxy
 
 import (
+	"bufio"
+	"bytes"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -87,6 +91,72 @@ func TestProxyInjectsSessionAndStripsCookies(t *testing.T) {
 	h.ServeHTTP(rec, anon)
 	if rec.Code != http.StatusUnauthorized || rec.Header().Get("WWW-Authenticate") == "" {
 		t.Errorf("anonymous: %d", rec.Code)
+	}
+}
+
+// Radicale answers 413 on Content-Length alone and closes the connection
+// without reading the body. The proxy must pass that 413 on, never a 502.
+func TestEarlyRejectionOfLargeBody(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			br := bufio.NewReader(conn)
+			for {
+				line, err := br.ReadString('\n')
+				if err != nil || line == "\r\n" {
+					break
+				}
+			}
+			_, _ = conn.Write([]byte("HTTP/1.0 413 Request Entity Too Large\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"))
+			_ = conn.Close()
+		}
+	}()
+	u, _ := url.Parse("http://" + ln.Addr().String())
+	h := New(u, session.New(u, time.Hour, session.NewLimiter(5, time.Minute)))
+	body := bytes.Repeat([]byte("x"), 4<<20)
+	for i := 0; i < 20; i++ {
+		req := httptest.NewRequest(http.MethodPut, "/dav/alice/list/x.ics", bytes.NewReader(body))
+		req.SetBasicAuth("alice", "secret")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusRequestEntityTooLarge {
+			t.Fatalf("attempt %d: got %d want 413", i, rec.Code)
+		}
+	}
+}
+
+func TestLargeBodyAccepted(t *testing.T) {
+	var got int
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Error(err)
+		}
+		got = len(b)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer upstream.Close()
+	u, _ := url.Parse(upstream.URL)
+	gw := httptest.NewServer(New(u, session.New(u, time.Hour, session.NewLimiter(5, time.Minute))))
+	defer gw.Close()
+	body := bytes.Repeat([]byte("x"), 4<<20)
+	req, _ := http.NewRequest(http.MethodPut, gw.URL+"/dav/alice/list/x.ics", bytes.NewReader(body))
+	req.SetBasicAuth("alice", "secret")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated || got != len(body) {
+		t.Fatalf("status %d, upstream read %d of %d bytes", resp.StatusCode, got, len(body))
 	}
 }
 
