@@ -1,7 +1,7 @@
 #!/bin/sh
 # Local development: Radicale on 127.0.0.1:5232 (data in $HAKEN_DEV_DATA, default radicale-data/,
 # git-ignored) and the gateway on :8080 serving the current build.
-# Needs `radicale` (pip install radicale) and a prior `make gateway`.
+# Needs `radicale` (pip install radicale==3.9.0) and a prior `make gateway`.
 # Test users: dev / dev and eve / eve (plain htpasswd — for local development only).
 set -eu
 cd "$(dirname "$0")/.."

@@ -23,6 +23,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24.7"
+      # Radicale: same version as deploy/compose.yml (tomsquest/docker-radicale:3.9.0.0).
       - name: Java and Radicale
         run: |
           apt-get update && apt-get install -y --no-install-recommends openjdk-17-jre-headless python3-pip make

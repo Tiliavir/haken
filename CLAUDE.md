@@ -62,7 +62,7 @@ Planned work: [`BACKLOG.md`](BACKLOG.md).
 
 ## Commands
 
-Needs Node 22, Go 1.24, Java (for `vnu`), `radicale` (`pip install radicale`)
+Needs Node 22, Go 1.24, Java (for `vnu`), `radicale` (`pip install radicale==3.9.0`, same as `deploy/compose.yml`)
 and Chrome (or `PLAYWRIGHT_CHANNEL=chromium` with Playwright's browser).
 
 | Command | Does |
