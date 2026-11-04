@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os/exec"
 	"strings"
 	"testing"
@@ -24,8 +25,13 @@ func TestConfig(t *testing.T) {
 
 // The gateway uses the standard library only (ADR-20261103-go-stdlib-gateway).
 func TestStdlibOnly(t *testing.T) {
-	out, err := exec.Command("go", "list", "-deps", "-f", "{{if not .Standard}}{{.ImportPath}}{{end}}", "./...").Output()
+	cmd := exec.Command("go", "list", "-buildvcs=false", "-deps", "-f", "{{if not .Standard}}{{.ImportPath}}{{end}}", "./...")
+	out, err := cmd.Output()
 	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			t.Fatalf("go list: %v\n%s", err, exit.Stderr)
+		}
 		t.Fatal(err)
 	}
 	for _, line := range strings.Fields(string(out)) {

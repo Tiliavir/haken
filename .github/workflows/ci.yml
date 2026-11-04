@@ -17,6 +17,9 @@ jobs:
       PLAYWRIGHT_CHANNEL: chromium
     steps:
       - uses: actions/checkout@v4
+      # The container runs as root, the checkout belongs to the runner user:
+      # without this git refuses the repository and go build/list fail on VCS stamping.
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24.7"
