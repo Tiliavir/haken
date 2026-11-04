@@ -13,7 +13,12 @@ import {
 import { canonical, fixture, lines } from "./helpers.js";
 
 const NOW = new Date("2026-11-04T10:00:00Z");
-const ROUND_TRIP = ["tasksorg-subtask.ics", "thunderbird-tzid.ics", "apple-completed.ics", "haken-attachment.ics"];
+const ROUND_TRIP = [
+  "tasksorg-subtask.ics",
+  "thunderbird-tzid.ics",
+  "apple-completed.ics",
+  "haken-attachment.ics",
+];
 
 describe("round-trip", () => {
   for (const name of ROUND_TRIP) {
@@ -50,7 +55,10 @@ describe("readTask", () => {
     assert.deepEqual(v.categories, ["Example label", "Second"]);
     assert.equal(v.description, "Line one\nLine two, with comma");
     assert.equal(v.status, "IN-PROCESS");
-    assert.equal(v.sortOrder, Math.floor(Date.UTC(2026, 9, 28, 10, 10, 10) / 1000) - APPLE_EPOCH_SECONDS);
+    assert.equal(
+      v.sortOrder,
+      Math.floor(Date.UTC(2026, 9, 28, 10, 10, 10) / 1000) - APPLE_EPOCH_SECONDS,
+    );
   });
   test("Apple completed with URI attachment and DATE due", () => {
     const v = readTask(parseResource(fixture("apple-completed.ics")));
@@ -91,7 +99,8 @@ describe("strict input", () => {
     assert.throws(() => parseResource("not ical"), InvalidInputError);
   });
   test("VEVENT in a task resource is rejected", () => {
-    const ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:x\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+    const ics =
+      "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:x\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
     assert.throws(() => parseResource(ics), InvalidInputError);
   });
   test("malformed DUE is rejected", () => {
@@ -99,7 +108,10 @@ describe("strict input", () => {
     assert.throws(() => readTask(parseResource(ics)), InvalidInputError);
   });
   test("TZID without VTIMEZONE is rejected", () => {
-    const ics = fixture("invalid-status.ics").replace("STATUS:DONE", "DUE;TZID=Europe/Berlin:20261110T170000");
+    const ics = fixture("invalid-status.ics").replace(
+      "STATUS:DONE",
+      "DUE;TZID=Europe/Berlin:20261110T170000",
+    );
     assert.throws(() => readTask(parseResource(ics)), InvalidInputError);
   });
 });
@@ -140,7 +152,11 @@ describe("edits", () => {
     assert.equal(r.ics, base);
   });
   test("due date and labels", () => {
-    const d = applyEdit(base, { kind: "due", value: { kind: "date", date: "2026-11-05" } }, NOW).ics;
+    const d = applyEdit(
+      base,
+      { kind: "due", value: { kind: "date", date: "2026-11-05" } },
+      NOW,
+    ).ics;
     assert.match(d, /DUE;VALUE=DATE:20261105/);
     const c = applyEdit(d, { kind: "categories", value: ["b", "a", "b"] }, NOW).ics;
     assert.deepEqual(readTask(parseResource(c)).categories, ["b", "a"]);

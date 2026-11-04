@@ -17,7 +17,12 @@ export const PRODID = "-//haken//haken//EN";
 export const APPLE_EPOCH_SECONDS = 978_307_200;
 
 export type Status = "NEEDS-ACTION" | "IN-PROCESS" | "COMPLETED" | "CANCELLED";
-const STATUSES: ReadonlySet<string> = new Set(["NEEDS-ACTION", "IN-PROCESS", "COMPLETED", "CANCELLED"]);
+const STATUSES: ReadonlySet<string> = new Set([
+  "NEEDS-ACTION",
+  "IN-PROCESS",
+  "COMPLETED",
+  "CANCELLED",
+]);
 
 /** A due value as written in the resource. */
 export type Due =
@@ -166,11 +171,7 @@ function checkDateTimeString(value: string): RegExpExecArray | null {
  * (resolved through the resource's VTIMEZONE) are exact; floating values are
  * read in the device's time zone.
  */
-function dateTimeInstant(
-  resource: ParsedResource,
-  prop: Property,
-  prodid: string | null,
-): number {
+function dateTimeInstant(resource: ParsedResource, prop: Property, prodid: string | null): number {
   const [name, params, type, ...values] = jcalOf(prop);
   const value = values[0];
   if (type !== "date-time" || values.length !== 1 || typeof value !== "string") {
@@ -239,7 +240,13 @@ export function readTask(resource: ParsedResource): TaskView {
   let priority = 0;
   if (priorityProp !== null) {
     const [, , type, value] = jcalOf(priorityProp);
-    if (type !== "integer" || typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 9) {
+    if (
+      type !== "integer" ||
+      typeof value !== "number" ||
+      !Number.isInteger(value) ||
+      value < 0 ||
+      value > 9
+    ) {
       invalid("PRIORITY must be an integer 0-9", ctx("PRIORITY", String(value), prodid));
     }
     priority = value;
@@ -248,8 +255,17 @@ export function readTask(resource: ParsedResource): TaskView {
   const percentProp = single(todo, "percent-complete", prodid);
   if (percentProp !== null) {
     const [, , type, value] = jcalOf(percentProp);
-    if (type !== "integer" || typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 100) {
-      invalid("PERCENT-COMPLETE must be an integer 0-100", ctx("PERCENT-COMPLETE", String(value), prodid));
+    if (
+      type !== "integer" ||
+      typeof value !== "number" ||
+      !Number.isInteger(value) ||
+      value < 0 ||
+      value > 100
+    ) {
+      invalid(
+        "PERCENT-COMPLETE must be an integer 0-100",
+        ctx("PERCENT-COMPLETE", String(value), prodid),
+      );
     }
   }
 
@@ -268,11 +284,13 @@ export function readTask(resource: ParsedResource): TaskView {
   }
 
   const completedProp = single(todo, "completed", prodid);
-  const completedAt = completedProp === null ? null : dateTimeInstant(resource, completedProp, prodid);
+  const completedAt =
+    completedProp === null ? null : dateTimeInstant(resource, completedProp, prodid);
   const createdProp = single(todo, "created", prodid);
   const created = createdProp === null ? null : dateTimeInstant(resource, createdProp, prodid);
   const modifiedProp = single(todo, "last-modified", prodid);
-  const lastModified = modifiedProp === null ? null : dateTimeInstant(resource, modifiedProp, prodid);
+  const lastModified =
+    modifiedProp === null ? null : dateTimeInstant(resource, modifiedProp, prodid);
   const stampProp = single(todo, "dtstamp", prodid);
   const dtstamp = stampProp === null ? null : dateTimeInstant(resource, stampProp, prodid);
 
@@ -281,7 +299,8 @@ export function readTask(resource: ParsedResource): TaskView {
     const [, , type, ...values] = jcalOf(prop);
     if (type !== "text") invalid("CATEGORIES must be text", ctx("CATEGORIES", type, prodid));
     for (const v of values) {
-      if (typeof v !== "string") invalid("CATEGORIES must be text", ctx("CATEGORIES", String(v), prodid));
+      if (typeof v !== "string")
+        invalid("CATEGORIES must be text", ctx("CATEGORIES", String(v), prodid));
       if (v !== "" && !categories.includes(v)) categories.push(v);
     }
   }
@@ -291,7 +310,8 @@ export function readTask(resource: ParsedResource): TaskView {
   if (orderProp !== null) {
     const [, , , value] = jcalOf(orderProp);
     const text = String(value);
-    if (!INTEGER_RE.test(text)) invalid("X-APPLE-SORT-ORDER must be an integer", ctx("X-APPLE-SORT-ORDER", text, prodid));
+    if (!INTEGER_RE.test(text))
+      invalid("X-APPLE-SORT-ORDER must be an integer", ctx("X-APPLE-SORT-ORDER", text, prodid));
     sortOrder = Number(text);
   } else {
     const base = created ?? dtstamp ?? 0;
@@ -304,12 +324,16 @@ export function readTask(resource: ParsedResource): TaskView {
     const kind = typeof reltype === "string" ? reltype.toUpperCase() : "PARENT";
     if (kind !== "PARENT") continue;
     const value = textValue(prop, prodid);
-    if (parentUid !== null) invalid("More than one parent RELATED-TO", ctx("RELATED-TO", value, prodid));
-    if (value === "" || value === uid) invalid("Invalid parent RELATED-TO", ctx("RELATED-TO", value, prodid));
+    if (parentUid !== null)
+      invalid("More than one parent RELATED-TO", ctx("RELATED-TO", value, prodid));
+    if (value === "" || value === uid)
+      invalid("Invalid parent RELATED-TO", ctx("RELATED-TO", value, prodid));
     parentUid = value;
   }
 
-  const attachments = todo.getAllProperties("attach").map((prop, index) => readAttachment(prop, index, prodid));
+  const attachments = todo
+    .getAllProperties("attach")
+    .map((prop, index) => readAttachment(prop, index, prodid));
 
   return {
     uid,
@@ -348,7 +372,13 @@ function readAttachment(prop: Property, index: number, prodid: string | null): A
       invalid("Malformed base64 in ATTACH", ctx("ATTACH", `length ${value.length}`, prodid));
     }
     const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
-    return { kind: "binary", index, filename, mediaType: fmt, size: (value.length / 4) * 3 - padding };
+    return {
+      kind: "binary",
+      index,
+      filename,
+      mediaType: fmt,
+      size: (value.length / 4) * 3 - padding,
+    };
   }
   if (type !== "uri") invalid("ATTACH must be URI or BINARY", ctx("ATTACH", type, prodid));
   return { kind: "uri", index, filename, uri: value };
@@ -358,11 +388,17 @@ function readAttachment(prop: Property, index: number, prodid: string | null): A
 export function attachmentData(
   resource: ParsedResource,
   index: number,
-): { readonly bytes: Uint8Array; readonly mediaType: string | null; readonly filename: string | null } {
+): {
+  readonly bytes: Uint8Array;
+  readonly mediaType: string | null;
+  readonly filename: string | null;
+} {
   const prop = resource.todo.getAllProperties("attach")[index];
-  if (prop === undefined) throw new HakenError("domain", "Attachment index out of range", { index });
+  if (prop === undefined)
+    throw new HakenError("domain", "Attachment index out of range", { index });
   const attachment = readAttachment(prop, index, null);
-  if (attachment.kind !== "binary") throw new HakenError("domain", "Attachment is not binary", { index });
+  if (attachment.kind !== "binary")
+    throw new HakenError("domain", "Attachment is not binary", { index });
   const [, , , value] = jcalOf(prop);
   const binary = atob(String(value));
   const bytes = new Uint8Array(binary.length);
@@ -406,7 +442,12 @@ export const GROUPS: Readonly<Record<string, readonly string[]>> = {
 };
 
 /** Properties that are bookkeeping, not content: never merged, never conflict. */
-export const UNMERGED: ReadonlySet<string> = new Set(["uid", "dtstamp", "last-modified", "sequence"]);
+export const UNMERGED: ReadonlySet<string> = new Set([
+  "uid",
+  "dtstamp",
+  "last-modified",
+  "sequence",
+]);
 
 export function groupOf(propertyName: string): string {
   const lower = propertyName.toLowerCase();
@@ -506,7 +547,8 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
       if (edit.value !== view.parentUid) {
         for (const prop of todo.getAllProperties("related-to")) {
           const reltype = prop.getFirstParameter("reltype");
-          if (typeof reltype !== "string" || reltype.toUpperCase() === "PARENT") todo.removeProperty(prop);
+          if (typeof reltype !== "string" || reltype.toUpperCase() === "PARENT")
+            todo.removeProperty(prop);
         }
         if (edit.value !== null) todo.addPropertyWithValue("related-to", edit.value);
         groups.add("RELATED-TO");
@@ -526,7 +568,10 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
     case "removeAttachment": {
       const prop = todo.getAllProperties("attach")[edit.index];
       if (prop === undefined) {
-        throw new HakenError("domain", "Attachment index out of range", { uid: view.uid, index: edit.index });
+        throw new HakenError("domain", "Attachment index out of range", {
+          uid: view.uid,
+          index: edit.index,
+        });
       }
       todo.removeProperty(prop);
       groups.add("ATTACH");
@@ -560,7 +605,8 @@ function setDue(todo: Component, current: Due | null, next: Due | null): boolean
   if (next === null) return true;
   const prop = new ICAL.Property("due", todo);
   if (next.kind === "date") {
-    if (!checkDateString(next.date)) throw new HakenError("domain", "Invalid due date", { value: next.date });
+    if (!checkDateString(next.date))
+      throw new HakenError("domain", "Invalid due date", { value: next.date });
     prop.resetType("date");
     prop.setValue(ICAL.Time.fromDateString(next.date));
   } else {
@@ -571,7 +617,11 @@ function setDue(todo: Component, current: Due | null, next: Due | null): boolean
   return true;
 }
 
-function setCategories(todo: Component, current: readonly string[], next: readonly string[]): boolean {
+function setCategories(
+  todo: Component,
+  current: readonly string[],
+  next: readonly string[],
+): boolean {
   const clean: string[] = [];
   for (const label of next) {
     const trimmed = label.trim();
@@ -615,7 +665,8 @@ export function groupsOf(todo: Component): Set<string> {
 /** Replaces a group with the given serialized lines (empty: removes the group). Returns whether anything changed. */
 export function replaceGroup(todo: Component, group: string, lines: string): boolean {
   if (groupLines(todo, group) === lines) return false;
-  const isSub = !Object.hasOwn(GROUPS, group) && todo.getAllSubcomponents(group.toLowerCase()).length > 0;
+  const isSub =
+    !Object.hasOwn(GROUPS, group) && todo.getAllSubcomponents(group.toLowerCase()).length > 0;
   for (const prop of todo.getAllProperties()) {
     if (groupOf(prop.name) === group) todo.removeProperty(prop);
   }
@@ -628,13 +679,19 @@ export function replaceGroup(todo: Component, group: string, lines: string): boo
   if (source === null) throw new HakenError("domain", "Group lines did not parse", { group });
   for (const prop of source.getAllProperties()) {
     if (groupOf(prop.name) !== group) {
-      throw new HakenError("domain", "Group lines contain a foreign property", { group, property: prop.name });
+      throw new HakenError("domain", "Group lines contain a foreign property", {
+        group,
+        property: prop.name,
+      });
     }
     todo.addProperty(new ICAL.Property(prop.toJSON(), todo));
   }
   for (const sub of source.getAllSubcomponents()) {
     if (sub.name.toUpperCase() !== group) {
-      throw new HakenError("domain", "Group lines contain a foreign component", { group, property: sub.name });
+      throw new HakenError("domain", "Group lines contain a foreign component", {
+        group,
+        property: sub.name,
+      });
     }
     todo.addSubcomponent(new ICAL.Component(sub.toJSON()));
   }
@@ -681,4 +738,9 @@ export function createTask(task: NewTask, now: Date): string {
 /** Seconds since 2001-01-01 for `now`; the default for a new list's first task order. */
 export function appleSeconds(now: Date): number {
   return Math.floor(now.getTime() / 1000) - APPLE_EPOCH_SECONDS;
+}
+
+/** Property groups present in a resource (used for the outbox entry of a create or import). */
+export function resourceGroups(ics: string): string[] {
+  return [...groupsOf(parseResource(ics).todo)].sort();
 }

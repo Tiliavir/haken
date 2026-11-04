@@ -50,7 +50,8 @@ export function splitIcsFile(text: string): ImportResult {
     out.addPropertyWithValue("prodid", calendar.getFirstPropertyValue("prodid") ?? PRODID);
     for (const tz of timezones) {
       const tzid = tz.getFirstPropertyValue("tzid");
-      if (typeof tzid === "string" && usesTzid(todo, tzid)) out.addSubcomponent(new ICAL.Component(tz.toJSON()));
+      if (typeof tzid === "string" && usesTzid(todo, tzid))
+        out.addSubcomponent(new ICAL.Component(tz.toJSON()));
     }
     out.addSubcomponent(new ICAL.Component(todo.toJSON()));
     const ics = `${out.toString()}\r\n`;

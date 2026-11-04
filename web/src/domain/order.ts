@@ -33,7 +33,11 @@ export interface Reorder {
  * the neighbours leave no integer gap, the following tasks are shifted by
  * the smallest amount that makes room.
  */
-export function reorder(sorted: readonly TaskView[], movedUid: string, targetIndex: number): Reorder[] {
+export function reorder(
+  sorted: readonly TaskView[],
+  movedUid: string,
+  targetIndex: number,
+): Reorder[] {
   const rest = sorted.filter((t) => t.uid !== movedUid);
   if (rest.length === sorted.length) {
     throw new HakenError("domain", "Moved task is not in the list", { uid: movedUid });
@@ -42,8 +46,10 @@ export function reorder(sorted: readonly TaskView[], movedUid: string, targetInd
   const prev = rest[index - 1];
   const next = rest[index];
   if (prev === undefined && next === undefined) return [];
-  if (prev === undefined && next !== undefined) return [{ uid: movedUid, sortOrder: next.sortOrder - 1 }];
-  if (next === undefined && prev !== undefined) return [{ uid: movedUid, sortOrder: prev.sortOrder + 1 }];
+  if (prev === undefined && next !== undefined)
+    return [{ uid: movedUid, sortOrder: next.sortOrder - 1 }];
+  if (next === undefined && prev !== undefined)
+    return [{ uid: movedUid, sortOrder: prev.sortOrder + 1 }];
   if (prev === undefined || next === undefined) return [];
   if (next.sortOrder - prev.sortOrder >= 2) {
     return [{ uid: movedUid, sortOrder: Math.floor((prev.sortOrder + next.sortOrder) / 2) }];

@@ -30,7 +30,9 @@ export function canonical(ics: string): Set<string> {
   const walk = (comp: InstanceType<typeof ICAL.Component>, path: string): void => {
     for (const prop of comp.getAllProperties()) {
       const [name, params, type, ...values] = prop.toJSON() as Jcal;
-      const sorted = Object.fromEntries(Object.entries(params).sort(([a], [b]) => (a < b ? -1 : 1)));
+      const sorted = Object.fromEntries(
+        Object.entries(params).sort(([a], [b]) => (a < b ? -1 : 1)),
+      );
       out.add(`${path}/${JSON.stringify([name, sorted, type, values])}`);
     }
     for (const sub of comp.getAllSubcomponents()) walk(sub, `${path}/${sub.name}`);

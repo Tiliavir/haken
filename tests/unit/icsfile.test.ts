@@ -4,7 +4,9 @@ import { joinIcsFile, splitIcsFile } from "../../web/src/domain/icsfile.js";
 import { fixture } from "./helpers.js";
 
 test("join then split returns the same tasks with their time zones", () => {
-  const files = ["thunderbird-tzid.ics", "apple-completed.ics", "tasksorg-subtask.ics"].map(fixture);
+  const files = ["thunderbird-tzid.ics", "apple-completed.ics", "tasksorg-subtask.ics"].map(
+    fixture,
+  );
   const joined = joinIcsFile(files);
   const { items, problems } = splitIcsFile(joined);
   assert.deepEqual(problems, []);
@@ -19,5 +21,8 @@ test("invalid items are reported, valid ones kept", () => {
   );
   const { items, problems } = splitIcsFile(joined);
   assert.equal(items.length, 1);
-  assert.deepEqual(problems.map((p) => [p.uid, p.property]), [["bad", "PRIORITY"]]);
+  assert.deepEqual(
+    problems.map((p) => [p.uid, p.property]),
+    [["bad", "PRIORITY"]],
+  );
 });

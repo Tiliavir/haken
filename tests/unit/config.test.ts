@@ -10,7 +10,16 @@ test("valid configs", () => {
   });
 });
 test("invalid configs", () => {
-  for (const bad of [null, [], {}, { accounts: [] , demo: false}, { accounts: ["cloud"], demo: false }, { accounts: ["local"] }, { accounts: ["local"], demo: false, x: 1 }, { accounts: ["local", "local"], demo: false }]) {
+  for (const bad of [
+    null,
+    [],
+    {},
+    { accounts: [], demo: false },
+    { accounts: ["cloud"], demo: false },
+    { accounts: ["local"] },
+    { accounts: ["local"], demo: false, x: 1 },
+    { accounts: ["local", "local"], demo: false },
+  ]) {
     assert.throws(() => parseConfig(bad), InvalidInputError, JSON.stringify(bad));
   }
 });

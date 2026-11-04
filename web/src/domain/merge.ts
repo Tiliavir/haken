@@ -52,7 +52,10 @@ export function merge(
   const lView = readTask(l);
   const sView = readTask(s);
   if (lView.uid !== sView.uid) {
-    throw new HakenError("domain", "Merge of different UIDs", { local: lView.uid, server: sView.uid });
+    throw new HakenError("domain", "Merge of different UIDs", {
+      local: lView.uid,
+      server: sView.uid,
+    });
   }
   const serverTime = sView.lastModified ?? dtstampOf(s);
 
@@ -89,7 +92,10 @@ export function merge(
     if (sequence > 0) merged.todo.updatePropertyWithValue("sequence", sequence);
     const modified = Math.max(lView.lastModified ?? 0, serverTime ?? 0);
     if (modified > 0) {
-      merged.todo.updatePropertyWithValue("last-modified", ICAL.Time.fromJSDate(new Date(modified), true));
+      merged.todo.updatePropertyWithValue(
+        "last-modified",
+        ICAL.Time.fromJSDate(new Date(modified), true),
+      );
     }
   }
   const ics = localWins.length > 0 ? serialize(merged) : server;
