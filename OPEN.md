@@ -44,3 +44,38 @@ browser vendors' push services (third-party requests). Options:
 *Today* is now "due today or overdue". The mapping still has
 `X-HAKEN-MYDAY` for a hand-picked My Day list, but no screen uses it.
 Keep it as a separate smart list, or drop it?
+
+## Sort order semantics (`X-APPLE-SORT-ORDER`)
+
+Implemented provisionally ([D06, D07](decisions.md)): ascending; a missing
+value defaults to seconds from 2001-01-01 to `CREATED`; new tasks on top.
+To decide after checking Tasks.org's source and a real export:
+
+- Is the default for a missing value the same in Tasks.org (else a task
+  jumps when haken first writes an order)?
+- New tasks on top or at the bottom? Whatever Tasks.org does, haken should
+  match, or the two apps show different orders for the same list.
+
+## Strictness for other clients' data
+
+Two rules can turn real-world data into *Cannot be read* tasks
+([D09, D11](decisions.md)):
+
+- `TZID` without a matching `VTIMEZONE`.
+- Recurrence overrides (`RECURRENCE-ID`, several VTODOs per resource).
+
+Keep them strict and learn from error tasks, or accept them now (IANA
+time-zone names via `Intl`; show the master and keep overrides untouched)?
+
+## Local account outbox
+
+The browser-only ADR says the outbox of a local account is "never drained".
+The implementation writes no outbox entries at all for local accounts
+([D15](decisions.md)). Reword the ADR, or keep an outbox for a reason not
+seen yet?
+
+## Session lifetime
+
+Implemented: 7 days idle ([D26](decisions.md)); the password stays in
+gateway memory that long. Alternatives: shorter idle plus an absolute limit,
+or a per-device token Radicale never sees. Part of *Gateway security*?

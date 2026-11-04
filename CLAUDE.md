@@ -55,10 +55,27 @@ These outrank every other consideration, including feature velocity.
 
 ## Repository status
 
-Greenfield. Architecture lives in [`docs/arc42/`](docs/arc42/README.md);
-stack and decisions are ADRs there. When build tooling exists,
-document commands (build, test, lint, run locally) here and keep this file
-current.
+First implementation in place. Architecture lives in
+[`docs/arc42/`](docs/arc42/README.md); stack and decisions are ADRs there.
+Implementation decisions waiting for review: [`decisions.md`](decisions.md).
+Planned work: [`BACKLOG.md`](BACKLOG.md).
+
+## Commands
+
+Needs Node 22, Go 1.24, Java (for `vnu`), `radicale` (`pip install radicale`)
+and Chrome (or `PLAYWRIGHT_CHANNEL=chromium` with Playwright's browser).
+
+| Command | Does |
+| --- | --- |
+| `npm ci` | Dev tools (TypeScript, Biome, vnu, Playwright) |
+| `make build` | `tsc` + assemble `dist/web` (`make build-demo`: GitHub Pages build) |
+| `make test-unit` | Unit and architecture tests (`node:test`) |
+| `make lint` / `make fmt` | Biome, `gofmt`, `go vet` / fix formatting |
+| `make validate` | W3C validator on HTML, CSS, SVG |
+| `make test-go` | Gateway tests (builds `dist/haken`) |
+| `make e2e` | Playwright against gateway + Radicale (data in `e2e-data/`) |
+| `make check` | All of the above, as CI |
+| `make run` | Radicale + gateway on <http://127.0.0.1:8080>, users `dev`/`dev`, `eve`/`eve` |
 
 ## Architecture docs
 
