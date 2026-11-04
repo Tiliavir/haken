@@ -77,6 +77,18 @@ and Chrome (or `PLAYWRIGHT_CHANNEL=chromium` with Playwright's browser).
 | `make check` | All of the above, as CI |
 | `make run` | Radicale + gateway on <http://127.0.0.1:8080>, users `dev`/`dev`, `eve`/`eve` |
 
+## Agent sessions
+
+A shallow clone (`git clone --depth 1`) is single-branch: its fetch refspec
+covers only `main`, so a pushed feature branch never gets a remote-tracking
+ref and looks unpushed. Right after cloning, before creating a branch:
+
+```sh
+git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+```
+
+Then push new branches with `git push -u origin <branch>`.
+
 ## Architecture docs
 
 - arc42, one `.md` per chapter. Add a chapter only when it is needed.
