@@ -42,6 +42,7 @@ carry real risk. Questions that still need an answer are in
 | D23 | `413` sets a per-task flag; the change stays in the outbox and the task shows the error. The push is retried every run. | ADR says "keeps the change in the outbox". Retrying forever is in the backlog. | `sync/runner.ts` |
 | D24 | Error tasks: fingerprint = FNV-1a 64 of name, message, top stack frame. Context keys that look like secrets or content (`pass`, `auth`, `cookie`, `token`, `session`, `summary`, `description`, `title`, `label`, `categor`, `content`) are dropped; query strings are cut. Writing an error task **does not trigger a sync**. | No crypto needed for dedupe. Without the last rule a failing sync would re-trigger itself every 2 s through its own error task. | `app/errors.ts`, `app/service.ts` |
 | D25 | Orphaned steps (`RELATED-TO` to a missing parent) are shown as top-level tasks and reported once per session. | Visible data, one error task, no flood on every refresh. | `app/service.ts` |
+| D61 | **Review.** A `401` from `/dav` during a sync run ends the run as *Sign in to sync* (`ExpiredError`), not as an error or a quarantine. Quarantine records are keyed `quarantine:<href>` (task, list changes) and `quarantine:pull:<href>` (reading a list), so a working pull never releases a failed list change. | The probe only checks the session at the start; it can expire mid-run. Separate keys stop an error task per run for a list whose `PROPPATCH` keeps failing. | `net/http.ts`, `sync/runner.ts` |
 
 ## Recurrence (details below the ADR)
 
