@@ -11,7 +11,7 @@ FROM golang:1.24-bookworm AS gateway
 WORKDIR /src
 COPY gateway/ gateway/
 COPY --from=web /src/dist/web/ gateway/cmd/haken/dist/
-RUN cd gateway && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /haken ./cmd/haken
+RUN cd gateway && CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags="-s -w" -o /haken ./cmd/haken
 
 FROM scratch
 COPY --from=gateway /haken /haken

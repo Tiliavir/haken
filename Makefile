@@ -32,7 +32,7 @@ validate: build
 gateway: build
 	find gateway/cmd/haken/dist -mindepth 1 ! -name README -delete
 	cp -r dist/web/. gateway/cmd/haken/dist/
-	cd gateway && CGO_ENABLED=0 go build -trimpath -o ../dist/haken ./cmd/haken
+	cd gateway && CGO_ENABLED=0 go build -trimpath -buildvcs=false -o ../dist/haken ./cmd/haken
 
 test-go: gateway
 	cd gateway && go test ./...
