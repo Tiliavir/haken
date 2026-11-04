@@ -21,6 +21,7 @@
   "conflict.group.attachments": "Attachments",
   "conflict.group.order": "Position",
   "conflict.group.whole": "Local version",
+  "conflict.wholeText": "Another device saved a version haken cannot read; it is shown read-only. Your unsynced version is kept here: export it to keep it.",
   "due.today": "Today",
   "due.tomorrow": "Tomorrow",
   "due.yesterday": "Yesterday",

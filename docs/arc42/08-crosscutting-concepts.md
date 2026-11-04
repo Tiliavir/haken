@@ -78,7 +78,7 @@ Colours are written as `light-dark(<light>, <dark>)` ([Theming](adr/ADR-20261103
 ### States
 
 - The sync status is always visible: a dot + text (*Synced*, *Offline*, *n changes pending*, *Sign in to sync*, *Sync error*, which links to the errorlogs list). In browser-only mode it says that there is no server copy ([Browser-only](adr/ADR-20261103-browser-only-mode.md)).
-- Conflicts never open a dialog ([Sync](adr/ADR-20261103-sync-strategy.md)). The task detail lists each conflict note: property, the overwritten value, *Use this value*, *Dismiss*. The user does not have to act; the note and its marker stay until one of the two is chosen. A task with a conflict note shows a small marker in its meta line. While the app is visible, a non-blocking notice names a task that was merged.
+- Conflicts never open a dialog ([Sync](adr/ADR-20261103-sync-strategy.md)). The task detail lists each conflict note: property, the overwritten value, *Use this value*, *Dismiss*. A note on the whole task (the server version cannot be read) shows a short explanation instead of the value, with *Export (.ics)* and *Dismiss*. The user does not have to act; the note and its marker stay until one of the two is chosen. A task with a conflict note shows a small marker in its meta line. While the app is visible, a non-blocking notice names a task that was merged.
 - A completed task or checklist item shows a filled accent circle with an `--on-accent` check, and its text is struck through and muted.
 - An important task shows a filled star in the accent colour.
 - Due dates in the meta line: overdue in `--danger` with *Overdue*; due today bold with an accent exclamation mark; on Focus a sun marker.

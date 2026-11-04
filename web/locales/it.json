@@ -21,6 +21,7 @@
   "conflict.group.attachments": "Allegati",
   "conflict.group.order": "Posizione",
   "conflict.group.whole": "Versione locale",
+  "conflict.wholeText": "Un altro dispositivo ha salvato una versione che haken non riesce a leggere; è mostrata in sola lettura. La tua versione non sincronizzata è conservata qui: esportala per tenerla.",
   "due.today": "Oggi",
   "due.tomorrow": "Domani",
   "due.yesterday": "Ieri",

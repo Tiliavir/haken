@@ -1,5 +1,6 @@
 /** Task detail (chapter 8, Screens: Task; States: conflict notes). */
 import { ATTACHMENT_LIMIT, type TaskItem } from "../../app/service.js";
+import { HakenError } from "../../domain/errors.js";
 import type { Attachment, TaskView } from "../../domain/vtodo.js";
 import type { Ctx } from "../context.js";
 import { fill, h } from "../dom.js";
@@ -66,17 +67,40 @@ function conflicts(ctx: Ctx, item: TaskItem): HTMLElement | null {
         "div",
         { class: "conflict" },
         h("p", { class: "conflict-head" }, icon("merge", "icon small"), groupName(c.group)),
-        h(
-          "p",
-          { class: "conflict-why" },
-          c.lost === "local" ? t("conflict.local") : t("conflict.server"),
-        ),
-        h("p", { class: "conflict-value" }, conflictValue(c.lines)),
+        c.group === "*"
+          ? h("p", { class: "conflict-why" }, t("conflict.wholeText"))
+          : [
+              h(
+                "p",
+                { class: "conflict-why" },
+                c.lost === "local" ? t("conflict.local") : t("conflict.server"),
+              ),
+              h("p", { class: "conflict-value" }, conflictValue(c.lines)),
+            ],
         h(
           "div",
           { class: "actions" },
           c.group === "*"
-            ? null
+            ? h(
+                "button",
+                {
+                  type: "button",
+                  class: "button",
+                  onclick: () =>
+                    ctx.run("ui.exportConflict", async () => {
+                      // The note holds a whole resource: the local version that lost.
+                      if (!c.lines.startsWith("BEGIN:VCALENDAR\r\n"))
+                        throw new HakenError("ui", "Whole-resource note is not a calendar", {
+                          id: c.id,
+                        });
+                      download(
+                        new Blob([c.lines], { type: "text/calendar" }),
+                        `haken-conflict-${c.id}.ics`,
+                      );
+                    }),
+                },
+                t("settings.export"),
+              )
             : h(
                 "button",
                 {

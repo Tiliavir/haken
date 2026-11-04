@@ -21,6 +21,7 @@
   "conflict.group.attachments": "Pièces jointes",
   "conflict.group.order": "Position",
   "conflict.group.whole": "Version locale",
+  "conflict.wholeText": "Un autre appareil a enregistré une version que haken ne peut pas lire ; elle est affichée en lecture seule. Votre version non synchronisée est conservée ici : exportez-la pour la garder.",
   "due.today": "Aujourd'hui",
   "due.tomorrow": "Demain",
   "due.yesterday": "Hier",
