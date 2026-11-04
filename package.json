@@ -1,0 +1,13 @@
+{
+  "name": "haken",
+  "private": true,
+  "type": "module",
+  "license": "0BSD",
+  "scripts": {},
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4",
+    "@playwright/test": "1.63.0",
+    "typescript": "7.0.2",
+    "vnu-jar": "26.11.3"
+  }
+}
