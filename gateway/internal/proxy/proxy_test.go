@@ -89,3 +89,42 @@ func TestProxyInjectsSessionAndStripsCookies(t *testing.T) {
 		t.Errorf("anonymous: %d", rec.Code)
 	}
 }
+
+func TestMethodAllowlist(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+	u, _ := url.Parse(upstream.URL)
+	h := New(u, session.New(u, time.Hour, session.NewLimiter(5, time.Minute)))
+	cases := map[string]int{
+		http.MethodGet:     http.StatusOK,
+		http.MethodHead:    http.StatusOK,
+		http.MethodOptions: http.StatusOK,
+		http.MethodPut:     http.StatusOK,
+		http.MethodDelete:  http.StatusOK,
+		"PROPFIND":         http.StatusOK,
+		"PROPPATCH":        http.StatusOK,
+		"REPORT":           http.StatusOK,
+		"MKCALENDAR":       http.StatusOK,
+		"MKCOL":            http.StatusOK,
+		"MOVE":             http.StatusMethodNotAllowed,
+		"COPY":             http.StatusMethodNotAllowed,
+		"LOCK":             http.StatusMethodNotAllowed,
+		"UNLOCK":           http.StatusMethodNotAllowed,
+		"ACL":              http.StatusMethodNotAllowed,
+		http.MethodPost:    http.StatusMethodNotAllowed,
+		http.MethodPatch:   http.StatusMethodNotAllowed,
+		http.MethodTrace:   http.StatusMethodNotAllowed,
+		"propfind":         http.StatusMethodNotAllowed,
+	}
+	for method, want := range cases {
+		req := httptest.NewRequest(method, "/dav/alice/list/", nil)
+		req.SetBasicAuth("alice", "secret")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != want {
+			t.Errorf("%s: got %d want %d", method, rec.Code, want)
+		}
+	}
+}

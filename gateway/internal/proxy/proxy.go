@@ -21,9 +21,11 @@ const Prefix = "/dav"
 // MaxBody caps request bodies (inline attachments are at most 5 MB each before encoding).
 const MaxBody = 32 << 20
 
+// methods is the allowlist. MOVE and COPY are excluded: their Destination
+// header names a second path that allowedPath does not check.
 var methods = map[string]bool{
 	http.MethodGet: true, http.MethodHead: true, http.MethodOptions: true, http.MethodPut: true, http.MethodDelete: true,
-	"PROPFIND": true, "PROPPATCH": true, "REPORT": true, "MKCALENDAR": true, "MKCOL": true, "MOVE": true, "COPY": true,
+	"PROPFIND": true, "PROPPATCH": true, "REPORT": true, "MKCALENDAR": true, "MKCOL": true,
 }
 
 // New returns the /dav/ handler.
