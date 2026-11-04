@@ -7,9 +7,8 @@ Guidance for Claude (and other coding agents) working in this repository.
 **haken** is a to-do web app, delivered as an installable PWA, that uses a
 CalDAV server (primarily Radicale) as its single source of truth. It must work
 offline and sync back when a connection is available. UX and feature set are
-modelled on mainstream list-based to-do apps (lists, My Day, steps, drag-and-
-drop ordering), but the design, code, names, icons and assets must be
-original.
+list-based (lists, a *Focus* view, checklists, drag-and-drop ordering);
+design, code, names, icons and assets are original.
 
 ## Non-negotiables
 

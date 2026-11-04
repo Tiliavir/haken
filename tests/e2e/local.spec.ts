@@ -19,7 +19,7 @@ test("local account: add, step, complete, reorder by keyboard, survives reload",
   await expect.poll(() => titles(page)).toEqual(["Second", "First", "Third"]);
 
   await page.locator(".task-row .title", { hasText: "First" }).click();
-  await page.getByPlaceholder("Add step").fill("Sub");
+  await page.getByPlaceholder("Add item").fill("Sub");
   await page.keyboard.press("Enter");
   await expect(page.locator(".step-title")).toHaveValue("Sub");
 

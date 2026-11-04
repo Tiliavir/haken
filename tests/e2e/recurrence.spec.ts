@@ -47,7 +47,7 @@ test("a weekly task advances on completion, reopens its steps and syncs", async 
   await setupServer(page);
   await addTask(page, "Weekly chore");
   await page.locator(".task-row .title", { hasText: "Weekly chore" }).click();
-  await page.getByPlaceholder("Add step").fill("Part one");
+  await page.getByPlaceholder("Add item").fill("Part one");
   await page.keyboard.press("Enter");
   await page.getByLabel("Repeat").selectOption("weekly");
   await expect(

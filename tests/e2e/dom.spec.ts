@@ -24,7 +24,7 @@ test("every screen renders valid HTML", async ({ page }) => {
   await addTask(page, "Validate me");
   files.push(await snapshot(page, "list"));
   await page.locator(".task-row .title", { hasText: "Validate me" }).click();
-  await page.getByPlaceholder("Add step").fill("Step");
+  await page.getByPlaceholder("Add item").fill("Step");
   await page.keyboard.press("Enter");
   await page.getByRole("textbox", { name: "Label" }).fill("tag");
   await page.keyboard.press("Enter");
