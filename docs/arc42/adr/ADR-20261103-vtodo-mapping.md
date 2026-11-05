@@ -1,6 +1,6 @@
 # ADR-20261103: Feature to iCalendar mapping
 
-Status: Accepted
+Status: Accepted; partly superseded by [ADR-20261104-recurrence](ADR-20261104-recurrence.md) (repeat), [ADR-20261104-focus](ADR-20261104-focus.md) (My Day → Focus)
 
 ## Decision
 

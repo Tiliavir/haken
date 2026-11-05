@@ -1,6 +1,6 @@
 # ADR-20261104: Strict error handling and the "errorlogs" list
 
-Status: Accepted
+Status: Accepted; partly superseded by [ADR-20261104-error-task-content](ADR-20261104-error-task-content.md) and [ADR-20261104-sync-quarantine](ADR-20261104-sync-quarantine.md)
 
 ## Decision
 

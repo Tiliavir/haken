@@ -30,3 +30,14 @@ Thumbs.db
 # Claude local settings
 .claude/settings.local.json
 CLAUDE.local.md
+
+# Built app embedded into the gateway. The directory must be re-included
+# first (dist/ above ignores it), then only the placeholder README is kept,
+# so `go vet` and `go test` work on a clean checkout.
+!gateway/cmd/haken/dist/
+gateway/cmd/haken/dist/*
+!gateway/cmd/haken/dist/README
+test-results/
+playwright-report/
+e2e-data/
+deploy/radicale/

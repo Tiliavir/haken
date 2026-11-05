@@ -7,9 +7,8 @@ Guidance for Claude (and other coding agents) working in this repository.
 **haken** is a to-do web app, delivered as an installable PWA, that uses a
 CalDAV server (primarily Radicale) as its single source of truth. It must work
 offline and sync back when a connection is available. UX and feature set are
-modelled on mainstream list-based to-do apps (lists, My Day, steps, drag-and-
-drop ordering), but the design, code, names, icons and assets must be
-original.
+list-based (lists, a *Focus* view, checklists, drag-and-drop ordering);
+design, code, names, icons and assets are original.
 
 ## Non-negotiables
 
@@ -20,7 +19,8 @@ These outrank every other consideration, including feature velocity.
      `If-Match` with the last known ETag (or `If-None-Match: *` on create).
    - On `412 Precondition Failed`, fetch the server version and merge it
      as defined in `ADR-20261103-sync-strategy`: per property, the newer
-     edit wins and the losing value is kept as a conflict note on the task.
+     edit wins and the losing value is kept as a conflict note on the task;
+     labels and attachments merge as sets (`ADR-20261104-set-merge`).
      No conflict dialog. Never drop either side silently.
    - Local edits are persisted (IndexedDB) *before* the UI reports success
      and before any network attempt.
@@ -55,10 +55,43 @@ These outrank every other consideration, including feature velocity.
 
 ## Repository status
 
-Greenfield. Architecture lives in [`docs/arc42/`](docs/arc42/README.md);
-stack and decisions are ADRs there. When build tooling exists,
-document commands (build, test, lint, run locally) here and keep this file
-current.
+First implementation in place. Architecture lives in
+[`docs/arc42/`](docs/arc42/README.md); stack and decisions are ADRs there.
+Planned work: GitHub issues. `decisions.md` (implementation decisions waiting
+for review), `BACKLOG.md` (work in progress on the current branch) and
+`OPEN.md` exist only while they have entries.
+
+## Commands
+
+Needs Node 22, Go 1.24, Java (for `vnu`), `radicale` (`pip install radicale==3.9.0`, same as `deploy/compose.yml`)
+and Chrome (or `PLAYWRIGHT_CHANNEL=chromium` with Playwright's browser).
+
+| Command | Does |
+| --- | --- |
+| `npm ci` | Dev tools (TypeScript, Biome, vnu, Playwright) |
+| `make build` | `tsc` + assemble `dist/web` (`make build-demo`: GitHub Pages build) |
+| `make test-unit` | Unit and architecture tests (`node:test`) |
+| `make test-browser` | Store and sync modules in the browser against a CalDAV stub (Playwright, no servers) |
+| `make lint` / `make fmt` | Biome, `tsc` on test sources, `gofmt`, `go vet` / fix formatting |
+| `make validate` | W3C validator on HTML, CSS, SVG |
+| `make test-go` | Gateway tests (builds `dist/haken`) |
+| `make e2e` | Playwright against gateway + Radicale (data in `e2e-data/`) |
+| `make check` | All of the above, as CI |
+| `make coverage` | Unit (LCOV) and gateway (Go profile) coverage in `coverage/` |
+| `make check-container` | `tools/ci.sh` on committed HEAD in the pinned CI image (Docker) |
+| `make run` | Radicale + gateway on <http://127.0.0.1:8080>, users `dev`/`dev`, `eve`/`eve` |
+
+## Agent sessions
+
+A shallow clone (`git clone --depth 1`) is single-branch: its fetch refspec
+covers only `main`, so a pushed feature branch never gets a remote-tracking
+ref and looks unpushed. Right after cloning, before creating a branch:
+
+```sh
+git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+```
+
+Then push new branches with `git push -u origin <branch>`.
 
 ## Architecture docs
 
@@ -70,8 +103,8 @@ current.
 - Update the affected chapters and ADRs in the same change as the code.
 - UI rules, screens and design tokens: [`08-crosscutting-concepts.md`](docs/arc42/08-crosscutting-concepts.md).
   Follow it for every UI change; update it when the design changes.
-- Questions still waiting for a decision live in [`OPEN.md`](OPEN.md).
-  Do not implement anything listed there before it is decided.
+- Questions still waiting for a decision live in `OPEN.md`. Do not
+  implement anything listed there before it is decided.
 
 ## Working conventions
 
@@ -83,7 +116,8 @@ current.
 - Be strict: unexpected behaviour throws, never a silent fallback. Every
   unexpected error becomes a precise task in the list "errorlogs"
   (`ADR-20261104-strict-errors`): enough context to analyse and fix it,
-  never credentials or task content. Throwing must never lose data.
+  task values allowed, never credentials
+  (`ADR-20261104-error-task-content`). Throwing must never lose data.
 - Be strict with input too: validate every input against an explicit
   expectation where it enters; unexpected input is an error, never guessed
   around. Unknown iCalendar properties are expected and preserved; invalid

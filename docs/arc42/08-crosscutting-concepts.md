@@ -8,7 +8,7 @@ This chapter is the binding reference. The [sketches](sketches/README.md) illust
 
 - Simple and minimal. Every element on screen has a job. No decoration, gradients or illustrations.
 - What is shown works. There are no half features and no settings without effect.
-- One accent colour; everything else is neutral.
+- One accent colour; everything else is neutral. Red (`--danger`) is the one exception, and only for "needs attention": overdue dates, errors, destructive actions ([Focus](adr/ADR-20261104-focus.md)).
 - System font stack (`system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`). No web fonts.
 - Icons are own inline stroke SVGs: `viewBox="0 0 24 24"`, stroke 1.75, round caps and joins, `currentColor`. No emoji.
 - Touch targets are at least 44 × 44 px. Text contrast is at least 4.5:1 in both schemes.
@@ -19,9 +19,9 @@ This chapter is the binding reference. The [sketches](sketches/README.md) illust
 
 | Screen | Content |
 | --- | --- |
-| Lists | Smart lists *Today* (due today or overdue), *Important*, *Planned* and *All*, each with a count; a divider; the user's lists with counts; *New list* pinned at the bottom (mobile). The header shows the logo, the sync status (dot + text) and the settings entry. |
-| List | Title and number of open tasks. Each task row has a drag handle, a complete circle, the title, one meta line (steps `x/y`, due date, attachment icon, label chips) and a star. Completed tasks are collapsed under *Completed · n*. The add-task field sits at the bottom on mobile (thumb reach) and at the top on desktop (Enter adds). |
-| Task | Complete circle, title, star. Conflict notes, if any (see States). Steps as a checklist with *Add step*. One grouped block for due date, labels (chips + *Label*) and attachments (file name, size, *Attach file*). A note field (description). Footer with the creation date and delete. |
+| Lists | Smart lists *Focus* (due today or overdue first, then the tasks put on Focus; no daily reset), *Important*, *Planned* and *All*, each with a count; a divider; the user's lists with counts, their icon in the list's `calendar-color`, in `calendar-order` (then by name; *errorlogs* last), reordered by a grip on the right (drag or keyboard; writes `calendar-order` 1…n); *New list* pinned at the bottom (mobile). The header shows the logo, the sync status (dot + text) and the settings entry. |
+| List | Title and number of open tasks. Each task row has a drag handle, a complete circle, the title, one meta line (checklist `x/y`, due date, repeat icon + rule, attachment icon, label chips) and a star. Completed tasks are collapsed under *Completed · n*. The add-task field sits at the bottom on mobile (thumb reach) and at the top on desktop (Enter adds). In a smart list it reads *Add to ‹list›* and adds to the first user list; *Planned* and *Focus* use the day of submitting. |
+| Task | Complete circle, title, star. Conflict notes, if any (see States). *Checklist* (child tasks) with *Add item*. One grouped block for due date, repeat (*Never* … *Custom*; custom: every N + unit, weekday chips for weeks, day or ordinal weekday for months; *Ends* never / after N times / on date), labels (chips + *Label*) and attachments (file name, size, *Attach file*). Completing a repeating task moves it to its next due date and shows a notice with that date ([recurrence](adr/ADR-20261104-recurrence.md)). A note field (description). Footer with the creation date and delete. |
 | Settings | Account (read-only): *This browser only*, or *Radicale server* with the server (the origin the app was loaded from) and the user name; *Log out*. Changing the storage mode or the user means logging out and running setup again ([Auth](adr/ADR-20261103-authentication.md)). Sync card: status, last sync, pending changes, *Sync now*. Appearance: theme *System/Light/Dark*, accent colour (`<input type="color">` + hex + *Default*), language (*System language*, then the native names from `locales/index.json`). Data: *Export (.ics)*, *Import*. App version. |
 
 Smart lists are views and are never stored on the server. Their names are translated; user list names are not. The list *errorlogs* ([strict errors](adr/ADR-20261104-strict-errors.md)) appears with the user's lists once it exists and is excluded from smart lists and their counts.
@@ -37,13 +37,16 @@ Smart lists are views and are never stored on the server. Their names are transl
 - **Mobile:** one screen at a time; the header holds back navigation, which is labelled with the parent's name.
 - **Desktop:** three panes: sidebar (lists, 260 px), list (fluid, content max 760 px) and task detail (≥ 340 px, closable). The panes use `flex-wrap`, so they stack on narrow windows without breakpoint code. The selected list and selected task are highlighted with `--selected` / `--surface-2`.
 - The settings screen scrolls; nothing else needs to scroll horizontally.
+- Avoid breakpoint code; layouts adapt through `flex-wrap` and intrinsic sizes. The one exception: mobile shows one pane at a time by a single CSS media query at 720 px (no layout code in JS).
+- All modals use one `<dialog>` owned by `<haken-app>`; a re-render never closes it. Text in the focused field survives a re-render.
 
 ### Drag and drop
 
 - Every open task shows a faint grip handle. Dragging starts only from the handle, so scrolling and tapping a row never reorder by accident (own Pointer Events code, see [Frontend](adr/ADR-20261103-vanilla-typescript-frontend.md)).
 - While dragging, the task lifts as a card (shadow, −1° rotation, accent-coloured grip), and an accent line with a ring marks the drop position.
 - Keyboard alternative: focus the handle, move with ↑ and ↓, drop with Enter or Space, cancel with Esc.
-- Completed tasks cannot be reordered. Persistence follows the [data mapping](adr/ADR-20261103-vtodo-mapping.md).
+- Completed tasks cannot be reordered. Persistence follows the [data mapping](adr/ADR-20261103-vtodo-mapping.md). In *Focus* each part (due, picked) is reordered within itself ([Focus](adr/ADR-20261104-focus.md)).
+- Long-press (touch) or right-click on a task row opens its actions: *Add to/Remove from Focus*, *Move to list*. The task screen offers the same actions for keyboard users.
 
 ### Design tokens
 
@@ -64,6 +67,7 @@ Colours are written as `light-dark(<light>, <dark>)` ([Theming](adr/ADR-20261103
 | `--grip` | Drag handle | `#9AA0A8` | `#6B727B` |
 | `--accent` | Links, completed state, primary button, focus | user, default `#1F4D45` | derived, default `#618F86` |
 | `--on-accent` | Text on accent fills | derived (default `#FFFFFF`) | derived (default `#000000`) |
+| `--danger` | Overdue dates, destructive buttons | `#A1262B` | `#F08A8E` |
 
 | Scale | Values |
 | --- | --- |
@@ -74,12 +78,23 @@ Colours are written as `light-dark(<light>, <dark>)` ([Theming](adr/ADR-20261103
 
 ### States
 
-- The sync status is always visible: a dot + text (*Synced*, *Offline*, *n changes pending*, *Sign in to sync*, *Sync error*, which links to the errorlogs list). In browser-only mode it says that there is no server copy ([Browser-only](adr/ADR-20261103-browser-only-mode.md)).
-- Conflicts never open a dialog ([Sync](adr/ADR-20261103-sync-strategy.md)). The task detail lists each conflict note: property, the overwritten value, *Use this value*, *Dismiss*. The user does not have to act; the note and its marker stay until one of the two is chosen. A task with a conflict note shows a small marker in its meta line. While the app is visible, a non-blocking notice names a task that was merged.
-- A completed task or step shows a filled accent circle with an `--on-accent` check, and its text is struck through and muted.
+- The sync status is always visible: a dot + text (*Synced*, *Offline*, *n changes pending*, *Sign in to sync*, *Sync error* and *n items not synced* ([quarantine](adr/ADR-20261104-sync-quarantine.md)), both linking to the errorlogs list). In browser-only mode it says that there is no server copy ([Browser-only](adr/ADR-20261103-browser-only-mode.md)).
+- Conflicts never open a dialog ([Sync](adr/ADR-20261103-sync-strategy.md)). The task detail lists each conflict note: property, the overwritten value, *Use this value*, *Dismiss*. A note on the whole task (the server version cannot be read) shows a short explanation instead of the value, with *Export (.ics)* and *Dismiss*. The user does not have to act; the note and its marker stay until one of the two is chosen. A task with a conflict note shows a small marker in its meta line. While the app is visible, a non-blocking notice names a task that was merged.
+- A task the server refused as too large (`413`) shows an error on the task; it is sent again only after it changed.
+- Device storage over 80 % of the quota: a notice at start and when the app becomes visible again.
+- Logout with pending changes: *Export pending changes, then delete* asks after the download whether the file is saved and deletes only on confirmation.
+- A completed task or checklist item shows a filled accent circle with an `--on-accent` check, and its text is struck through and muted.
 - An important task shows a filled star in the accent colour.
+- Due dates in the meta line: overdue in `--danger` with *Overdue*; due today bold with an accent exclamation mark; on Focus a sun marker.
+- A task row can be dragged by its grip onto *Focus* in the sidebar; the entry is outlined while the task is over it. The task screen has *Add to Focus* / *Remove from Focus*.
 
-### Not designed yet
+### Setup and transient screens
 
-- First start and setup screens. The flow and the content of each step are defined in [Runtime View](06-runtime-view.md#first-start-and-setup); the screens follow this chapter.
-- Empty list, offline, conflict note and notice, logout confirmation.
+Rendered in [sketches/app](sketches/README.md#app-screens).
+
+- **Setup** (flow and content: [Runtime View](06-runtime-view.md#first-start-and-setup)): one step per screen, no app chrome. The logo tile, a page title, one paragraph, then the step's controls. Choices are full-width cards (`--surface`, title plus one muted line). The primary action is a filled accent button on the right; *Skip* and *Later* are plain buttons.
+- **Empty list:** *No tasks yet.* centred and muted; the add field stays in place.
+- **Offline, signed out:** the status line reads *Offline* (grey dot) or *Sign in to sync*, followed by *· n changes pending* when edits wait. On mobile the status line is on the lists screen.
+- **Notice:** a toast at the bottom centre for 5 s, inverted colours, naming the task by its title after the sync run.
+- **Logout with pending changes:** a dialog with the pending count; *Cancel* is the primary button, then *Log out, keep data on this device* and *Export pending changes, then delete*. Discarding needs the count typed in; only then is the `--danger` button enabled.
+

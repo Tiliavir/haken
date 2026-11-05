@@ -6,8 +6,8 @@ A simple, self-hosted to-do app that runs as an installable web app (PWA) and
 stores everything in your own CalDAV server — [Radicale](https://radicale.org)
 first and foremost. No accounts, no cloud, no tracking.
 
-> **Status:** early development. Nothing works yet. Don't point it at data you
-> care about.
+> **Status:** early development. The first version works end to end, but it
+> has not been used with real data yet. Don't point it at data you care about.
 
 ## Goals
 
@@ -23,22 +23,37 @@ first and foremost. No accounts, no cloud, no tracking.
 - **No data loss, no data leaks.** Conflicts are merged; an overwritten value
   is kept visibly on the task, never dropped silently. Nothing leaves your device except to the server you configured.
 
-## Features (planned)
+## Features
 
-- [ ] Multiple lists (CalDAV task collections)
-- [ ] Manual sort order via drag and drop
-- [ ] Descriptions
-- [ ] Checklists (sub-steps)
-- [ ] Labels
-- [ ] Attachments
-- [ ] Due dates and reminders
-- [ ] "My Day"-style focus view
-- [ ] Offline queue with conflict handling
-- [ ] Interop with other CalDAV clients (Tasks.org, Thunderbird, …)
+- [x] Multiple lists (CalDAV task collections)
+- [x] Manual sort order via drag and drop (and keyboard)
+- [x] Descriptions
+- [x] Checklists (sub-steps)
+- [x] Labels
+- [x] Attachments (inline, up to 5 MB)
+- [x] Due dates — reminders are still open
+- [x] Repeating tasks (daily, weekdays, weekly, monthly, yearly, custom)
+- [x] Focus: due and overdue first (overdue in red), then the tasks you put there — they stay until you take them off
+- [x] Smart lists: Important, Planned, All
+- [x] Offline queue with conflict handling
+- [x] Interop with other CalDAV clients (Tasks.org, Thunderbird, …) — tested with synthetic samples so far
+- [x] Browser-only mode without a server, `.ics` export and import
+- [x] English, German (also Swiss spelling), French, Spanish, Italian; light and dark; custom accent
 
 ## Running it
 
-Not yet. Setup instructions will land here once there is something to run.
+Locally (needs Node 22, Go 1.24 and `pip install radicale`):
+
+```sh
+npm ci
+make run        # http://127.0.0.1:8080, user dev / password dev
+```
+
+On a server: use the image `ghcr.io/tiliavir/haken` (from the first release,
+see [CHANGELOG.md](CHANGELOG.md)) or build it from
+[`deploy/Dockerfile`](deploy/Dockerfile), and run it next to Radicale as in [`deploy/compose.yml`](deploy/compose.yml),
+behind a reverse proxy that terminates TLS. See
+[chapter 7](docs/arc42/07-deployment-view.md).
 
 ## Contributing
 

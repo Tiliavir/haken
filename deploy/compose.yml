@@ -1,0 +1,24 @@
+# Example for a Synology NAS (chapter 7). The DSM reverse proxy terminates
+# TLS and forwards to 127.0.0.1:8080. Radicale has no published port.
+services:
+  haken:
+    image: haken:latest
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      HAKEN_RADICALE_URL: http://radicale:5232
+      HAKEN_LISTEN: ":8080"
+      HAKEN_SESSION_IDLE: 168h
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+    depends_on: [radicale]
+
+  radicale:
+    # Same Radicale version as dev, E2E and CI (pip radicale==3.9.0).
+    image: tomsquest/docker-radicale:3.9.0.0
+    volumes:
+      - ./radicale/config:/config:ro
+      - ./radicale/collections:/data
+    restart: unless-stopped

@@ -66,3 +66,21 @@ One account is active at a time. *Log out* in Settings ends it
 ([Auth](adr/ADR-20261103-authentication.md)) and returns to step 4; the next
 user signs in there. If the same user had logged out keeping data, their
 account database is reused and its outbox resumes.
+
+## Sync run
+
+One run per trigger, under a Web Lock ([Sync](adr/ADR-20261103-sync-strategy.md)):
+
+1. Probe `GET /api/session`; offline or expired ends the run.
+2. Push list changes (`MKCALENDAR`, `PROPPATCH`).
+3. Discover lists (`PROPFIND` on the calendar home).
+4. Pull each list: `sync-collection`, or ETag comparison when the token is invalid. A change to a task with pending edits is merged at once.
+5. Push task changes. `412`: `GET`, three-way merge, `PUT` again; at most 3 times per resource.
+6. Delete lists.
+
+An unexpected error on one resource quarantines it: one error task, a record
+in `state`, outbox kept; the run continues. The resource is retried when its
+server ETag or its local record changes
+([Quarantine](adr/ADR-20261104-sync-quarantine.md)). Errors that concern the
+whole run (probe, list discovery request, inconsistent outbox, local store)
+stop it; the outbox stays and the next trigger retries.
