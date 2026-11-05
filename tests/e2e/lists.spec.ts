@@ -1,11 +1,11 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { setupServer, waitSynced } from "./helpers.js";
+import { basicAuth, radicale, setupServer, waitSynced } from "./helpers.js";
 
 // Its own user: reordering lists changes the default list other tests rely on.
 const USER = "eve";
-const AUTH = { Authorization: `Basic ${Buffer.from("eve:eve").toString("base64")}` };
+const AUTH = basicAuth("eve");
 
 /** Display name → Radicale's stored collection properties. */
 function serverProps(user: string): Map<string, Record<string, string>> {
@@ -58,7 +58,7 @@ test("lists: reorder by keyboard, order and colour shared with the server", asyn
   const href = await page
     .locator(".own-lists .list-item", { hasText: a })
     .getAttribute("data-href");
-  const res = await request.fetch(href ?? "", {
+  const res = await request.fetch(radicale(href ?? ""), {
     method: "PROPPATCH",
     headers: { ...AUTH, "Content-Type": "application/xml" },
     data: '<?xml version="1.0"?><d:propertyupdate xmlns:d="DAV:" xmlns:a="http://apple.com/ns/ical/"><d:set><d:prop><a:calendar-color>#C0392BFF</a:calendar-color></d:prop></d:set></d:propertyupdate>',

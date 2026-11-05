@@ -1,5 +1,7 @@
-// Package proxy forwards /dav/ to Radicale, restricted to the user's own
-// collections (defence in depth on top of Radicale's owner_only rights).
+// Package proxy forwards /dav/ to Radicale for the haken app only: it accepts
+// the session cookie and nothing else, restricted to the user's own collections
+// (defence in depth on top of Radicale's owner_only rights). Other CalDAV
+// clients talk to Radicale directly.
 package proxy
 
 import (
@@ -71,37 +73,28 @@ func New(radicale *url.URL, sessions *session.Manager) http.Handler {
 			httpx.Fail(w, r, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
-		user, ok := authorize(r, sessions)
-		if !ok {
-			w.Header().Set("WWW-Authenticate", `Basic realm="haken", charset="UTF-8"`)
-			w.WriteHeader(http.StatusUnauthorized)
+		if r.Header.Get("Authorization") != "" {
+			httpx.Fail(w, r, http.StatusUnauthorized, "Authorization header refused, session only")
 			return
 		}
+		creds, ok := sessions.Lookup(r)
+		if !ok {
+			httpx.Fail(w, r, http.StatusUnauthorized, "no session")
+			return
+		}
+		if !httpx.SameOrigin(r) {
+			httpx.Fail(w, r, http.StatusForbidden, "cross-origin request")
+			return
+		}
+		user := creds.User
 		if !allowedPath(r.URL.Path, user) {
 			httpx.Fail(w, r, http.StatusForbidden, "path outside the user's collections")
 			return
 		}
+		r.SetBasicAuth(creds.User, creds.Password)
 		r.Body = http.MaxBytesReader(w, r.Body, MaxBody)
 		rp.ServeHTTP(w, r)
 	})
-}
-
-// authorize returns the user the request acts as. The session cookie wins
-// (the PWA); otherwise Basic auth is passed through unchanged (other CalDAV
-// clients). A session request must be same-origin.
-func authorize(r *http.Request, sessions *session.Manager) (string, bool) {
-	if creds, ok := sessions.Lookup(r); ok {
-		if !httpx.SameOrigin(r) {
-			return "", false
-		}
-		r.SetBasicAuth(creds.User, creds.Password)
-		return creds.User, true
-	}
-	user, _, ok := r.BasicAuth()
-	if !ok || !session.UserPattern.MatchString(user) {
-		return "", false
-	}
-	return user, true
 }
 
 // allowedPath admits only /dav/<user> and everything below it. The raw path

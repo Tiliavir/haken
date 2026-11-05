@@ -1,6 +1,23 @@
 import { expect, type Page } from "@playwright/test";
 
-export const ORIGIN = `http://127.0.0.1:${process.env["E2E_PORT"] ?? "8181"}`;
+const PORT = Number(process.env["E2E_PORT"] ?? "8181");
+export const ORIGIN = `http://127.0.0.1:${PORT}`;
+
+/** Radicale itself, as other CalDAV clients reach it (playwright.config.ts: E2E_PORT + 10). */
+const RADICALE = `http://127.0.0.1:${PORT + 10}`;
+
+/** Basic auth for Radicale, as another CalDAV client sends it. */
+export function basicAuth(user: string): { Authorization: string } {
+  return { Authorization: `Basic ${Buffer.from(`${user}:${user}`).toString("base64")}` };
+}
+
+/** Radicale URL of a gateway href (`/dav/<user>/…`, as the app shows it) or a Radicale href (`/<user>/…`). */
+export function radicale(href: string): string {
+  const path = href.startsWith("/dav/") ? href.slice("/dav".length) : href;
+  if (!path.startsWith("/") || path.startsWith("/dav/"))
+    throw new Error(`not a CalDAV path: ${href}`);
+  return RADICALE + path;
+}
 
 /** Fails the test on any request to another origin or any page error. */
 export function guard(page: Page): string[] {

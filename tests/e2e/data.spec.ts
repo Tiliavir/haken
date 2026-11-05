@@ -1,7 +1,15 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { addTask, guard, setupLocal, setupServer, waitSynced } from "./helpers.js";
+import {
+  addTask,
+  basicAuth,
+  guard,
+  radicale,
+  setupLocal,
+  setupServer,
+  waitSynced,
+} from "./helpers.js";
 
 // Radicale's max_content_length in E2E (playwright.config.ts). Bodies above it get 413.
 const RADICALE_LIMIT = 1_000_000;
@@ -154,7 +162,7 @@ test("a list deleted here while another client edits one of its tasks keeps that
   context,
   request,
 }) => {
-  const auth = { Authorization: `Basic ${Buffer.from("dev:dev").toString("base64")}` };
+  const auth = basicAuth("dev");
   await setupServer(page);
   const name = `Shared list ${Date.now()}`;
   await page.getByRole("textbox", { name: "New list" }).fill(name);
@@ -171,15 +179,15 @@ test("a list deleted here while another client edits one of its tasks keeps that
   await expect(page.locator(".own-lists .list-item", { hasText: name })).toHaveCount(0);
 
   // Another client changes the task on the server.
-  const listing = await request.fetch(list ?? "", {
+  const listing = await request.fetch(radicale(list ?? ""), {
     method: "PROPFIND",
     headers: { ...auth, Depth: "1", "Content-Type": "application/xml" },
     data: '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:getetag/></d:prop></d:propfind>',
   });
   const href = [...(await listing.text()).matchAll(/<(?:\w+:)?href>([^<]+\.ics)</g)][0]?.[1];
   expect(href).toBeDefined();
-  const current = await request.get(href ?? "", { headers: auth });
-  const put = await request.put(href ?? "", {
+  const current = await request.get(radicale(href ?? ""), { headers: auth });
+  const put = await request.put(radicale(href ?? ""), {
     headers: {
       ...auth,
       "Content-Type": "text/calendar; charset=utf-8",
@@ -197,7 +205,7 @@ test("a list deleted here while another client edits one of its tasks keeps that
   await page.locator(".own-lists .list-item", { hasText: name }).click({ timeout: 15_000 });
   await expect(page.locator(".task-row .title", { hasText: "Edited elsewhere too" })).toBeVisible();
   await waitSynced(page);
-  expect((await request.get(href ?? "", { headers: auth })).status()).toBe(200);
+  expect((await request.get(radicale(href ?? ""), { headers: auth })).status()).toBe(200);
 });
 
 test("attachments stop before the whole task outgrows the gateway's 32 MB limit", async ({

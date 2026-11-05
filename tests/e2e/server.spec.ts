@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { addTask, button, guard, setupServer, waitSynced } from "./helpers.js";
+import { addTask, basicAuth, button, guard, radicale, setupServer, waitSynced } from "./helpers.js";
 
 function serverFiles(user: string): string[] {
   const root = join("e2e-data", "collections", "collection-root", user);
@@ -124,14 +124,23 @@ test("export pending changes deletes only after the user confirms the file is sa
   await expect(page.getByRole("heading", { name: "Where should your tasks live?" })).toBeVisible();
 });
 
-test("gateway refuses another user's collection", async ({ page, request }) => {
+test("gateway serves only the app's own session", async ({ page, request }) => {
   await setupServer(page);
   const status = await page.evaluate(
     async () => (await fetch("dav/eve/", { method: "PROPFIND", headers: { Depth: "0" } })).status,
   );
   expect(status).toBe(403);
-  const anonymous = await request.fetch("/dav/dev/", { method: "PROPFIND" });
-  expect(anonymous.status()).toBe(401);
+  for (const headers of [{}, basicAuth("dev")]) {
+    const refused = await request.fetch("/dav/dev/", { method: "PROPFIND", headers });
+    expect(refused.status()).toBe(401);
+    expect(refused.headers()["www-authenticate"]).toBeUndefined();
+  }
+  // Other CalDAV clients use Radicale directly.
+  const direct = await request.fetch(radicale("/dev/"), {
+    method: "PROPFIND",
+    headers: { ...basicAuth("dev"), Depth: "0" },
+  });
+  expect(direct.status()).toBe(207);
 });
 
 test("an ended session: edits stay local, signing in again syncs them", async ({
