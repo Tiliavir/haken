@@ -88,7 +88,13 @@ Colours are written as `light-dark(<light>, <dark>)` ([Theming](adr/ADR-20261103
 - Due dates in the meta line: overdue in `--danger` with *Overdue*; due today bold with an accent exclamation mark; on Focus a sun marker.
 - A task row can be dragged by its grip onto *Focus* in the sidebar; the entry is outlined while the task is over it. The task screen has *Add to Focus* / *Remove from Focus*.
 
-### Not designed yet
+### Setup and transient screens
 
-- First start and setup screens. The flow and the content of each step are defined in [Runtime View](06-runtime-view.md#first-start-and-setup); the screens follow this chapter.
-- Empty list, offline, conflict note and notice, logout confirmation.
+Rendered in [sketches/app](sketches/README.md#app-screens).
+
+- **Setup** (flow and content: [Runtime View](06-runtime-view.md#first-start-and-setup)): one step per screen, no app chrome. The logo tile, a page title, one paragraph, then the step's controls. Choices are full-width cards (`--surface`, title plus one muted line). The primary action is a filled accent button on the right; *Skip* and *Later* are plain buttons.
+- **Empty list:** *No tasks yet.* centred and muted; the add field stays in place.
+- **Offline, signed out:** the status line reads *Offline* (grey dot) or *Sign in to sync*, followed by *· n changes pending* when edits wait. On mobile the status line is on the lists screen.
+- **Notice:** a toast at the bottom centre for 5 s, inverted colours, naming the task by its title after the sync run.
+- **Logout with pending changes:** a dialog with the pending count; *Cancel* is the primary button, then *Log out, keep data on this device* and *Export pending changes, then delete*. Discarding needs the count typed in; only then is the `--danger` button enabled.
+

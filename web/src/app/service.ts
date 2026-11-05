@@ -439,6 +439,12 @@ export class AppService extends EventTarget implements ErrorSink {
       throw new HakenError("app", "Server account without user", { account: account.id });
     this.syncState = "syncing";
     await this.refresh();
+    // Notices name tasks by their current title: they go out after the snapshot shows the run.
+    const notices: Notice[] = [];
+    const announce = (): void => {
+      for (const notice of notices.splice(0))
+        this.dispatchEvent(new CustomEvent<Notice>("notice", { detail: notice }));
+    };
     const runner = new SyncRunner(store, account.user, {
       onInvalid: async (info) => {
         await this.reporter.report(info.error, "sync.pull");
@@ -446,8 +452,7 @@ export class AppService extends EventTarget implements ErrorSink {
       onQuarantine: async (info) => {
         await this.reporter.report(info.error, `sync.quarantine ${info.href}`);
       },
-      onNotice: (notice) =>
-        this.dispatchEvent(new CustomEvent<Notice>("notice", { detail: notice })),
+      onNotice: (notice) => notices.push(notice),
       onChange: () => this.channel?.postMessage("changed"),
     });
     try {
@@ -456,10 +461,12 @@ export class AppService extends EventTarget implements ErrorSink {
     } catch (error) {
       this.syncState = "error";
       await this.refresh();
+      announce();
       await this.reporter.report(error, "sync.run");
       return;
     }
     await this.refresh();
+    announce();
   }
 
   get syncResult(): "idle" | "syncing" | "offline" | "expired" | "error" {

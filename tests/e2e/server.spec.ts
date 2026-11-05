@@ -117,7 +117,7 @@ test("export pending changes deletes only after the user confirms the file is sa
   await expect(page.getByText("Is the file haken-pending.ics saved?")).toBeVisible();
   // Cancel keeps everything.
   await page.locator("dialog").getByRole("button", { name: "Cancel" }).click();
-  await expect(page.getByText("1 change pending")).toBeVisible();
+  await expect(page.getByText("1 change pending", { exact: true })).toBeVisible();
   await button(page, "Log out");
   await button(page, "Export pending changes, then delete");
   await button(page, "Saved, delete and log out");

@@ -735,6 +735,8 @@ haken-task {
 .task-heading-input {
   flex: 1;
   min-width: 0;
+  /* Grows with a long title; browsers without field-sizing scroll inside the field. */
+  field-sizing: content;
   padding: 8px 4px;
   border: 0 !important;
   background: none !important;

@@ -30,8 +30,9 @@ fmt:
 	$(NPX) biome check --write .
 	cd gateway && gofmt -w .
 
+# vnu does not know `field-sizing` (CSS Basic User Interface 4) yet.
 validate: build
-	java -jar node_modules/vnu-jar/build/dist/vnu.jar --skip-non-html --filterpattern ".*Content Security Policy.*" --also-check-css --also-check-svg \
+	java -jar node_modules/vnu-jar/build/dist/vnu.jar --skip-non-html --filterpattern ".*Content Security Policy.*|.*field-sizing.*" --also-check-css --also-check-svg \
 		dist/web/index.html dist/web/styles dist/web/icons
 
 gateway: build
