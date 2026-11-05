@@ -76,6 +76,7 @@ and Chrome (or `PLAYWRIGHT_CHANNEL=chromium` with Playwright's browser).
 | `make test-go` | Gateway tests (builds `dist/haken`) |
 | `make e2e` | Playwright against gateway + Radicale (data in `e2e-data/`) |
 | `make check` | All of the above, as CI |
+| `make coverage` | Unit (LCOV) and gateway (Go profile) coverage in `coverage/` |
 | `make check-container` | `tools/ci.sh` on committed HEAD in the pinned CI image (Docker) |
 | `make run` | Radicale + gateway on <http://127.0.0.1:8080>, users `dev`/`dev`, `eve`/`eve` |
 

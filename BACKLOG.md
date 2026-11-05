@@ -9,5 +9,4 @@ Work in progress on the current branch. Planned work beyond it is in
 
 ## Quality gates and delivery
 
-- Coverage report (TypeScript and Go) and SonarCloud.
 - Release process: version from the build, changelog, container tags.

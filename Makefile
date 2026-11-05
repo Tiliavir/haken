@@ -3,7 +3,7 @@ SHELL := /bin/sh
 NPX := npx --no-install
 CONFIG ?= web/config.json
 
-.PHONY: build build-demo test test-unit test-browser test-go lint fmt validate e2e check check-container run clean gateway
+.PHONY: build build-demo test test-unit test-browser test-go lint fmt validate e2e check check-container coverage run clean gateway
 
 build:
 	rm -rf dist
@@ -47,6 +47,16 @@ e2e: gateway
 
 check: lint test-unit test-browser validate test-go e2e
 
+# Coverage of unit (TypeScript, mapped to the sources) and gateway tests, as LCOV and Go profile.
+coverage: gateway
+	$(NPX) tsc -p tsconfig.json --sourceMap
+	mkdir -p coverage
+	node --enable-source-maps --test --experimental-test-coverage \
+		--test-coverage-exclude='dist/web/vendor/**' --test-coverage-exclude='tests/**' \
+		--test-reporter=dot --test-reporter-destination=stdout \
+		--test-reporter=lcov --test-reporter-destination=coverage/lcov.info "dist/tests/unit/*.test.js"
+	cd gateway && go test -coverprofile=../coverage/go.out ./...
+
 # The CI run, locally: committed HEAD in the pinned CI image (needs Docker).
 CI_IMAGE := $(shell sed -n 's/^ *container: *//p' .github/workflows/ci.yml)
 check-container:
@@ -58,4 +68,4 @@ run: gateway
 	tools/dev-run.sh
 
 clean:
-	rm -rf dist test-results && git checkout -- gateway/cmd/haken/dist
+	rm -rf dist test-results coverage && git checkout -- gateway/cmd/haken/dist
