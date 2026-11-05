@@ -13,7 +13,6 @@ Work in progress on the current branch. Planned work beyond it is in
 
 ## Features
 
-- Repeat: end after N times or on a date, monthly by weekday ("second Tuesday").
 - List colour and list order from the server; reorder lists by drag and drop.
 
 ## UI

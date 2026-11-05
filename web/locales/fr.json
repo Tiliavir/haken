@@ -242,5 +242,20 @@
   "focus.removed": "Retirée du Focus.",
   "task.moveTo": "Déplacer vers la liste",
   "task.moved": "Déplacée vers {list}.",
-  "task.list": "Liste"
+  "task.list": "Liste",
+  "repeat.ends": "Fin",
+  "repeat.endsNever": "Jamais",
+  "repeat.endsAfter": "Après",
+  "repeat.endsOn": "À la date",
+  "repeat.times": "fois",
+  "repeat.timesLeft.one": "encore {count} fois",
+  "repeat.timesLeft.other": "encore {count} fois",
+  "repeat.until": "jusqu'au {date}",
+  "repeat.onDay": "Le {day}",
+  "repeat.onNth": "Le {nth} {weekday}",
+  "repeat.nth1": "premier",
+  "repeat.nth2": "deuxième",
+  "repeat.nth3": "troisième",
+  "repeat.nth4": "quatrième",
+  "repeat.nthLast": "dernier"
 }

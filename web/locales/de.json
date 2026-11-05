@@ -242,5 +242,20 @@
   "focus.removed": "Aus dem Fokus entfernt.",
   "task.moveTo": "In Liste verschieben",
   "task.moved": "Nach {list} verschoben.",
-  "task.list": "Liste"
+  "task.list": "Liste",
+  "repeat.ends": "Endet",
+  "repeat.endsNever": "Nie",
+  "repeat.endsAfter": "Nach",
+  "repeat.endsOn": "Am Datum",
+  "repeat.times": "Mal",
+  "repeat.timesLeft.one": "noch {count} Mal",
+  "repeat.timesLeft.other": "noch {count} Mal",
+  "repeat.until": "bis {date}",
+  "repeat.onDay": "Am {day}.",
+  "repeat.onNth": "Am {nth} {weekday}",
+  "repeat.nth1": "ersten",
+  "repeat.nth2": "zweiten",
+  "repeat.nth3": "dritten",
+  "repeat.nth4": "vierten",
+  "repeat.nthLast": "letzten"
 }

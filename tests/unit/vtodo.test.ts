@@ -181,7 +181,7 @@ describe("edits", () => {
   });
   test("repeating tasks outside the supported rules are read-only", () => {
     assert.throws(() =>
-      applyEdit(fixture("recurring-count.ics"), { kind: "summary", value: "x" }, NOW),
+      applyEdit(fixture("recurring-bymonthday.ics"), { kind: "summary", value: "x" }, NOW),
     );
   });
 });

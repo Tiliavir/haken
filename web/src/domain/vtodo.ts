@@ -577,10 +577,14 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
     case "description":
       mark(setText(todo, "description", edit.value), "description");
       break;
-    case "done":
-      if (edit.value && !view.done && view.recurrence !== null) {
-        // Completing a repeating task advances it; it stays open.
-        for (const name of advance(todo, view.recurrence)) groups.add(groupOf(name));
+    case "done": {
+      // Completing a repeating task advances it and it stays open, unless this was its last occurrence.
+      const advanced =
+        edit.value && !view.done && view.recurrence !== null
+          ? advance(todo, view.recurrence)
+          : null;
+      if (advanced !== null && advanced !== "last") {
+        for (const name of advanced) groups.add(groupOf(name));
         if (
           todo.hasProperty("percent-complete") ||
           todo.hasProperty("completed") ||
@@ -606,6 +610,7 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
         groups.add("COMPLETION");
       }
       break;
+    }
     case "important":
       if (edit.value !== view.important) {
         todo.updatePropertyWithValue("priority", edit.value ? 1 : 0);

@@ -650,8 +650,13 @@ export class AppService extends EventTarget implements ErrorSink {
     const addOps: { kind: "put"; href: string; groups: string[]; editedAt: number }[] = [];
     if (this.isServer)
       addOps.push({ kind: "put", href, groups: [...result.groups], editedAt: now.getTime() });
+    // Advanced: completed, but still open (the last occurrence completes for good).
     const advanced =
-      edit.kind === "done" && edit.value && !before.done && before.recurrence !== null;
+      edit.kind === "done" &&
+      edit.value &&
+      !before.done &&
+      before.recurrence !== null &&
+      !readTask(parseResource(result.ics)).done;
     if (advanced) {
       // The next occurrence starts with its checklist open again, in the same commit.
       for (const step of await this.stepRecords(record.list, before.uid)) {
