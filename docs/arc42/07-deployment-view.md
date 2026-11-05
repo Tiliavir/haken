@@ -3,7 +3,8 @@
 ## Self-hosted (Synology NAS, Docker Compose)
 
 ```
- Browser / installed PWA              Other CalDAV clients, home network only
+ Home network only
+ Browser / installed PWA              Other CalDAV clients
         |                                     |
         | HTTPS :443, app host name           | HTTPS :443, Radicale host name
         v                                     v
@@ -21,9 +22,9 @@
 
 | Element | Configuration | Note |
 | --- | --- | --- |
-| DSM reverse proxy | App host name → `localhost:8080`; Radicale host name → `localhost:5232`, access control profile: local network only; HSTS on | Terminates TLS. The gateway reads no `X-Forwarded-*` header; its session cookie is always `Secure` (`__Host-`) |
+| DSM reverse proxy | App host name → `localhost:8080`, Radicale host name → `localhost:5232`; both with access control profile *local network only* ([home network](adr/ADR-20261105-home-network.md)); HSTS on | Terminates TLS. The gateway reads no `X-Forwarded-*` header; its session cookie is always `Secure` (`__Host-`) |
 | haken gateway | One static Go binary in a `scratch` image; Radicale URL and listen address from the environment; app and `config.json` embedded | Stateless; restart ends all sessions ([Auth](adr/ADR-20261103-authentication.md)) |
-| Radicale | Official image; `htpasswd` (bcrypt), `rights = owner_only`; port published on `127.0.0.1` only | Reached by the gateway (session users) and through the reverse proxy (Basic auth, other clients in the home network, [ADR](adr/ADR-20261105-radicale-home-network.md)) |
+| Radicale | Official image; `htpasswd` (bcrypt), `rights = owner_only`; port published on `127.0.0.1` only | Reached by the gateway (session users) and through the reverse proxy (Basic auth, other clients) |
 | Volume `collections` | Bind mount on the NAS | Included in the NAS backup (e.g. Hyper Backup). This is the server copy of all tasks |
 
 Files: [`deploy/Dockerfile`](../../deploy/Dockerfile), [`deploy/compose.yml`](../../deploy/compose.yml), [`deploy/radicale.config.example`](../../deploy/radicale.config.example). Gateway environment: `HAKEN_RADICALE_URL` (required), `HAKEN_LISTEN` (default `:8080`), `HAKEN_SESSION_IDLE` (default `168h`).

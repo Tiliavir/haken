@@ -1,6 +1,6 @@
 # ADR-20261105: Gateway security
 
-Status: Accepted (implementation: [#11](https://github.com/Tiliavir/haken/issues/11)); partly superseded by [ADR-20261105-radicale-home-network](ADR-20261105-radicale-home-network.md) (fail2ban)
+Status: Accepted (implementation: [#11](https://github.com/Tiliavir/haken/issues/11)); partly superseded by [ADR-20261105-home-network](ADR-20261105-home-network.md) (fail2ban)
 
 ## Decision
 
