@@ -412,6 +412,15 @@ export function reauthDialog(ctx: Ctx, dialog: HTMLDialogElement): void {
       },
       h("h2", {}, t("setup.signin.title")),
       h("p", {}, t("reauth.text", { user: ctx.snapshot.account?.user ?? "" })),
+      // Lets password managers match the saved login; never shown or edited.
+      h("input", {
+        type: "text",
+        name: "username",
+        autocomplete: "username",
+        value: ctx.snapshot.account?.user ?? "",
+        readonly: true,
+        hidden: true,
+      }),
       h("label", { for: "reauth-password" }, t("setup.signin.password")),
       password,
       error,

@@ -16,7 +16,12 @@ describe("locale files", () => {
   const index = load("index.json");
   const files = readdirSync(DIR).filter((f) => f.endsWith(".json") && f !== "index.json");
   test("index.json lists exactly the locale files", () => {
-    assert.deepEqual(Object.keys(index).sort(), files.map((f) => f.replace(/\.json$/, "")).sort());
+    assert.deepEqual(
+      Object.keys(index)
+        .map((tag) => tag.toLowerCase())
+        .sort(),
+      files.map((f) => f.replace(/\.json$/, "")).sort(),
+    );
   });
   for (const file of files) {
     test(`${file}: same keys and placeholders as en`, () => {
@@ -31,12 +36,24 @@ describe("locale files", () => {
   }
 });
 
+test("de-CH is German with Swiss spelling: ss for ß, «» quotes", () => {
+  const swiss = (s: string): string =>
+    s.replaceAll("ß", "ss").replaceAll("„", "«").replaceAll("“", "»");
+  const de = load("de.json");
+  assert.deepEqual(
+    load("de-ch.json"),
+    Object.fromEntries(Object.entries(de).map(([k, v]) => [k, swiss(v)])),
+  );
+});
+
 describe("negotiation and formatting", () => {
   const available = ["en", "de", "fr", "es", "it"];
   test("setting wins, then exact, then language, then en", () => {
     assert.equal(negotiate("fr", ["de-CH"], available), "fr");
     assert.equal(negotiate(null, ["de-CH", "en"], available), "en");
     assert.equal(negotiate(null, ["de-CH"], available), "de");
+    assert.equal(negotiate(null, ["de-CH"], [...available, "de-CH"]), "de-CH");
+    assert.equal(negotiate(null, ["de-AT"], [...available, "de-CH"]), "de");
     assert.equal(negotiate(null, ["pt-BR"], available), "en");
     assert.equal(negotiate("xx", ["it"], available), "it");
   });

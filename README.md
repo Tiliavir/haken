@@ -38,7 +38,7 @@ first and foremost. No accounts, no cloud, no tracking.
 - [x] Offline queue with conflict handling
 - [x] Interop with other CalDAV clients (Tasks.org, Thunderbird, …) — tested with synthetic samples so far
 - [x] Browser-only mode without a server, `.ics` export and import
-- [x] English, German, French, Spanish, Italian; light and dark; custom accent
+- [x] English, German (also Swiss spelling), French, Spanish, Italian; light and dark; custom accent
 
 ## Running it
 

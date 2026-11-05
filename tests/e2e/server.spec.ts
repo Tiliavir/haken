@@ -133,3 +133,21 @@ test("gateway refuses another user's collection", async ({ page, request }) => {
   const anonymous = await request.fetch("/dav/dev/", { method: "PROPFIND" });
   expect(anonymous.status()).toBe(401);
 });
+
+test("an ended session: edits stay local, signing in again syncs them", async ({
+  page,
+  context,
+}) => {
+  await setupServer(page);
+  await context.clearCookies();
+  await addTask(page, "While signed out");
+  const signIn = page.getByRole("button", { name: "Sign in to sync" });
+  await expect(signIn).toBeVisible({ timeout: 15_000 });
+  await signIn.click();
+  const dialog = page.locator("dialog[open]");
+  // A hidden user-name field lets password managers fill the password.
+  await expect(dialog.locator('input[autocomplete="username"]')).toHaveValue("dev");
+  await dialog.getByLabel("Password").fill("dev");
+  await dialog.getByRole("button", { name: "Sign in" }).click();
+  await waitSynced(page);
+});

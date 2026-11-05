@@ -15,9 +15,7 @@ Work in progress on the current branch. Planned work beyond it is in
 ## UI
 
 - Design the screens chapter 8 lists as *Not designed yet*; update the sketches.
-- Hidden user-name field in the *Sign in to sync* dialog so password managers fill it.
 - Trusted Types with a single policy for the service-worker URL.
-- `de-CH` locale.
 
 ## Quality gates and delivery
 
