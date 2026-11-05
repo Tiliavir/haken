@@ -7,7 +7,8 @@ import { submitField } from "../fields.js";
 import { t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
 import type { ListId } from "../route.js";
-import { defaultList, localDate, show } from "../views.js";
+import { defaultList, focusParts, localDate, show } from "../views.js";
+import { rowActions } from "./rowactions.js";
 import { smartName } from "./sidebar.js";
 import { checkCircle, metaLine, starButton } from "./taskparts.js";
 
@@ -52,7 +53,13 @@ function taskRow(
     sortable && !view.done && !readonly
       ? h(
           "button",
-          { class: "grip", type: "button", "aria-label": t("task.drag", { title: view.summary }) },
+          {
+            class: "grip",
+            type: "button",
+            "aria-label": t("task.drag", { title: view.summary }),
+            // Keyboard reordering survives a background re-render.
+            "data-focus": `grip-${item.href}`,
+          },
           icon("grip"),
         )
       : h("span", { class: "grip-placeholder" }),
@@ -116,11 +123,47 @@ export class HakenList extends HTMLElement {
       input,
     );
 
+    // Focus: two parts, each with its own manual order.
+    const parts =
+      shown.smart === "focus"
+        ? (() => {
+            const p = focusParts(ctx.snapshot, ctx.now);
+            const part = (
+              name: "due" | "picked",
+              items: TaskItem[],
+              label: string,
+            ): HTMLElement | null => {
+              if (items.length === 0) return null;
+              const ul = h(
+                "ul",
+                { class: "tasks", "aria-label": label },
+                items.map((item) => taskRow(ctx, listId, item, true, true)),
+              );
+              const hrefs = items.filter((i) => i.view !== null).map((i) => i.href);
+              makeSortable(ul, (href, index) =>
+                ctx.run("ui.moveFocus", () => ctx.app.moveInFocus(href, name, hrefs, index)),
+              );
+              rowActions(ctx, ul);
+              return h(
+                "section",
+                { class: "focus-part" },
+                h("h2", { class: "part-title" }, label),
+                ul,
+              );
+            };
+            return [
+              part("due", p.due, t("focus.partDue")),
+              part("picked", p.picked, t("focus.partPicked")),
+            ];
+          })()
+        : null;
+
     const openList = h(
       "ul",
       { class: "tasks", "aria-label": title },
       open.map((item) => taskRow(ctx, listId, item, shown.sortable, shown.smart !== null)),
     );
+    rowActions(ctx, openList);
     if (shown.sortable) {
       makeSortable(
         openList,
@@ -158,7 +201,7 @@ export class HakenList extends HTMLElement {
       header,
       target === null ? null : add,
       open.length === 0 && done.length === 0 ? h("p", { class: "empty" }, t("list.empty")) : null,
-      openList,
+      parts ?? openList,
       done.length > 0
         ? h(
             "details",

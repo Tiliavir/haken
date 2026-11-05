@@ -43,7 +43,7 @@ async function setDue(page: Page, title: string, date: string): Promise<void> {
 }
 
 const focusTitles = (page: Page) =>
-  page.locator("haken-list > .tasks .task-row .title").allInnerTexts();
+  page.locator("haken-list .focus-part .task-row .title").allInnerTexts();
 
 test("Focus: overdue (red) and due (!) on top, then tasks put on Focus; they stay the next day", async ({
   page,
@@ -137,4 +137,35 @@ test("adding in Planned names the target list and takes the date at submit time"
   await page.keyboard.press("Enter");
   await page.locator(".task-row .title", { hasText: "After midnight" }).click();
   await expect(page.locator("#due-input")).toHaveValue(ymd(start + DAY));
+});
+
+test("Focus: each part has its own manual order, kept after reload", async ({ page }) => {
+  await setupLocal(page);
+  for (const title of ["One", "Two", "Three"]) {
+    await addTask(page, title);
+    await page
+      .locator("haken-list .task-row .title", { hasText: title })
+      .click({ button: "right" });
+    await page.getByRole("button", { name: "Add to Focus" }).click();
+    await expect(page.locator(".toast")).toHaveText("Added to Focus.");
+  }
+  await page.getByRole("link", { name: /^Focus/ }).click();
+  // Same day added: tie by UID, so read the order the app shows first.
+  await expect.poll(async () => (await focusTitles(page)).length).toBe(3);
+  const before = await focusTitles(page);
+  expect([...before].sort()).toEqual(["One", "Three", "Two"]);
+  const last = before[2] as string;
+  await page.getByRole("button", { name: `Move “${last}”` }).focus();
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  // The row moves in the DOM at once; the commit re-renders the list afterwards.
+  await page.locator("haken-list .focus-part ul").evaluate((el) => {
+    el.dataset["before"] = "1";
+  });
+  await page.keyboard.press("Enter");
+  await expect(page.locator("haken-list .focus-part ul[data-before]")).toHaveCount(0);
+  const expected = [last, before[0], before[1]];
+  await expect.poll(() => focusTitles(page)).toEqual(expected);
+  await page.reload();
+  await expect.poll(() => focusTitles(page)).toEqual(expected);
 });

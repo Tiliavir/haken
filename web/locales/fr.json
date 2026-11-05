@@ -236,5 +236,11 @@
   "repeat.everyYear.other": "Tous les {count} ans",
   "notice.advanced": "« {title} » est terminée pour cette fois. Prochaine fois : {date}.",
   "conflict.group.repeat": "Répétition",
-  "conflict.group.start": "Date de début"
+  "conflict.group.start": "Date de début",
+  "focus.partDue": "Échéance",
+  "focus.partPicked": "Choisies",
+  "focus.removed": "Retirée du Focus.",
+  "task.moveTo": "Déplacer vers la liste",
+  "task.moved": "Déplacée vers {list}.",
+  "task.list": "Liste"
 }

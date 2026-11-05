@@ -104,8 +104,8 @@ test("Focus: overdue and due first, then pinned tasks (newest first), never rese
     focusTasks(snapshot(tasks), NOW.getTime()).map((t) => t.view?.uid),
     [
       "overdue",
-      "due-today",
       "due-and-pinned",
+      "due-today",
       "pinned-new",
       "future-pinned",
       "pinned-old",

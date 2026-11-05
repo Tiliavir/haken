@@ -21,6 +21,7 @@ const task = (uid: string, sortOrder: number): TaskView => ({
   repeats: false,
   recurrence: null,
   focus: null,
+  focusOrder: null,
   prodid: null,
 });
 

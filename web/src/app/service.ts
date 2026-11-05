@@ -13,6 +13,7 @@ import {
   type ErrorReport,
   fingerprintOf,
 } from "../domain/errortask.js";
+import { asFocusOrder, type FocusPart } from "../domain/focus.js";
 import { type ImportResult, joinIcsFile, splitIcsFile } from "../domain/icsfile.js";
 import { compareTasks, orderAtEnd, orderOnTop, reorder } from "../domain/order.js";
 import {
@@ -38,6 +39,7 @@ import {
   type AccountRecord,
   type ConflictRecord,
   type ListRecord,
+  type OutboxInput,
   SCHEMA,
   type SetupStep,
   type TaskRecord,
@@ -758,6 +760,131 @@ export class AppService extends EventTarget implements ErrorSink {
         });
     }
     await this.changed({ putTasks, expect, addOps });
+  }
+
+  /** Moves a task inside one part of *Focus*; `siblings` are that part's open tasks in shown order. */
+  moveInFocus(
+    href: string,
+    part: FocusPart,
+    siblingHrefs: readonly string[],
+    targetIndex: number,
+  ): Promise<void> {
+    return this.exclusive(() => this.moveInFocusNow(href, part, siblingHrefs, targetIndex));
+  }
+
+  private async moveInFocusNow(
+    href: string,
+    part: FocusPart,
+    siblingHrefs: readonly string[],
+    targetIndex: number,
+  ): Promise<void> {
+    const siblings = siblingHrefs.map((h) => {
+      const item = this.findItem(h);
+      if (item === null || item.view === null)
+        throw new HakenError("app", "Unknown task", { path: h });
+      return item;
+    });
+    const moved = siblings.find((s) => s.href === href);
+    if (moved?.view == null)
+      throw new HakenError("app", "Moved task is not in this part", { path: href });
+    const views = asFocusOrder(viewsOf(siblings), part);
+    const moves = reorder(views, moved.view.uid, targetIndex);
+    const store = this.requireStore();
+    const now = new Date();
+    const changes: {
+      putTasks: TaskRecord[];
+      expect: { href: string; ics: string }[];
+      addOps: OutboxInput[];
+    } = {
+      putTasks: [],
+      expect: [],
+      addOps: [],
+    };
+    for (const move of moves) {
+      const target = siblings.find((s) => s.view?.uid === move.uid);
+      const record = target === undefined ? null : await store.task(target.href);
+      if (record === null) throw new HakenError("app", "Reorder record missing", { uid: move.uid });
+      const result = applyEdit(record.ics, { kind: "focusOrder", value: move.sortOrder }, now);
+      if (result.groups.length === 0) continue;
+      changes.putTasks.push({ ...record, ics: result.ics });
+      changes.expect.push({ href: record.href, ics: record.ics });
+      if (this.isServer) {
+        changes.addOps.push({
+          kind: "put",
+          href: record.href,
+          groups: [...result.groups],
+          editedAt: now.getTime(),
+        });
+      }
+    }
+    if (changes.putTasks.length > 0) await this.changed(changes);
+  }
+
+  /**
+   * Moves a task with its checklist to another list. In CalDAV a list is the
+   * collection the resource lives in, so this is a new resource in the target
+   * list and a delete of the old one, with the same UID. The old copy is
+   * deleted on the server only after the new one is confirmed (sync).
+   */
+  moveToList(href: string, targetList: string): Promise<string> {
+    return this.exclusive(() => this.moveToListNow(href, targetList));
+  }
+
+  private async moveToListNow(href: string, targetList: string): Promise<string> {
+    const store = this.requireStore();
+    const record = await this.taskRecord(href);
+    if (record.list === targetList) return href;
+    const target = await this.listRecord(targetList);
+    if (target.deleted) throw new HakenError("app", "Target list is deleted", { path: targetList });
+    const view = readTask(parseResource(record.ics));
+    if (view.parentUid !== null)
+      throw new HakenError("app", "Only top-level tasks move between lists", { path: href });
+    const now = new Date();
+    const targetItem = this.current.lists.find((l) => l.href === targetList);
+    const top = orderOnTop(
+      viewsOf((targetItem?.tasks ?? []).filter((t) => t.view !== null && !t.view.done)),
+      appleSeconds(now),
+    );
+    const steps = await this.stepRecords(record.list, view.uid);
+    const putTasks: TaskRecord[] = [];
+    const addOps: OutboxInput[] = [];
+    const expect: { href: string; ics: string | null }[] = [];
+    const conflicts = (await store.conflicts()).filter((c) =>
+      [record, ...steps].some((r) => r.href === c.href),
+    );
+    let newHref = href;
+    for (const r of [record, ...steps]) {
+      const ics =
+        r === record ? applyEdit(r.ics, { kind: "sortOrder", value: top }, now).ics : r.ics;
+      const name = r.href.slice(r.href.lastIndexOf("/") + 1);
+      const moved = `${targetList}${name}`;
+      if (r === record) newHref = moved;
+      if ((await store.task(moved)) !== null)
+        throw new HakenError("app", "Target resource exists", { path: moved });
+      putTasks.push({ ...r, href: moved, list: targetList, ics, etag: null, deleted: false });
+      expect.push({ href: moved, ics: null }, { href: r.href, ics: r.ics });
+      if (this.isServer) {
+        putTasks.push({ ...r, deleted: true });
+        addOps.push(
+          { kind: "put", href: moved, groups: resourceGroups(ics), editedAt: now.getTime() },
+          { kind: "delete", href: r.href, groups: [], editedAt: now.getTime() },
+        );
+      }
+    }
+    // Conflict notes stay with the task: they move to its new path.
+    const movedHref = (old: string) => `${targetList}${old.slice(old.lastIndexOf("/") + 1)}`;
+    await this.changed({
+      putTasks,
+      addOps,
+      expect,
+      deleteTasks: this.isServer ? [] : [record, ...steps].map((r) => r.href),
+      deleteConflicts: conflicts.map((c) => c.id),
+      addConflicts: conflicts.map(({ id: _id, schema: _schema, ...c }) => ({
+        ...c,
+        href: movedHref(c.href),
+      })),
+    });
+    return newHref;
   }
 
   useConflict(id: number): Promise<void> {

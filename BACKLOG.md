@@ -9,12 +9,10 @@ Work in progress on the current branch. Planned work beyond it is in
 - Check the total resource size against the gateway's 32 MiB body limit before attaching. Radicale answers `412`, not `413`, for a resource between `max_resource_size` (80 % of `max_content_length`) and `max_content_length`.
 - `413`: stop retrying every run; retry after the task changed.
 - Storage quota: warn when `navigator.storage.estimate()` is near the limit.
-- Move a task to another list.
 - Multi-tab: E2E with two tabs of the same account (Web Locks, BroadcastChannel).
 
 ## Features
 
-- *Focus*: manual order within each part; add to *Focus* on mobile by long-press.
 - Repeat: end after N times or on a date, monthly by weekday ("second Tuesday").
 - List colour and list order from the server; reorder lists by drag and drop.
 

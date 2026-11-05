@@ -236,5 +236,11 @@
   "repeat.everyYear.other": "Every {count} years",
   "notice.advanced": "“{title}” is done for now. Next: {date}.",
   "conflict.group.repeat": "Repeat",
-  "conflict.group.start": "Start date"
+  "conflict.group.start": "Start date",
+  "focus.partDue": "Due",
+  "focus.partPicked": "Picked",
+  "focus.removed": "Removed from Focus.",
+  "task.moveTo": "Move to list",
+  "task.moved": "Moved to {list}.",
+  "task.list": "List"
 }

@@ -236,5 +236,11 @@
   "repeat.everyYear.other": "Cada {count} años",
   "notice.advanced": "«{title}» está hecha por esta vez. Próxima: {date}.",
   "conflict.group.repeat": "Repetición",
-  "conflict.group.start": "Fecha de inicio"
+  "conflict.group.start": "Fecha de inicio",
+  "focus.partDue": "Vencen",
+  "focus.partPicked": "Elegidas",
+  "focus.removed": "Quitada de Enfoque.",
+  "task.moveTo": "Mover a la lista",
+  "task.moved": "Movida a {list}.",
+  "task.list": "Lista"
 }

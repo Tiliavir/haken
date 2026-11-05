@@ -236,5 +236,11 @@
   "repeat.everyYear.other": "Alle {count} Jahre",
   "notice.advanced": "„{title}“ ist für dieses Mal erledigt. Nächstes Mal: {date}.",
   "conflict.group.repeat": "Wiederholung",
-  "conflict.group.start": "Beginn"
+  "conflict.group.start": "Beginn",
+  "focus.partDue": "Fällig",
+  "focus.partPicked": "Ausgewählt",
+  "focus.removed": "Aus dem Fokus entfernt.",
+  "task.moveTo": "In Liste verschieben",
+  "task.moved": "Nach {list} verschoben.",
+  "task.list": "Liste"
 }

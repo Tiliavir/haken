@@ -661,6 +661,11 @@ export class SyncRunner {
     const ids = ops.map((o) => o.id);
 
     if (record.deleted) {
+      // A task moved to another list: the old copy goes only after the new one is on the server.
+      const moved = (await this.store.tasks()).some(
+        (t) => t.uid === record.uid && t.href !== href && !t.deleted && t.etag === null,
+      );
+      if (moved) return true;
       if (record.etag === null) {
         await this.store.commit({
           deleteTasks: [href],

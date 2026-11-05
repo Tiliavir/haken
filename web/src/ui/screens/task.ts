@@ -200,6 +200,38 @@ function steps(ctx: Ctx, item: TaskItem, readonly: boolean): HTMLElement {
 }
 
 /** *Add to Focus* / *Remove from Focus*: the task stays on Focus until taken off. */
+/** The list the task is in; choosing another one moves it there with its checklist. */
+function listRow(ctx: Ctx, item: TaskItem, listId: ListId): HTMLElement {
+  const lists = ctx.snapshot.lists.filter((l) => !l.errorlogs || l.href === item.list);
+  return h(
+    "div",
+    { class: "group-row" },
+    icon("list"),
+    h("label", { for: "list-select", class: "row-label" }, t("task.list")),
+    h(
+      "select",
+      {
+        id: "list-select",
+        onchange: (e: Event) => {
+          const target = (e.target as HTMLSelectElement).value;
+          ctx.run("ui.moveToList", async () => {
+            const name = ctx.snapshot.lists.find((l) => l.href === target)?.name ?? "";
+            const moved = await ctx.app.moveToList(item.href, target);
+            ctx.notify(t("task.moved", { list: name }));
+            // From a list screen, follow the task into its new list.
+            ctx.navigate({
+              kind: "task",
+              list: listId.kind === "list" ? { kind: "list", href: target } : listId,
+              task: moved,
+            });
+          });
+        },
+      },
+      lists.map((l) => h("option", { value: l.href, selected: l.href === item.list }, l.name)),
+    ),
+  );
+}
+
 function focusRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
   const on = view.focus !== null;
   return h(
@@ -538,6 +570,7 @@ export class HakenTask extends HTMLElement {
         "section",
         { class: "group" },
         view.parentUid === null && !readonly ? focusRow(ctx, item, view) : null,
+        view.parentUid === null && !readonly ? listRow(ctx, item, listId) : null,
         dueRow(ctx, item, view, readonly),
         view.parentUid === null && !readonly ? repeatRow(ctx, item, view) : null,
         labelsRow(ctx, item, view, readonly),

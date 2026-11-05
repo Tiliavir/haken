@@ -45,7 +45,8 @@ Smart lists are views and are never stored on the server. Their names are transl
 - Every open task shows a faint grip handle. Dragging starts only from the handle, so scrolling and tapping a row never reorder by accident (own Pointer Events code, see [Frontend](adr/ADR-20261103-vanilla-typescript-frontend.md)).
 - While dragging, the task lifts as a card (shadow, −1° rotation, accent-coloured grip), and an accent line with a ring marks the drop position.
 - Keyboard alternative: focus the handle, move with ↑ and ↓, drop with Enter or Space, cancel with Esc.
-- Completed tasks cannot be reordered. Persistence follows the [data mapping](adr/ADR-20261103-vtodo-mapping.md).
+- Completed tasks cannot be reordered. Persistence follows the [data mapping](adr/ADR-20261103-vtodo-mapping.md). In *Focus* each part (due, picked) is reordered within itself ([Focus](adr/ADR-20261104-focus.md)).
+- Long-press (touch) or right-click on a task row opens its actions: *Add to/Remove from Focus*, *Move to list*. The task screen offers the same actions for keyboard users.
 
 ### Design tokens
 
