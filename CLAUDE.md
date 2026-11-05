@@ -58,7 +58,7 @@ These outrank every other consideration, including feature velocity.
 First implementation in place. Architecture lives in
 [`docs/arc42/`](docs/arc42/README.md); stack and decisions are ADRs there.
 Implementation decisions waiting for review: [`decisions.md`](decisions.md).
-Planned work: [`BACKLOG.md`](BACKLOG.md).
+Work in progress: [`BACKLOG.md`](BACKLOG.md); planned work: GitHub issues.
 
 ## Commands
 

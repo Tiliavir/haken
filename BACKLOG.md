@@ -1,53 +1,34 @@
 # Backlog
 
-Work that is not done yet, to plan. Undecided questions are in
-[`OPEN.md`](OPEN.md); decisions to review in [`decisions.md`](decisions.md).
-
-## Blocked by an open question
-
-| Item | Blocked by |
-| --- | --- |
-| Reminders (`VALARM`): show, edit, fire | `OPEN.md` Reminders |
-| Gateway hardening: rate limit for Basic-auth paths, `/.well-known/caldav`, principal discovery paths, TLS end, `X-Forwarded-*` | `OPEN.md` Gateway security |
-| Final sort-order semantics and fixtures | `OPEN.md` Sort order |
-
-## Interoperability
-
-- Replace the synthetic fixtures with anonymised real exports from Tasks.org (via DAVx⁵), Thunderbird and Apple Reminders; add a round-trip test per client version.
-- Verify against Tasks.org that it keeps haken's `ATTACH` and `X-APPLE-SORT-ORDER` when it writes (ADR mapping, "covered by interop tests").
-- Repeating tasks, next steps: *repeat after completion* (after `OPEN.md`), end after N times or on a date (`COUNT`/`UNTIL`), monthly by weekday ("second Tuesday"), editing `RECURRENCE-ID` overrides if ever needed.
-- Verify with a real Tasks.org export that it reads haken's advanced `DUE`/`DTSTART` the same way, especially for weekly rules with weekdays.
-- CalDAV discovery (`/.well-known/caldav`, `current-user-principal`, `calendar-home-set`) instead of the fixed `/dav/<user>/` (D14).
-- Relax or confirm the `TZID` without `VTIMEZONE` rule once error tasks show real-world data (D11).
+Work in progress on the current branch. Planned work beyond it is in
+[GitHub issues](https://github.com/Tiliavir/haken/issues).
 
 ## Sync and store
 
 - List deleted while another client edits one of its tasks: the restored task is hidden and the `deletelist` operation never drains.
 - Check the total resource size against the gateway's 32 MiB body limit before attaching. Radicale answers `412`, not `413`, for a resource between `max_resource_size` (80 % of `max_content_length`) and `max_content_length`.
-- `413`: stop retrying every run; retry after the task changed (D23).
-- Storage quota: warn when `navigator.storage.estimate()` is near the limit (ADR strict errors lists quota warnings as expected states).
-- Move a task to another list (new href, delete + create with the same UID, conditional on both sides).
-- Promote a step to a task and back.
-- Snapshot performance: every change re-parses every VTODO; cache views by resource text.
-- Schema migration path (`schema: 2`) with a backup, as required by CLAUDE.md, before the first change to a record shape.
+- `413`: stop retrying every run; retry after the task changed.
+- Storage quota: warn when `navigator.storage.estimate()` is near the limit.
+- Move a task to another list.
 - Multi-tab: E2E with two tabs of the same account (Web Locks, BroadcastChannel).
+
+## Features
+
+- *Focus*: manual order within each part; add to *Focus* on mobile by long-press.
+- Repeat: end after N times or on a date, monthly by weekday ("second Tuesday").
+- List colour and list order from the server; reorder lists by drag and drop.
 
 ## UI
 
-- Design the screens chapter 8 lists as *Not designed yet* (setup, empty list, offline, conflict note and notice, logout confirmation); the current versions follow chapter 8 but are not designed. Update the sketches.
-- Focus: drag onto *Focus* on mobile (e.g. a long-press menu), manual order inside *Focus* (D57, D59).
-- Due time of day (time picker), reminder field (after `OPEN.md`).
-- List colour and list order (read from `calendar-color` / `calendar-order`, not editable yet); reorder lists by drag and drop.
-- Accessibility pass: announce drag-and-drop moves in a live region, focus management after deleting a task, screen-reader test.
+- Design the screens chapter 8 lists as *Not designed yet*; update the sketches.
 - Hidden user-name field in the *Sign in to sync* dialog so password managers fill it.
-- Trusted Types (`require-trusted-types-for 'script'`) with a single policy for the service-worker URL (D34).
-- Offer a `de-CH` locale (D42).
+- Trusted Types with a single policy for the service-worker URL.
+- `de-CH` locale.
 
 ## Quality gates and delivery
 
-- `make check` in pinned containers as the ADR says; today `make check` runs on the host and only CI uses a container.
-- Verify the pinned versions in CI and compose: Playwright image `v1.63.0-noble`, `staticcheck 2025.1.1`, `tomsquest/docker-radicale` tag. Pin images by digest.
-- E2E for the 5 MB attachment limit, theme and accent, language switch, setup on WebKit (Safari behaviour), install flow.
-- Coverage report for unit tests (`node --test --experimental-test-coverage`).
-- Type-check the E2E sources with `tsc` (today Playwright transpiles them without type checking).
-- Release process: version number in `app/errors.ts` `APP_VERSION` from the build, changelog, container tags.
+- `make check` in the pinned CI container, locally too.
+- Pin images and actions by digest; verify the pinned versions.
+- Coverage report (TypeScript and Go) and SonarCloud.
+- Type-check the E2E sources with `tsc`.
+- Release process: version from the build, changelog, container tags.

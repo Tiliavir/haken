@@ -1,6 +1,6 @@
 # ADR-20261105: Reminders fire only while haken is open
 
-Status: Accepted (implementation tracked in a GitHub issue)
+Status: Accepted (implementation: [#10](https://github.com/Tiliavir/haken/issues/10))
 
 ## Decision
 

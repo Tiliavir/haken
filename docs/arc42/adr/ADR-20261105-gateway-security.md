@@ -1,6 +1,6 @@
 # ADR-20261105: Gateway security
 
-Status: Accepted (implementation tracked in a GitHub issue)
+Status: Accepted (implementation: [#11](https://github.com/Tiliavir/haken/issues/11))
 
 ## Decision
 
