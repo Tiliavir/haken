@@ -58,7 +58,7 @@ coverage: gateway
 	cd gateway && go test -coverprofile=../coverage/go.out ./...
 
 # The CI run, locally: committed HEAD in the pinned CI image (needs Docker).
-CI_IMAGE := $(shell sed -n 's/^ *container: *//p' .github/workflows/ci.yml)
+CI_IMAGE := $(shell sed -n 's/^ *container: *//p' .github/workflows/check.yml)
 check-container:
 	git archive --format=tar HEAD | docker run --rm -i -e PLAYWRIGHT_CHANNEL=chromium $(CI_IMAGE) \
 		sh -c 'mkdir /src && tar -x -C /src && cd /src && tools/ci.sh'
