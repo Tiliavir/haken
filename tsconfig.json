@@ -24,6 +24,6 @@
     "sourceMap": false,
     "types": []
   },
-  "include": ["web/src/**/*.ts", "tests/unit/**/*.ts"],
+  "include": ["web/src/**/*.ts", "tests/unit/**/*.ts", "tests/node.d.ts"],
   "exclude": ["web/src/sw.ts"]
 }

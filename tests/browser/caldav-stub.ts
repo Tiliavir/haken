@@ -127,7 +127,9 @@ export class CalDavStub {
     await page.route(`${ORIGIN}/**`, (route) => this.route(route));
     await page.goto(`${ORIGIN}/`);
     await page.evaluate(async () => {
-      Object.assign(window, { h: await import("/harness.mjs") });
+      // Served by this stub from tests/browser; not a module the compiler can see.
+      const harness = "/harness.mjs";
+      Object.assign(window, { h: await import(harness) });
     });
   }
 

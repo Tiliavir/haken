@@ -23,6 +23,7 @@ test-browser: build
 
 lint:
 	$(NPX) biome ci .
+	$(NPX) tsc -p tsconfig.e2e.json
 	cd gateway && test -z "$$(gofmt -l .)" && go vet ./...
 
 fmt:
