@@ -12,7 +12,8 @@ Status: Accepted
 - **Occurrences** are computed by haken on the written wall-clock fields: `TZID`, UTC and floating values keep their form and time of day, also across DST. Months or years without the day are skipped (31st, 29 February), as RFC 5545 requires.
 - Setting a rule on a task without a due date sets today; a new rule gets a `DTSTART` equal to `DUE`. Moving the due date moves `DTSTART` by the same amount; removing the due date removes the rule.
 - Merge: `RRULE` and `DTSTART` are property groups of their own ([sync](ADR-20261103-sync-strategy.md)). Two devices completing the same occurrence write the same `DUE`, so there is no conflict.
-- Not supported yet: *repeat after completion*, end conditions, editing overrides.
+- **No *repeat after completion*.** No interoperable encoding exists: RFC 5545 has none, and Tasks.org keeps this setting in its own database only.
+- Not supported yet: end conditions, editing overrides.
 
 ## Why
 

@@ -37,7 +37,7 @@ Smart lists are views and are never stored on the server. Their names are transl
 - **Mobile:** one screen at a time; the header holds back navigation, which is labelled with the parent's name.
 - **Desktop:** three panes: sidebar (lists, 260 px), list (fluid, content max 760 px) and task detail (≥ 340 px, closable). The panes use `flex-wrap`, so they stack on narrow windows without breakpoint code. The selected list and selected task are highlighted with `--selected` / `--surface-2`.
 - The settings screen scrolls; nothing else needs to scroll horizontally.
-- Mobile shows one pane at a time by one CSS media query at 720 px (no layout code in JS; under review, [D36](../../decisions.md)).
+- Avoid breakpoint code; layouts adapt through `flex-wrap` and intrinsic sizes. The one exception: mobile shows one pane at a time by a single CSS media query at 720 px (no layout code in JS).
 - All modals use one `<dialog>` owned by `<haken-app>`; a re-render never closes it. Text in the focused field survives a re-render.
 
 ### Drag and drop

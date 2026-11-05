@@ -1,0 +1,60 @@
+# ADR-20261105: Implementation decisions of the first version
+
+Status: Accepted
+
+Decisions taken while implementing the accepted ADRs, reviewed one by one. Details live in the code named in brackets.
+
+## Decision
+
+### iCalendar
+
+- Round-trip fidelity is checked semantically (every property, parameter, value type and value), not line by line: ical.js reorders parameters (`tests/unit/helpers.ts`).
+- Merge and outbox work on property groups: `COMPLETION` = `STATUS` + `COMPLETED` + `PERCENT-COMPLETE`; a subcomponent type (`VALARM`) is one group; every other property is its own. `UID`, `DTSTAMP`, `LAST-MODIFIED`, `SEQUENCE` are never merged.
+- The merge result is built on the server version; only groups the local side wins are written over it. Without a merge base (a create raced) every differing group is decided by time. If nothing local survives, no `PUT` is sent.
+- Manual order is `X-APPLE-SORT-ORDER`, ascending. A missing value counts as seconds from 2001-01-01 to `CREATED` (else `DTSTAMP`). New tasks go on top (min − 1), new checklist items at the end (max + 1). A move writes only the moved task, plus the fewest following tasks when there is no integer gap. Written without `VALUE=`. This is exactly what Tasks.org does (`ORDER_BY_MANUAL` and `addTasksToTop` in its source); the name comes from Apple Reminders, which introduced it, and is used by Nextcloud Tasks and Tasks.org too. No standard property exists.
+- `STATUS:CANCELLED` counts as done.
+- `DATE-TIME` with a `TZID` but no matching `VTIMEZONE` is invalid input; haken stays strict.
+- haken writes `DUE` as a date; date-times from other clients are read and kept.
+- Only `http(s)` URI attachments are links.
+- A task is in exactly one list (one CalDAV collection); labels (`CATEGORIES`) are many per task. Paths: list `/dav/<user>/<uuid>/`, task `<list><uid>.ics` (a UUID name for UIDs outside `[A-Za-z0-9._-]`). The calendar home is `/dav/<user>/`; no CalDAV discovery, since haken always runs in front of its own Radicale.
+
+### Local store and sync
+
+- **Local accounts have no outbox.** Supersedes "the outbox is never drained" in [browser-only mode](ADR-20261103-browser-only-mode.md).
+- One database per account, `haken-account-<id>` (server: hash of origin and user; local: UUID); every record carries `schema` and is validated on read. Every transaction uses `durability: "strict"`.
+- `commit()` takes expectations; an edit that raced a sync computation fails with `StaleError`, and the sync step or command runs again on fresh state (at most 3 times). App commands run one after another.
+- Sync order: list operations → list discovery → pull → push → list deletes. Pulled changes are merged at once when local edits are pending. A `412` on push: `GET`, merge, retry, at most 3 times.
+- Deleting a list deletes its tasks with `If-Match`, then the collection only if it is empty. A list deleted elsewhere while haken has pending edits in it is re-created.
+- `502`, `503`, `504` from the gateway mean *unreachable*.
+- Writing an error task never triggers a sync. Orphaned checklist items show as top-level tasks.
+
+### Recurrence and Focus
+
+- The next occurrence counts from the current due date. Weekly rules with weekdays: the next chosen day in the week, else the first one `interval` weeks later (week starts Monday).
+- Advancing reopens the checklist. Only top-level tasks have a *Repeat* row.
+- Completed tasks show in *Focus* only on the day they were completed.
+
+### Gateway
+
+- Cookie `__Host-haken` (`HttpOnly; Secure; SameSite=Strict`). Login: `PROPFIND /<user>/`, 207 valid, 401/403 invalid, else 502; at most 5 failures per 15 min per client address and per user name.
+- User names `[A-Za-z0-9._@-]{1,64}`; `/api/session` accepts exact JSON only.
+- `/dav`: query strings removed, cookies never forwarded, `Set-Cookie` dropped, body limit 32 MiB, `X-Script-Name: /dav`, same-origin only, `/dav/<user>` and below only.
+- CSP `default-src 'none'` with `'self'` per resource type, as header and `<meta>`.
+
+### UI
+
+- Hash routes, so the app runs on any static host.
+- Mobile shows one pane at a time by a single CSS media query; no layout code in JS.
+- One `<dialog>` owned by the app root; focused text survives a re-render.
+- Smart lists: *Planned* by due date; *All* everything but errorlogs; *Important*, *Planned* and *All* cannot be reordered. Adding there goes into the first list.
+- The checklist is one level deep; deleting a task deletes its checklist.
+- Changing the language reloads the page. Logout export contains only tasks with pending changes. Setup progress is the account's `ready` flag.
+
+### Build
+
+- Dev tools pinned (TypeScript 7, Biome 2, vnu-jar, Playwright); Node 22, Go 1.24. `tools/build.mjs` assembles `dist/web` and stamps the service-worker cache with a hash of the shell. The gateway embeds `gateway/cmd/haken/dist`.
+- E2E runs against the real gateway and Radicale 3.9.0. The container image is `scratch` with one binary, running as user 65534.
+
+## Why
+
+Each decision was the simplest one that keeps the accepted ADRs' guarantees (no data loss, no leak, interoperability). The review is recorded in PR #6.

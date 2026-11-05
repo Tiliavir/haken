@@ -29,7 +29,7 @@ Files: [`deploy/Dockerfile`](../../deploy/Dockerfile), [`deploy/compose.yml`](..
 
 Updates: pull new images, `docker compose up -d`. The PWA's service worker picks up the new app shell on the next start.
 
-How other CalDAV clients reach Radicale, and where TLS ends, is under review in [`OPEN.md`](../../OPEN.md).
+Other CalDAV clients reach Radicale directly on its own host name through the reverse proxy, which ends TLS ([gateway security](adr/ADR-20261105-gateway-security.md)).
 
 ## Demo (GitHub Pages)
 

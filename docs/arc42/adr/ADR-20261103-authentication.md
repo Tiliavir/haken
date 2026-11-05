@@ -1,6 +1,6 @@
 # ADR-20261103: Authentication and authorization
 
-Status: Accepted
+Status: Accepted; partly superseded by [ADR-20261105-gateway-security](ADR-20261105-gateway-security.md) (Basic-auth passthrough)
 
 > The gateway's role for other CalDAV clients and its hardening are under review, see [`OPEN.md`](../../../OPEN.md).
 
