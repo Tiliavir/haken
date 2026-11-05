@@ -69,3 +69,12 @@ test("note and title save while typing, without a blur", async ({ page, context 
   await expect(page.getByLabel("Title")).toHaveValue("Autosave now");
   expect(problems).toEqual([]);
 });
+
+test("warns when the device storage is nearly full", async ({ page }) => {
+  await setupLocal(page);
+  await page.addInitScript(() => {
+    navigator.storage.estimate = async () => ({ usage: 90, quota: 100 });
+  });
+  await page.reload();
+  await expect(page.locator(".toast")).toContainText("90 % full");
+});

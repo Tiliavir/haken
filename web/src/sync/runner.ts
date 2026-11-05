@@ -695,6 +695,9 @@ export class SyncRunner {
     }
 
     const sent = record.ics;
+    // The server refused this exact content as too large: retry only after the task changed.
+    const refused = await this.store.state(`tooLarge:${href}`);
+    if (typeof refused === "string" && refused === (await sha256(sent))) return true;
     const result = await caldav.put(href, sent, record.etag);
     switch (result.kind) {
       case "ok": {
@@ -740,7 +743,7 @@ export class SyncRunner {
         return false;
       }
       case "too-large":
-        await this.store.commit({ putState: { [`tooLarge:${href}`]: Date.now() } });
+        await this.store.commit({ putState: { [`tooLarge:${href}`]: await sha256(sent) } });
         this.hooks.onNotice({ kind: "too-large", href });
         return true;
       case "not-found":

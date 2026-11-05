@@ -257,5 +257,6 @@
   "repeat.nth2": "second",
   "repeat.nth3": "third",
   "repeat.nth4": "fourth",
-  "repeat.nthLast": "last"
+  "repeat.nthLast": "last",
+  "notice.storageFull": "Storage on this device is {percent} % full. Remove attachments or completed tasks so new changes can be saved."
 }

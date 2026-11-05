@@ -257,5 +257,6 @@
   "repeat.nth2": "segundo",
   "repeat.nth3": "tercer",
   "repeat.nth4": "cuarto",
-  "repeat.nthLast": "último"
+  "repeat.nthLast": "último",
+  "notice.storageFull": "El almacenamiento de este dispositivo está al {percent} %. Elimina adjuntos o tareas completadas para poder guardar nuevos cambios."
 }

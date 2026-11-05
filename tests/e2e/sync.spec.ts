@@ -201,3 +201,26 @@ test("a local edit lost to an unreadable server version can be exported", async 
   const text = readFileSync(await file.path(), "utf8");
   expect(text).toContain("SUMMARY:Whole edited offline");
 });
+
+test("two tabs of the same account: edits in one show in the other, both sync", async ({
+  page,
+  context,
+}) => {
+  await setupServer(page);
+  const other = await context.newPage();
+  await other.goto(page.url());
+  await addTask(page, "From tab one");
+  await expect(other.locator(".task-row .title", { hasText: "From tab one" })).toBeVisible();
+  await addTask(other, "From tab two");
+  await expect(page.locator(".task-row .title", { hasText: "From tab two" })).toBeVisible();
+  await other
+    .locator(".task-row", { hasText: "From tab one" })
+    .getByRole("button", { name: "Mark as completed" })
+    .click();
+  await expect(page.locator(".completed")).toHaveCount(1);
+  await waitSynced(page);
+  await waitSynced(other);
+  await page.reload();
+  await expect(page.locator(".task-row .title", { hasText: "From tab two" })).toBeVisible();
+  await expect(page.locator(".completed")).toHaveCount(1);
+});

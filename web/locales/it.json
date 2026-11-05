@@ -257,5 +257,6 @@
   "repeat.nth2": "secondo",
   "repeat.nth3": "terzo",
   "repeat.nth4": "quarto",
-  "repeat.nthLast": "ultimo"
+  "repeat.nthLast": "ultimo",
+  "notice.storageFull": "La memoria di questo dispositivo è piena al {percent} %. Rimuovi allegati o attività completate per poter salvare nuove modifiche."
 }
