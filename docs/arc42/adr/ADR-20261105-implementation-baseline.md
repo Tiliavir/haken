@@ -55,6 +55,7 @@ Decisions taken while implementing the accepted ADRs, reviewed one by one. Detai
 ### Build
 
 - Dev tools pinned (TypeScript 7, Biome 2, vnu-jar, Playwright); Node 22, Go 1.24. `tools/build.mjs` assembles `dist/web` and stamps the service-worker cache with a hash of the shell. The gateway embeds `gateway/cmd/haken/dist`.
+- CI runs `tools/ci.sh` in the Playwright image pinned by digest; `make check-container` runs the same script locally on committed HEAD. Actions are pinned by commit SHA with the version as a comment; Dependabot updates both. Go comes as `GOTOOLCHAIN=go1.24.7`, verified against the Go checksum database.
 - E2E runs against the real gateway and Radicale 3.9.0. The container image is `scratch` with one binary, running as user 65534.
 
 ## Why

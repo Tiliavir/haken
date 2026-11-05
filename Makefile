@@ -3,7 +3,7 @@ SHELL := /bin/sh
 NPX := npx --no-install
 CONFIG ?= web/config.json
 
-.PHONY: build build-demo test test-unit test-browser test-go lint fmt validate e2e check run clean gateway
+.PHONY: build build-demo test test-unit test-browser test-go lint fmt validate e2e check check-container run clean gateway
 
 build:
 	rm -rf dist
@@ -46,6 +46,12 @@ e2e: gateway
 	$(NPX) playwright test
 
 check: lint test-unit test-browser validate test-go e2e
+
+# The CI run, locally: committed HEAD in the pinned CI image (needs Docker).
+CI_IMAGE := $(shell sed -n 's/^ *container: *//p' .github/workflows/ci.yml)
+check-container:
+	git archive --format=tar HEAD | docker run --rm -i -e PLAYWRIGHT_CHANNEL=chromium $(CI_IMAGE) \
+		sh -c 'mkdir /src && tar -x -C /src && cd /src && tools/ci.sh'
 
 # Local development: Radicale (pip) on :5232, gateway on :8080.
 run: gateway

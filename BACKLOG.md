@@ -9,7 +9,5 @@ Work in progress on the current branch. Planned work beyond it is in
 
 ## Quality gates and delivery
 
-- `make check` in the pinned CI container, locally too.
-- Pin images and actions by digest; verify the pinned versions.
 - Coverage report (TypeScript and Go) and SonarCloud.
 - Release process: version from the build, changelog, container tags.
