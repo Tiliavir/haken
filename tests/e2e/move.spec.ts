@@ -43,7 +43,7 @@ test("move a task with its checklist to another list; the server has it once, in
   await page
     .locator("haken-list .task-row .title", { hasText: "Travelling task" })
     .click({ button: "right" });
-  await page.getByRole("button", { name: "Other" }).click();
+  await page.getByRole("button", { name: "Other", exact: true }).click();
   await expect(page.locator(".toast")).toHaveText("Moved to Other.");
   await expect(page.locator("haken-list .task-row", { hasText: "Travelling task" })).toHaveCount(0);
   await waitSynced(page);

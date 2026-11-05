@@ -259,5 +259,6 @@
   "repeat.nth4": "cuarto",
   "repeat.nthLast": "último",
   "notice.storageFull": "El almacenamiento de este dispositivo está al {percent} %. Elimina adjuntos o tareas completadas para poder guardar nuevos cambios.",
-  "lists.drag": "Mover «{name}»"
+  "lists.drag": "Mover «{name}»",
+  "task.taskTooLarge": "Con este archivo la tarea superaría los 32 MB. Elimina primero un adjunto."
 }

@@ -436,6 +436,7 @@ function attachmentsRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: bool
       ctx.run("ui.attach", async () => {
         const result = await ctx.app.attach(item.href, chosen);
         if (result.kind === "too-large") ctx.notify(t("task.attachmentTooLarge"));
+        if (result.kind === "task-too-large") ctx.notify(t("task.taskTooLarge"));
       });
     },
   });

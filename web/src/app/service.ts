@@ -54,6 +54,10 @@ export type { Notice } from "../sync/runner.js";
 
 export const DEFAULT_LIST = "Haken";
 export const ATTACHMENT_LIMIT = 5 * 1024 * 1024;
+/** The gateway's request body limit (`proxy.MaxBody`): a whole task resource must fit. */
+export const RESOURCE_LIMIT = 32 * 1024 * 1024;
+/** Room for the ATTACH parameters and line folding (3 bytes per 75). */
+const ATTACH_OVERHEAD = 1024;
 const ERROR_TASKS_PER_DAY = 20;
 
 export interface TaskItem {
@@ -100,7 +104,12 @@ export interface Snapshot {
 
 export type AddResult = { readonly kind: "ok"; readonly href: string };
 
-export type AttachResult = { readonly kind: "ok" } | { readonly kind: "too-large" };
+export type AttachResult =
+  | { readonly kind: "ok" }
+  /** The file is over `ATTACHMENT_LIMIT`. */
+  | { readonly kind: "too-large" }
+  /** The task with the file would be over `RESOURCE_LIMIT`. */
+  | { readonly kind: "task-too-large" };
 
 export interface ImportPreview {
   readonly result: ImportResult;
@@ -973,11 +982,15 @@ export class AppService extends EventTarget implements ErrorSink {
   private async attachNow(href: string, file: File): Promise<AttachResult> {
     if (file.size > ATTACHMENT_LIMIT) return { kind: "too-large" };
     const bytes = new Uint8Array(await file.arrayBuffer());
+    const base64 = bytesToBase64(bytes);
+    const current = new TextEncoder().encode((await this.taskRecord(href)).ics).length;
+    if (current + Math.ceil((base64.length * 78) / 75) + ATTACH_OVERHEAD > RESOURCE_LIMIT)
+      return { kind: "task-too-large" };
     await this.editNow(href, {
       kind: "addAttachment",
       filename: file.name === "" ? "attachment" : file.name,
       mediaType: file.type === "" ? "application/octet-stream" : file.type,
-      base64: bytesToBase64(bytes),
+      base64,
     });
     return { kind: "ok" };
   }

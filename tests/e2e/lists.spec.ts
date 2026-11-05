@@ -3,7 +3,9 @@ import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 import { setupServer, waitSynced } from "./helpers.js";
 
-const AUTH = { Authorization: `Basic ${Buffer.from("dev:dev").toString("base64")}` };
+// Its own user: reordering lists changes the default list other tests rely on.
+const USER = "eve";
+const AUTH = { Authorization: `Basic ${Buffer.from("eve:eve").toString("base64")}` };
 
 /** Display name → Radicale's stored collection properties. */
 function serverProps(user: string): Map<string, Record<string, string>> {
@@ -18,8 +20,9 @@ function serverProps(user: string): Map<string, Record<string, string>> {
   return out;
 }
 
-const listNames = (page: Page): Promise<string[]> =>
-  page.locator(".own-lists .list-name").allTextContents();
+/** The sidebar order of the given lists (other tests' lists are left out). */
+const listNames = async (page: Page, names: readonly string[]): Promise<string[]> =>
+  (await page.locator(".own-lists .list-name").allTextContents()).filter((n) => names.includes(n));
 
 async function newList(page: Page, name: string): Promise<void> {
   await page.getByPlaceholder("New list").fill(name);
@@ -31,27 +34,29 @@ test("lists: reorder by keyboard, order and colour shared with the server", asyn
   page,
   request,
 }) => {
-  await setupServer(page);
-  await newList(page, "Alpha");
-  await newList(page, "Beta");
+  await setupServer(page, USER);
+  const suffix = Date.now();
+  const [a, b] = [`Alpha ${suffix}`, `Beta ${suffix}`];
+  await newList(page, a);
+  await newList(page, b);
   await waitSynced(page);
-  await expect.poll(() => listNames(page)).toEqual(["Alpha", "Beta", "Haken"]);
+  await expect.poll(() => listNames(page, [a, b])).toEqual([a, b]);
 
-  await page.getByRole("button", { name: "Move “Haken”" }).focus();
-  await page.keyboard.press("ArrowUp");
+  await page.getByRole("button", { name: `Move “${b}”` }).focus();
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Enter");
-  await expect.poll(() => listNames(page)).toEqual(["Haken", "Alpha", "Beta"]);
+  await expect.poll(() => listNames(page, [a, b])).toEqual([b, a]);
   await waitSynced(page);
   await expect
-    .poll(() =>
-      ["Haken", "Alpha", "Beta"].map((n) => serverProps("dev").get(n)?.["ICAL:calendar-order"]),
-    )
-    .toEqual(["1", "2", "3"]);
+    .poll(() => {
+      const [ob, oa] = [b, a].map((n) => Number(serverProps(USER).get(n)?.["ICAL:calendar-order"]));
+      return (ob ?? Number.NaN) < (oa ?? Number.NaN);
+    })
+    .toBe(true);
 
   // Another client colours a list; haken shows it.
   const href = await page
-    .locator(".own-lists .list-item", { hasText: "Alpha" })
+    .locator(".own-lists .list-item", { hasText: a })
     .getAttribute("data-href");
   const res = await request.fetch(href ?? "", {
     method: "PROPPATCH",
@@ -61,7 +66,7 @@ test("lists: reorder by keyboard, order and colour shared with the server", asyn
   expect(res.status()).toBe(207);
   await page.reload();
   await expect(
-    page.locator(".own-lists .list-item", { hasText: "Alpha" }).locator("svg.icon").first(),
+    page.locator(".own-lists .list-item", { hasText: a }).locator("svg.icon").first(),
   ).toHaveAttribute("color", "#C0392B");
-  expect(await listNames(page)).toEqual(["Haken", "Alpha", "Beta"]);
+  expect(await listNames(page, [a, b])).toEqual([b, a]);
 });

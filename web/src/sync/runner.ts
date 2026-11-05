@@ -399,24 +399,32 @@ export class SyncRunner {
   private async pushListDeletes(): Promise<void> {
     for (const op of (await this.store.outbox()).filter((o) => o.kind === "deletelist")) {
       const remaining = (await this.store.tasks()).filter((t) => t.list === op.href);
+      // A task came back (changed elsewhere before its delete) or was added elsewhere: keep the list.
+      if (remaining.some((t) => !t.deleted)) {
+        await this.restoreList(op);
+        continue;
+      }
       if (remaining.length > 0) continue; // task deletes still pending or failed; retry next run
       await this.isolated(op.href, null, async () => {
         const members = await caldav.memberCount(op.href);
         if (members > 0) {
           // Another client added tasks since: keep the list (nothing is deleted that haken has not seen).
-          const list = (await this.store.lists()).find((l) => l.href === op.href);
-          if (list !== undefined)
-            await this.store.commit({
-              putLists: [{ ...list, deleted: false }],
-              deleteOps: [op.id],
-            });
-          this.hooks.onNotice({ kind: "restored", href: op.href });
+          await this.restoreList(op);
           return;
         }
         await caldav.deleteCollection(op.href);
         await this.store.commit({ deleteLists: [op.href], deleteOps: [op.id] });
       });
     }
+  }
+
+  /** Undoes a local list delete: the list shows again, its `deletelist` operation is dropped. */
+  private async restoreList(op: { readonly id: number; readonly href: string }): Promise<void> {
+    const list = (await this.store.lists()).find((l) => l.href === op.href);
+    if (list === undefined)
+      throw new RunError("sync", "Outbox entry for unknown list", { path: op.href });
+    await this.store.commit({ putLists: [{ ...list, deleted: false }], deleteOps: [op.id] });
+    this.hooks.onNotice({ kind: "restored", href: op.href });
   }
 
   // ------------------------------------------------------------ pull

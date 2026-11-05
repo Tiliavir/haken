@@ -24,7 +24,8 @@ Decisions taken while implementing the accepted ADRs, reviewed one by one. Detai
 - One database per account, `haken-account-<id>` (server: hash of origin and user; local: UUID); every record carries `schema` and is validated on read. Every transaction uses `durability: "strict"`.
 - `commit()` takes expectations; an edit that raced a sync computation fails with `StaleError`, and the sync step or command runs again on fresh state (at most 3 times). App commands run one after another.
 - Sync order: list operations → list discovery → pull → push → list deletes. Pulled changes are merged at once when local edits are pending. A `412` on push: `GET`, merge, retry, at most 3 times.
-- Deleting a list deletes its tasks with `If-Match`, then the collection only if it is empty. A list deleted elsewhere while haken has pending edits in it is re-created.
+- Deleting a list deletes its tasks with `If-Match`, then the collection only if it is empty. A list deleted elsewhere while haken has pending edits in it is re-created; a list deleted here keeps existing when one of its tasks comes back (changed elsewhere before its delete) or was added elsewhere.
+- An attachment is refused when the whole task would pass the gateway's 32 MiB body limit. A Radicale `max_resource_size` below it answers `412`, not `413`; after 3 attempts the task is quarantined with an error task.
 - `502`, `503`, `504` from the gateway mean *unreachable*.
 - Writing an error task never triggers a sync. Orphaned checklist items show as top-level tasks.
 

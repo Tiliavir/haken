@@ -259,5 +259,6 @@
   "repeat.nth4": "vierten",
   "repeat.nthLast": "letzten",
   "notice.storageFull": "Der Speicher auf diesem Gerät ist zu {percent} % belegt. Entferne Anhänge oder erledigte Aufgaben, damit neue Änderungen gespeichert werden können.",
-  "lists.drag": "„{name}“ verschieben"
+  "lists.drag": "„{name}“ verschieben",
+  "task.taskTooLarge": "Mit dieser Datei wäre die Aufgabe größer als 32 MB. Entferne zuerst einen Anhang."
 }
