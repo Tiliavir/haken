@@ -272,6 +272,25 @@ test.describe("quarantine", () => {
     expect(await page.evaluate(() => window.h.quarantined())).toEqual([]);
   });
 
+  test("413: the same content is not sent again; a change is", async ({ page }) => {
+    const href = await page.evaluate(() => window.h.addTask("big", "Big"));
+    stub.fault = (method, path) => (method === "PUT" && path === href ? { status: 413 } : null);
+    expect(await sync(page)).toBe("synced");
+    expect(await sync(page)).toBe("synced");
+    expect(stub.count(`PUT ${href}`)).toBe(1);
+    expect(await page.evaluate(() => window.h.quarantined())).toEqual([]);
+
+    stub.fault = null;
+    await page.evaluate(
+      (href) => window.h.editTask(href, { kind: "summary", value: "Smaller" }),
+      href,
+    );
+    expect(await sync(page)).toBe("synced");
+    expect(stub.count(`PUT ${href}`)).toBe(2);
+    expect(summaryOf(stub.ics(href))).toBe("Smaller");
+    expect(await page.evaluate(() => window.h.store.outbox())).toEqual([]);
+  });
+
   test("a failing pull of one task waits for a new server version", async ({ page }) => {
     const href = await synced(page, "t1", "One");
     // Another client puts a different UID at the same path: the merge with the pending edit fails.

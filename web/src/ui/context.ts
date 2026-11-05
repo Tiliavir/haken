@@ -19,6 +19,11 @@ export interface Ctx {
   readonly dialog: HTMLDialogElement;
 }
 
+/** "Offline · 2 changes pending": what is waiting stays visible while sync cannot run. */
+function withPending(text: string, count: number): string {
+  return count === 0 ? text : `${text} · ${tp("sync.pending", count)}`;
+}
+
 export function statusText(status: SyncStatus): string {
   switch (status.kind) {
     case "local":
@@ -32,9 +37,9 @@ export function statusText(status: SyncStatus): string {
     case "syncing":
       return t("sync.syncing");
     case "offline":
-      return t("sync.offline");
+      return withPending(t("sync.offline"), status.count);
     case "signin":
-      return t("sync.signin");
+      return withPending(t("sync.signin"), status.count);
     case "error":
       return t("sync.error");
   }

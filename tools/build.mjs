@@ -27,6 +27,15 @@ if (!existsSync(join(out, "src", "main.js")) || !existsSync(join(out, "src", "sw
   throw new Error("run tsc first: dist/web/src/main.js or sw.js missing");
 }
 
+// The app version: package.json `version`, stamped into the compiled module (ADR-20261105-implementation-baseline).
+const appVersion = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
+if (typeof appVersion !== "string" || !/^\d+\.\d+\.\d+$/.test(appVersion))
+  throw new Error(`package.json version is not x.y.z: ${appVersion}`);
+const errorsPath = join(out, "src", "app", "errors.js");
+const errorsJs = readFileSync(errorsPath, "utf8");
+if (errorsJs.split("__HAKEN_VERSION__").length !== 2) throw new Error("app version marker missing");
+writeFileSync(errorsPath, errorsJs.replace("__HAKEN_VERSION__", appVersion));
+
 const copy = (from, to = from, filter = () => true) =>
   cpSync(join(root, "web", from), join(out, to), { recursive: true, filter: (src) => filter(src) });
 
@@ -63,4 +72,4 @@ const sw = readFileSync(swPath, "utf8");
 if (!sw.includes("__HAKEN_BUILD__")) throw new Error("service worker build marker missing");
 writeFileSync(swPath, sw.replace("__HAKEN_BUILD__", version));
 rmSync(join(out, "src", "sw.d.ts"), { force: true });
-console.log(`dist/web: ${files.length} files, shell ${version}`);
+console.log(`dist/web: ${files.length} files, version ${appVersion}, shell ${version}`);

@@ -1,0 +1,37 @@
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+    secrets: inherit
+
+  release:
+    needs: check
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # GitHub release
+      packages: write # ghcr.io image
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Tag, package.json and changelog agree
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          test "$(node -p 'require("./package.json").version')" = "$version"
+          awk -v v="$version" '$0 ~ "^## \\[" v "\\]" {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > notes.md
+          test -s notes.md
+      - name: Image
+        run: |
+          image="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          docker build -f deploy/Dockerfile -t "$image:${GITHUB_REF_NAME#v}" -t "$image:latest" .
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push --all-tags "$image"
+      - run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag

@@ -57,8 +57,9 @@ These outrank every other consideration, including feature velocity.
 
 First implementation in place. Architecture lives in
 [`docs/arc42/`](docs/arc42/README.md); stack and decisions are ADRs there.
-Implementation decisions waiting for review: [`decisions.md`](decisions.md).
-Planned work: [`BACKLOG.md`](BACKLOG.md).
+Planned work: GitHub issues. `decisions.md` (implementation decisions waiting
+for review), `BACKLOG.md` (work in progress on the current branch) and
+`OPEN.md` exist only while they have entries.
 
 ## Commands
 
@@ -71,11 +72,13 @@ and Chrome (or `PLAYWRIGHT_CHANNEL=chromium` with Playwright's browser).
 | `make build` | `tsc` + assemble `dist/web` (`make build-demo`: GitHub Pages build) |
 | `make test-unit` | Unit and architecture tests (`node:test`) |
 | `make test-browser` | Store and sync modules in the browser against a CalDAV stub (Playwright, no servers) |
-| `make lint` / `make fmt` | Biome, `gofmt`, `go vet` / fix formatting |
+| `make lint` / `make fmt` | Biome, `tsc` on test sources, `gofmt`, `go vet` / fix formatting |
 | `make validate` | W3C validator on HTML, CSS, SVG |
 | `make test-go` | Gateway tests (builds `dist/haken`) |
 | `make e2e` | Playwright against gateway + Radicale (data in `e2e-data/`) |
 | `make check` | All of the above, as CI |
+| `make coverage` | Unit (LCOV) and gateway (Go profile) coverage in `coverage/` |
+| `make check-container` | `tools/ci.sh` on committed HEAD in the pinned CI image (Docker) |
 | `make run` | Radicale + gateway on <http://127.0.0.1:8080>, users `dev`/`dev`, `eve`/`eve` |
 
 ## Agent sessions
@@ -100,8 +103,8 @@ Then push new branches with `git push -u origin <branch>`.
 - Update the affected chapters and ADRs in the same change as the code.
 - UI rules, screens and design tokens: [`08-crosscutting-concepts.md`](docs/arc42/08-crosscutting-concepts.md).
   Follow it for every UI change; update it when the design changes.
-- Questions still waiting for a decision live in [`OPEN.md`](OPEN.md).
-  Do not implement anything listed there before it is decided.
+- Questions still waiting for a decision live in `OPEN.md`. Do not
+  implement anything listed there before it is decided.
 
 ## Working conventions
 

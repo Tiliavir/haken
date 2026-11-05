@@ -14,3 +14,12 @@ Thanks for your interest! A few ground rules:
 
 By contributing, you agree that your contributions are licensed under the
 project's [0BSD license](LICENSE).
+
+## Releasing
+
+1. On `main`: set `version` in `package.json` (and `package-lock.json`, via
+   `npm version --no-git-tag-version <x.y.z>`), rename *Unreleased* in
+   [CHANGELOG.md](CHANGELOG.md) to `## [x.y.z] - YYYY-MM-DD`, merge.
+2. Tag that commit `vx.y.z` and push the tag. The release workflow runs the
+   full check, then publishes `ghcr.io/tiliavir/haken:x.y.z` and `:latest`
+   and a GitHub release with the changelog section.

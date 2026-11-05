@@ -117,7 +117,7 @@ test("export pending changes deletes only after the user confirms the file is sa
   await expect(page.getByText("Is the file haken-pending.ics saved?")).toBeVisible();
   // Cancel keeps everything.
   await page.locator("dialog").getByRole("button", { name: "Cancel" }).click();
-  await expect(page.getByText("1 change pending")).toBeVisible();
+  await expect(page.getByText("1 change pending", { exact: true })).toBeVisible();
   await button(page, "Log out");
   await button(page, "Export pending changes, then delete");
   await button(page, "Saved, delete and log out");
@@ -132,4 +132,22 @@ test("gateway refuses another user's collection", async ({ page, request }) => {
   expect(status).toBe(403);
   const anonymous = await request.fetch("/dav/dev/", { method: "PROPFIND" });
   expect(anonymous.status()).toBe(401);
+});
+
+test("an ended session: edits stay local, signing in again syncs them", async ({
+  page,
+  context,
+}) => {
+  await setupServer(page);
+  await context.clearCookies();
+  await addTask(page, "While signed out");
+  const signIn = page.getByRole("button", { name: "Sign in to sync" });
+  await expect(signIn).toBeVisible({ timeout: 15_000 });
+  await signIn.click();
+  const dialog = page.locator("dialog[open]");
+  // A hidden user-name field lets password managers fill the password.
+  await expect(dialog.locator('input[autocomplete="username"]')).toHaveValue("dev");
+  await dialog.getByLabel("Password").fill("dev");
+  await dialog.getByRole("button", { name: "Sign in" }).click();
+  await waitSynced(page);
 });

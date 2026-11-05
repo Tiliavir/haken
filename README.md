@@ -38,7 +38,7 @@ first and foremost. No accounts, no cloud, no tracking.
 - [x] Offline queue with conflict handling
 - [x] Interop with other CalDAV clients (Tasks.org, Thunderbird, …) — tested with synthetic samples so far
 - [x] Browser-only mode without a server, `.ics` export and import
-- [x] English, German, French, Spanish, Italian; light and dark; custom accent
+- [x] English, German (also Swiss spelling), French, Spanish, Italian; light and dark; custom accent
 
 ## Running it
 
@@ -49,8 +49,9 @@ npm ci
 make run        # http://127.0.0.1:8080, user dev / password dev
 ```
 
-On a server: build the container from [`deploy/Dockerfile`](deploy/Dockerfile)
-and run it next to Radicale as in [`deploy/compose.yml`](deploy/compose.yml),
+On a server: use the image `ghcr.io/tiliavir/haken` (from the first release,
+see [CHANGELOG.md](CHANGELOG.md)) or build it from
+[`deploy/Dockerfile`](deploy/Dockerfile), and run it next to Radicale as in [`deploy/compose.yml`](deploy/compose.yml),
 behind a reverse proxy that terminates TLS. See
 [chapter 7](docs/arc42/07-deployment-view.md).
 

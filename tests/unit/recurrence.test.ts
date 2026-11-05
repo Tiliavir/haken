@@ -36,23 +36,28 @@ describe("reading rules", () => {
       freq: "WEEKLY",
       interval: 2,
       byDay: [],
+      monthlyNth: null,
+      end: { kind: "never" },
     });
     assert.deepEqual(view(task("20261102", "FREQ=WEEKLY;BYDAY=FR,MO")).recurrence, {
       freq: "WEEKLY",
       interval: 1,
       byDay: ["MO", "FR"],
+      monthlyNth: null,
+      end: { kind: "never" },
     });
     assert.deepEqual(view(fixture("repeating.ics")).recurrence, {
       freq: "WEEKLY",
       interval: 1,
       byDay: [],
+      monthlyNth: null,
+      end: { kind: "never" },
     });
   });
   test("valid rules outside the subset are kept read-only", () => {
     for (const ics of [
-      fixture("recurring-count.ics"),
       task("20261102", "FREQ=MONTHLY;BYMONTHDAY=15"),
-      task("20261102", "FREQ=MONTHLY;BYDAY=1MO"),
+      task("20261102", "FREQ=MONTHLY;BYDAY=1MO,3MO"),
       task("20261102", "FREQ=HOURLY"),
       task("20261102", "FREQ=WEEKLY").replace(
         "END:VTODO",
@@ -151,7 +156,13 @@ describe("editing the rule", () => {
       plain,
       {
         kind: "recurrence",
-        value: { freq: "WEEKLY", interval: 1, byDay: ["MO", "TU", "WE", "TH", "FR"] },
+        value: {
+          freq: "WEEKLY",
+          interval: 1,
+          byDay: ["MO", "TU", "WE", "TH", "FR"],
+          monthlyNth: null,
+          end: { kind: "never" },
+        },
         today: "2026-11-04",
       },
       NOW,
@@ -181,9 +192,34 @@ describe("editing the rule", () => {
     );
     assert.deepEqual(r.groups, ["RRULE"]);
     assert.ok(has(r.ics, "DUE;VALUE=DATE:20261102"));
-    assert.equal(ruleString({ freq: "MONTHLY", interval: 1, byDay: [] }), "FREQ=MONTHLY");
-    assert.throws(() => ruleString({ freq: "MONTHLY", interval: 1, byDay: ["MO"] }));
-    assert.throws(() => ruleString({ freq: "DAILY", interval: 0, byDay: [] }));
+    assert.equal(
+      ruleString({
+        freq: "MONTHLY",
+        interval: 1,
+        byDay: [],
+        monthlyNth: null,
+        end: { kind: "never" },
+      }),
+      "FREQ=MONTHLY",
+    );
+    assert.throws(() =>
+      ruleString({
+        freq: "MONTHLY",
+        interval: 1,
+        byDay: ["MO"],
+        monthlyNth: null,
+        end: { kind: "never" },
+      }),
+    );
+    assert.throws(() =>
+      ruleString({
+        freq: "DAILY",
+        interval: 0,
+        byDay: [],
+        monthlyNth: null,
+        end: { kind: "never" },
+      }),
+    );
   });
 });
 
@@ -202,4 +238,88 @@ test("two devices completing the same occurrence offline do not conflict", () =>
   );
   assert.deepEqual(r.notes, []);
   assert.deepEqual(view(r.ics).due, { kind: "date", date: "2026-11-09" });
+});
+
+describe("ends and monthly weekdays", () => {
+  const never = { kind: "never" } as const;
+  test("COUNT counts down; the last occurrence completes for good (as Tasks.org)", () => {
+    let ics = fixture("recurring-count.ics");
+    assert.deepEqual(view(ics).recurrence?.end, { kind: "count", count: 5 });
+    for (const left of [4, 3, 2, 1]) {
+      ics = complete(ics).ics;
+      assert.equal(view(ics).done, false);
+      assert.deepEqual(view(ics).recurrence?.end, { kind: "count", count: left });
+    }
+    assert.ok(has(ics, "RRULE:FREQ=DAILY;COUNT=1"));
+    ics = complete(ics).ics;
+    assert.equal(view(ics).done, true);
+    assert.deepEqual(view(ics).due, { kind: "date", date: "2026-11-05" });
+  });
+  test("UNTIL: past the end date the task completes for good", () => {
+    let ics = task("20261102", "FREQ=WEEKLY;UNTIL=20261110");
+    assert.deepEqual(view(ics).recurrence?.end, { kind: "until", date: "2026-11-10" });
+    ics = complete(ics).ics;
+    assert.deepEqual(view(ics).due, { kind: "date", date: "2026-11-09" });
+    ics = complete(ics).ics;
+    assert.equal(view(ics).done, true);
+  });
+  test("UNTIL in a form haken would not write back stays read-only", () => {
+    assert.equal(view(task("20261102", "FREQ=WEEKLY;UNTIL=20261110T120000Z")).recurrence, null);
+  });
+  test("monthly on the second Tuesday and on the last Friday", () => {
+    const next = (due: string, rule: string) => {
+      const d = view(complete(task(due, rule)).ics).due;
+      return d?.kind === "date" ? d.date : null;
+    };
+    assert.deepEqual(view(task("20261110", "FREQ=MONTHLY;BYDAY=2TU")).recurrence?.monthlyNth, {
+      nth: 2,
+      day: "TU",
+    });
+    assert.equal(next("20261110", "FREQ=MONTHLY;BYDAY=2TU"), "2026-12-08");
+    assert.equal(next("20261127", "FREQ=MONTHLY;BYDAY=-1FR"), "2026-12-25");
+    assert.equal(next("20261227", "FREQ=MONTHLY;INTERVAL=2;BYDAY=-1FR"), "2027-02-26");
+    // A due date that is not an occurrence itself moves to the next one in the same month.
+    assert.equal(next("20261101", "FREQ=MONTHLY;BYDAY=2TU"), "2026-11-10");
+    assert.equal(view(task("20261110", "FREQ=MONTHLY;BYDAY=2TU,3TU")).recurrence, null);
+  });
+  test("rules with an end are written canonically", () => {
+    assert.equal(
+      ruleString({
+        freq: "MONTHLY",
+        interval: 1,
+        byDay: [],
+        monthlyNth: { nth: -1, day: "FR" },
+        end: { kind: "count", count: 3 },
+      }),
+      "FREQ=MONTHLY;BYDAY=-1FR;COUNT=3",
+    );
+    assert.equal(
+      ruleString({
+        freq: "WEEKLY",
+        interval: 2,
+        byDay: [],
+        monthlyNth: null,
+        end: { kind: "until", date: "2026-12-31" },
+      }),
+      "FREQ=WEEKLY;INTERVAL=2;UNTIL=20261231",
+    );
+    assert.throws(() =>
+      ruleString({
+        freq: "WEEKLY",
+        interval: 1,
+        byDay: [],
+        monthlyNth: { nth: 2, day: "TU" },
+        end: never,
+      }),
+    );
+    assert.throws(() =>
+      ruleString({
+        freq: "DAILY",
+        interval: 1,
+        byDay: [],
+        monthlyNth: null,
+        end: { kind: "count", count: 0 },
+      }),
+    );
+  });
 });

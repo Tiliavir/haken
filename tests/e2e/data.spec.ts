@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { addTask, button, guard, setupLocal, setupServer, waitSynced } from "./helpers.js";
+import { addTask, guard, setupLocal, setupServer, waitSynced } from "./helpers.js";
 
 // Radicale's max_content_length in E2E (playwright.config.ts). Bodies above it get 413.
 const RADICALE_LIMIT = 1_000_000;
@@ -149,24 +149,74 @@ test("a task the server rejects as too large (413) stays local and recovers", as
   expect(stored()).not.toContain("ATTACH");
 });
 
-// BACKLOG.md: "list deleted while another client edits one of its tasks:
-// restored task hidden, `deletelist` op never drains".
-test.fixme("a list deleted here while another client edits one of its tasks", async ({
+test("a list deleted here while another client edits one of its tasks keeps that list", async ({
   page,
   context,
+  request,
 }) => {
+  const auth = { Authorization: `Basic ${Buffer.from("dev:dev").toString("base64")}` };
   await setupServer(page);
-  await page.getByRole("textbox", { name: "New list" }).fill("Shared list");
+  const name = `Shared list ${Date.now()}`;
+  await page.getByRole("textbox", { name: "New list" }).fill(name);
   await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name })).toBeVisible();
   await addTask(page, "Edited elsewhere");
   await waitSynced(page);
+  const list = await page
+    .locator(".own-lists .list-item", { hasText: name })
+    .getAttribute("data-href");
   await context.setOffline(true);
   await page.getByRole("button", { name: "Delete list" }).click();
   await page.locator("dialog").getByRole("button", { name: "Delete" }).click();
-  // Another client changes "Edited elsewhere" on the server, then haken reconnects.
-  // Expected: the task is restored and visible in its list (kept), and the outbox drains.
+  await expect(page.locator(".own-lists .list-item", { hasText: name })).toHaveCount(0);
+
+  // Another client changes the task on the server.
+  const listing = await request.fetch(list ?? "", {
+    method: "PROPFIND",
+    headers: { ...auth, Depth: "1", "Content-Type": "application/xml" },
+    data: '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:getetag/></d:prop></d:propfind>',
+  });
+  const href = [...(await listing.text()).matchAll(/<(?:\w+:)?href>([^<]+\.ics)</g)][0]?.[1];
+  expect(href).toBeDefined();
+  const current = await request.get(href ?? "", { headers: auth });
+  const put = await request.put(href ?? "", {
+    headers: {
+      ...auth,
+      "Content-Type": "text/calendar; charset=utf-8",
+      "If-Match": current.headers()["etag"] ?? "",
+    },
+    data: (await current.text()).replace(
+      "SUMMARY:Edited elsewhere",
+      "SUMMARY:Edited elsewhere too",
+    ),
+  });
+  expect(put.status()).toBe(204);
+
+  // Back online: the change wins, the task and its list come back, nothing stays queued.
   await context.setOffline(false);
-  await button(page, "Shared list");
-  await expect(page.locator(".task-row .title", { hasText: "Edited elsewhere" })).toBeVisible();
+  await page.locator(".own-lists .list-item", { hasText: name }).click({ timeout: 15_000 });
+  await expect(page.locator(".task-row .title", { hasText: "Edited elsewhere too" })).toBeVisible();
   await waitSynced(page);
+  expect((await request.get(href ?? "", { headers: auth })).status()).toBe(200);
+});
+
+test("attachments stop before the whole task outgrows the gateway's 32 MB limit", async ({
+  page,
+}) => {
+  await setupLocal(page);
+  await addTask(page, "Heavy");
+  await page.locator(".task-row .title", { hasText: "Heavy" }).click();
+  // 4.9 MB each: about 6.7 MB as base64, so the fifth file would pass 32 MB.
+  const file = Buffer.alloc(4_900_000, 0x62);
+  for (let i = 1; i <= 4; i++) {
+    await page
+      .locator("#attach-input")
+      .setInputFiles({ name: `part${i}.bin`, mimeType: "application/octet-stream", buffer: file });
+    await expect(page.locator(".attachment", { hasText: `part${i}.bin` })).toBeVisible();
+  }
+  await page
+    .locator("#attach-input")
+    .setInputFiles({ name: "part5.bin", mimeType: "application/octet-stream", buffer: file });
+  await expect(page.locator(".toast")).toContainText("larger than 32 MB");
+  await expect(page.locator(".attachment")).toHaveCount(4);
 });

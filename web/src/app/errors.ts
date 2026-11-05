@@ -8,7 +8,8 @@
 import { HakenError } from "../domain/errors.js";
 import { ERRORLOGS, type ErrorReport, fingerprint } from "../domain/errortask.js";
 
-export const APP_VERSION = "0.1.0";
+/** `version` from package.json, stamped by tools/build.mjs. */
+export const APP_VERSION = "__HAKEN_VERSION__";
 
 export interface ErrorSink {
   /** Writes (creates or bumps) the error task. Returns `false` if the daily limit is reached. */

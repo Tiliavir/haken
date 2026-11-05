@@ -146,6 +146,13 @@ describe("edits", () => {
     const low = fixture("tasksorg-subtask.ics");
     assert.deepEqual(applyEdit(low, { kind: "important", value: false }, NOW).groups, []);
   });
+  test("clearing a text removes the property and is a change", () => {
+    const noted = applyEdit(base, { kind: "description", value: "a note" }, NOW).ics;
+    const cleared = applyEdit(noted, { kind: "description", value: "" }, NOW);
+    assert.deepEqual(cleared.groups, ["DESCRIPTION"]);
+    assert.equal(readTask(parseResource(cleared.ics)).description, "");
+    assert.deepEqual(applyEdit(cleared.ics, { kind: "description", value: "" }, NOW).groups, []);
+  });
   test("no-op edits change nothing", () => {
     const r = applyEdit(base, { kind: "summary", value: "First" }, NOW);
     assert.deepEqual(r.groups, []);
@@ -174,7 +181,7 @@ describe("edits", () => {
   });
   test("repeating tasks outside the supported rules are read-only", () => {
     assert.throws(() =>
-      applyEdit(fixture("recurring-count.ics"), { kind: "summary", value: "x" }, NOW),
+      applyEdit(fixture("recurring-bymonthday.ics"), { kind: "summary", value: "x" }, NOW),
     );
   });
 });

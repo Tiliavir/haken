@@ -13,6 +13,7 @@ import {
   type ErrorReport,
   fingerprintOf,
 } from "../domain/errortask.js";
+import { asFocusOrder, type FocusPart } from "../domain/focus.js";
 import { type ImportResult, joinIcsFile, splitIcsFile } from "../domain/icsfile.js";
 import { compareTasks, orderAtEnd, orderOnTop, reorder } from "../domain/order.js";
 import {
@@ -38,6 +39,7 @@ import {
   type AccountRecord,
   type ConflictRecord,
   type ListRecord,
+  type OutboxInput,
   SCHEMA,
   type SetupStep,
   type TaskRecord,
@@ -52,6 +54,10 @@ export type { Notice } from "../sync/runner.js";
 
 export const DEFAULT_LIST = "Haken";
 export const ATTACHMENT_LIMIT = 5 * 1024 * 1024;
+/** The gateway's request body limit (`proxy.MaxBody`): a whole task resource must fit. */
+export const RESOURCE_LIMIT = 32 * 1024 * 1024;
+/** Room for the ATTACH parameters and line folding (3 bytes per 75). */
+const ATTACH_OVERHEAD = 1024;
 const ERROR_TASKS_PER_DAY = 20;
 
 export interface TaskItem {
@@ -98,7 +104,12 @@ export interface Snapshot {
 
 export type AddResult = { readonly kind: "ok"; readonly href: string };
 
-export type AttachResult = { readonly kind: "ok" } | { readonly kind: "too-large" };
+export type AttachResult =
+  | { readonly kind: "ok" }
+  /** The file is over `ATTACHMENT_LIMIT`. */
+  | { readonly kind: "too-large" }
+  /** The task with the file would be over `RESOURCE_LIMIT`. */
+  | { readonly kind: "task-too-large" };
 
 export interface ImportPreview {
   readonly result: ImportResult;
@@ -428,6 +439,12 @@ export class AppService extends EventTarget implements ErrorSink {
       throw new HakenError("app", "Server account without user", { account: account.id });
     this.syncState = "syncing";
     await this.refresh();
+    // Notices name tasks by their current title: they go out after the snapshot shows the run.
+    const notices: Notice[] = [];
+    const announce = (): void => {
+      for (const notice of notices.splice(0))
+        this.dispatchEvent(new CustomEvent<Notice>("notice", { detail: notice }));
+    };
     const runner = new SyncRunner(store, account.user, {
       onInvalid: async (info) => {
         await this.reporter.report(info.error, "sync.pull");
@@ -435,8 +452,7 @@ export class AppService extends EventTarget implements ErrorSink {
       onQuarantine: async (info) => {
         await this.reporter.report(info.error, `sync.quarantine ${info.href}`);
       },
-      onNotice: (notice) =>
-        this.dispatchEvent(new CustomEvent<Notice>("notice", { detail: notice })),
+      onNotice: (notice) => notices.push(notice),
       onChange: () => this.channel?.postMessage("changed"),
     });
     try {
@@ -445,10 +461,12 @@ export class AppService extends EventTarget implements ErrorSink {
     } catch (error) {
       this.syncState = "error";
       await this.refresh();
+      announce();
       await this.reporter.report(error, "sync.run");
       return;
     }
     await this.refresh();
+    announce();
   }
 
   get syncResult(): "idle" | "syncing" | "offline" | "expired" | "error" {
@@ -505,6 +523,32 @@ export class AppService extends EventTarget implements ErrorSink {
           ? [{ kind: "proppatch", href, groups: ["displayName"], editedAt: Date.now() }]
           : [],
     });
+  }
+
+  /**
+   * Moves a list to `targetIndex` among the shown lists (errorlogs stays last).
+   * The order is written as `calendar-order` 1…n; only lists whose order changes are patched.
+   */
+  moveList(href: string, targetIndex: number): Promise<void> {
+    return this.exclusive(() => this.moveListNow(href, targetIndex));
+  }
+
+  private async moveListNow(href: string, targetIndex: number): Promise<void> {
+    const shown = this.snapshot.lists.filter((l) => !l.errorlogs).map((l) => l.href);
+    if (!shown.includes(href))
+      throw new HakenError("app", "Moved list is not shown", { path: href });
+    const rest = shown.filter((h) => h !== href);
+    rest.splice(Math.max(0, Math.min(targetIndex, rest.length)), 0, href);
+    const putLists: ListRecord[] = [];
+    const addOps: OutboxInput[] = [];
+    for (const [i, h] of rest.entries()) {
+      const list = await this.listRecord(h);
+      if (list.order === i + 1) continue;
+      putLists.push({ ...list, order: i + 1 });
+      if (this.isServer && list.state === "synced")
+        addOps.push({ kind: "proppatch", href: h, groups: ["order"], editedAt: Date.now() });
+    }
+    if (putLists.length > 0) await this.changed({ putLists, addOps });
   }
 
   deleteList(href: string): Promise<void> {
@@ -648,8 +692,13 @@ export class AppService extends EventTarget implements ErrorSink {
     const addOps: { kind: "put"; href: string; groups: string[]; editedAt: number }[] = [];
     if (this.isServer)
       addOps.push({ kind: "put", href, groups: [...result.groups], editedAt: now.getTime() });
+    // Advanced: completed, but still open (the last occurrence completes for good).
     const advanced =
-      edit.kind === "done" && edit.value && !before.done && before.recurrence !== null;
+      edit.kind === "done" &&
+      edit.value &&
+      !before.done &&
+      before.recurrence !== null &&
+      !readTask(parseResource(result.ics)).done;
     if (advanced) {
       // The next occurrence starts with its checklist open again, in the same commit.
       for (const step of await this.stepRecords(record.list, before.uid)) {
@@ -760,6 +809,131 @@ export class AppService extends EventTarget implements ErrorSink {
     await this.changed({ putTasks, expect, addOps });
   }
 
+  /** Moves a task inside one part of *Focus*; `siblings` are that part's open tasks in shown order. */
+  moveInFocus(
+    href: string,
+    part: FocusPart,
+    siblingHrefs: readonly string[],
+    targetIndex: number,
+  ): Promise<void> {
+    return this.exclusive(() => this.moveInFocusNow(href, part, siblingHrefs, targetIndex));
+  }
+
+  private async moveInFocusNow(
+    href: string,
+    part: FocusPart,
+    siblingHrefs: readonly string[],
+    targetIndex: number,
+  ): Promise<void> {
+    const siblings = siblingHrefs.map((h) => {
+      const item = this.findItem(h);
+      if (item === null || item.view === null)
+        throw new HakenError("app", "Unknown task", { path: h });
+      return item;
+    });
+    const moved = siblings.find((s) => s.href === href);
+    if (moved?.view == null)
+      throw new HakenError("app", "Moved task is not in this part", { path: href });
+    const views = asFocusOrder(viewsOf(siblings), part);
+    const moves = reorder(views, moved.view.uid, targetIndex);
+    const store = this.requireStore();
+    const now = new Date();
+    const changes: {
+      putTasks: TaskRecord[];
+      expect: { href: string; ics: string }[];
+      addOps: OutboxInput[];
+    } = {
+      putTasks: [],
+      expect: [],
+      addOps: [],
+    };
+    for (const move of moves) {
+      const target = siblings.find((s) => s.view?.uid === move.uid);
+      const record = target === undefined ? null : await store.task(target.href);
+      if (record === null) throw new HakenError("app", "Reorder record missing", { uid: move.uid });
+      const result = applyEdit(record.ics, { kind: "focusOrder", value: move.sortOrder }, now);
+      if (result.groups.length === 0) continue;
+      changes.putTasks.push({ ...record, ics: result.ics });
+      changes.expect.push({ href: record.href, ics: record.ics });
+      if (this.isServer) {
+        changes.addOps.push({
+          kind: "put",
+          href: record.href,
+          groups: [...result.groups],
+          editedAt: now.getTime(),
+        });
+      }
+    }
+    if (changes.putTasks.length > 0) await this.changed(changes);
+  }
+
+  /**
+   * Moves a task with its checklist to another list. In CalDAV a list is the
+   * collection the resource lives in, so this is a new resource in the target
+   * list and a delete of the old one, with the same UID. The old copy is
+   * deleted on the server only after the new one is confirmed (sync).
+   */
+  moveToList(href: string, targetList: string): Promise<string> {
+    return this.exclusive(() => this.moveToListNow(href, targetList));
+  }
+
+  private async moveToListNow(href: string, targetList: string): Promise<string> {
+    const store = this.requireStore();
+    const record = await this.taskRecord(href);
+    if (record.list === targetList) return href;
+    const target = await this.listRecord(targetList);
+    if (target.deleted) throw new HakenError("app", "Target list is deleted", { path: targetList });
+    const view = readTask(parseResource(record.ics));
+    if (view.parentUid !== null)
+      throw new HakenError("app", "Only top-level tasks move between lists", { path: href });
+    const now = new Date();
+    const targetItem = this.current.lists.find((l) => l.href === targetList);
+    const top = orderOnTop(
+      viewsOf((targetItem?.tasks ?? []).filter((t) => t.view !== null && !t.view.done)),
+      appleSeconds(now),
+    );
+    const steps = await this.stepRecords(record.list, view.uid);
+    const putTasks: TaskRecord[] = [];
+    const addOps: OutboxInput[] = [];
+    const expect: { href: string; ics: string | null }[] = [];
+    const conflicts = (await store.conflicts()).filter((c) =>
+      [record, ...steps].some((r) => r.href === c.href),
+    );
+    let newHref = href;
+    for (const r of [record, ...steps]) {
+      const ics =
+        r === record ? applyEdit(r.ics, { kind: "sortOrder", value: top }, now).ics : r.ics;
+      const name = r.href.slice(r.href.lastIndexOf("/") + 1);
+      const moved = `${targetList}${name}`;
+      if (r === record) newHref = moved;
+      if ((await store.task(moved)) !== null)
+        throw new HakenError("app", "Target resource exists", { path: moved });
+      putTasks.push({ ...r, href: moved, list: targetList, ics, etag: null, deleted: false });
+      expect.push({ href: moved, ics: null }, { href: r.href, ics: r.ics });
+      if (this.isServer) {
+        putTasks.push({ ...r, deleted: true });
+        addOps.push(
+          { kind: "put", href: moved, groups: resourceGroups(ics), editedAt: now.getTime() },
+          { kind: "delete", href: r.href, groups: [], editedAt: now.getTime() },
+        );
+      }
+    }
+    // Conflict notes stay with the task: they move to its new path.
+    const movedHref = (old: string) => `${targetList}${old.slice(old.lastIndexOf("/") + 1)}`;
+    await this.changed({
+      putTasks,
+      addOps,
+      expect,
+      deleteTasks: this.isServer ? [] : [record, ...steps].map((r) => r.href),
+      deleteConflicts: conflicts.map((c) => c.id),
+      addConflicts: conflicts.map(({ id: _id, schema: _schema, ...c }) => ({
+        ...c,
+        href: movedHref(c.href),
+      })),
+    });
+    return newHref;
+  }
+
   useConflict(id: number): Promise<void> {
     return this.exclusive(() => this.useConflictNow(id));
   }
@@ -815,11 +989,15 @@ export class AppService extends EventTarget implements ErrorSink {
   private async attachNow(href: string, file: File): Promise<AttachResult> {
     if (file.size > ATTACHMENT_LIMIT) return { kind: "too-large" };
     const bytes = new Uint8Array(await file.arrayBuffer());
+    const base64 = bytesToBase64(bytes);
+    const current = new TextEncoder().encode((await this.taskRecord(href)).ics).length;
+    if (current + Math.ceil((base64.length * 78) / 75) + ATTACH_OVERHEAD > RESOURCE_LIMIT)
+      return { kind: "task-too-large" };
     await this.editNow(href, {
       kind: "addAttachment",
       filename: file.name === "" ? "attachment" : file.name,
       mediaType: file.type === "" ? "application/octet-stream" : file.type,
-      base64: bytesToBase64(bytes),
+      base64,
     });
     return { kind: "ok" };
   }

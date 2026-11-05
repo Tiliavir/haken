@@ -111,7 +111,7 @@ func newID() string {
 }
 
 // ClientKey identifies the client for rate limiting. Only RemoteAddr is used:
-// trusting X-Forwarded-For is undecided (OPEN.md, gateway security).
+// X-Forwarded-For is not trusted (ADR-20261105-gateway-security).
 func ClientKey(r *http.Request) string {
 	host := r.RemoteAddr
 	if i := strings.LastIndexByte(host, ':'); i > 0 {

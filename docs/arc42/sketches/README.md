@@ -24,3 +24,22 @@ Desktop, three panes:
 
 Known differences to chapter 8: the settings sketches still show the old
 storage selector instead of the read-only account block with *Log out*.
+
+## App screens
+
+Screenshots of the running app (phone, light, English, synthetic data),
+rendered by `SCREENS=1 npx playwright test screens` after `make gateway`.
+
+| Setup | | |
+| --- | --- | --- |
+| ![Welcome](app/setup-1-welcome.png) | ![Intro](app/setup-2-intro.png) | ![Storage](app/setup-3-storage.png) |
+| Welcome | Intro | Storage |
+| ![Sign in](app/setup-4-signin.png) | ![Install](app/setup-5-install.png) | ![Keep data](app/setup-6-persist.png) |
+| Sign in | Install | Keep data |
+
+| States | | |
+| --- | --- | --- |
+| ![Lists](app/lists.png) | ![Empty list](app/list-empty.png) | ![Offline](app/lists-offline.png) |
+| Lists | Empty list | Offline, changes pending |
+| ![Conflict note](app/task-conflict.png) | ![Logout](app/logout-pending.png) | |
+| Conflict note and notice | Logout with pending changes | |

@@ -1,6 +1,6 @@
 # ADR-20261103: Browser-only mode without a server
 
-Status: Accepted
+Status: Accepted; partly superseded by [ADR-20261105-implementation-baseline](ADR-20261105-implementation-baseline.md) (no outbox for local accounts)
 
 ## Decision
 

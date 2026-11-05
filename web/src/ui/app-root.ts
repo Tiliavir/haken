@@ -18,6 +18,9 @@ import { dueLabel } from "./screens/taskparts.js";
 import { applyTheme } from "./theme.js";
 import { defaultList } from "./views.js";
 
+/** Share of the storage quota above which haken warns. */
+const STORAGE_WARN = 0.8;
+
 export function defineElements(): void {
   customElements.define("haken-sidebar", HakenSidebar);
   customElements.define("haken-list", HakenList);
@@ -59,7 +62,24 @@ export class HakenApp extends HTMLElement {
     onDragEnd(() => {
       if (this.pending) this.schedule();
     });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") this.storageCheck();
+    });
+    this.storageCheck();
     this.schedule();
+  }
+
+  private storageCheck(): void {
+    this.checkStorage().catch((error: unknown) =>
+      this.app?.reporter.report(error, "Check storage quota"),
+    );
+  }
+
+  /** Warns while the browser's storage for haken is nearly full: new edits could fail to save. */
+  private async checkStorage(): Promise<void> {
+    const { usage, quota } = await navigator.storage.estimate();
+    if (usage !== undefined && quota !== undefined && quota > 0 && usage / quota > STORAGE_WARN)
+      this.notify(t("notice.storageFull", { percent: Math.round((usage / quota) * 100) }));
   }
 
   private schedule(): void {

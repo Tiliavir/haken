@@ -1,6 +1,7 @@
 /** Lists screen / desktop sidebar (chapter 8, Screens: Lists). */
 
 import { type Ctx, syncStatus } from "../context.js";
+import { makeSortable } from "../dnd/sortable.js";
 import { fill, h } from "../dom.js";
 import { t, tp } from "../i18n.js";
 import { type IconName, icon } from "../icons.js";
@@ -32,11 +33,26 @@ function selected(ctx: Ctx, id: ListId): boolean {
   return (r.kind === "list" || r.kind === "task") && sameList(r.list, id);
 }
 
-function row(ctx: Ctx, id: ListId, iconName: IconName, name: string, count: number): HTMLElement {
+function row(
+  ctx: Ctx,
+  id: ListId,
+  iconName: IconName,
+  name: string,
+  count: number,
+  options: { readonly sortable?: boolean; readonly color?: string | null } = {},
+): HTMLElement {
   const href = id.kind === "smart" ? `#/smart/${id.id}` : `#/list/${encodeURIComponent(id.href)}`;
+  const glyph = icon(iconName);
+  // The list's own colour (calendar-color) as an SVG presentation attribute: no inline style.
+  if (options.color != null) glyph.setAttribute("color", options.color.slice(0, 7));
+  const sortable = options.sortable === true && id.kind === "list";
   return h(
     "li",
-    {},
+    {
+      class: "list-item",
+      "data-sortable": sortable ? "" : undefined,
+      "data-href": id.kind === "list" ? id.href : undefined,
+    },
     h(
       "a",
       {
@@ -45,10 +61,22 @@ function row(ctx: Ctx, id: ListId, iconName: IconName, name: string, count: numb
         "aria-current": selected(ctx, id) ? "page" : undefined,
         "data-drop": id.kind === "smart" && id.id === "focus" ? "focus" : undefined,
       },
-      icon(iconName),
+      glyph,
       h("span", { class: "list-name" }, name),
       count > 0 ? h("span", { class: "count" }, String(count)) : null,
     ),
+    sortable
+      ? h(
+          "button",
+          {
+            class: "grip",
+            type: "button",
+            "aria-label": t("lists.drag", { name }),
+            "data-focus": `list-grip-${id.href}`,
+          },
+          icon("grip"),
+        )
+      : null,
   );
 }
 
@@ -127,21 +155,32 @@ export class HakenSidebar extends HTMLElement {
           ),
         ),
         h("hr", { class: "divider" }),
-        h(
-          "ul",
-          { class: "lists" },
-          ctx.snapshot.lists.map((l) =>
-            row(
-              ctx,
-              { kind: "list", href: l.href },
-              l.errorlogs ? "alert" : "list",
-              l.name,
-              l.openCount,
-            ),
-          ),
-        ),
+        ownLists(ctx),
       ),
       form,
     );
   }
+}
+
+/** The user's lists, in server order (`calendar-order`); reorder by the grip. Errorlogs stays last. */
+function ownLists(ctx: Ctx): HTMLElement {
+  const ul = h(
+    "ul",
+    { class: "lists own-lists" },
+    ctx.snapshot.lists.map((l) =>
+      row(
+        ctx,
+        { kind: "list", href: l.href },
+        l.errorlogs ? "alert" : "list",
+        l.name,
+        l.openCount,
+        {
+          sortable: !l.errorlogs,
+          color: l.errorlogs ? null : l.color,
+        },
+      ),
+    ),
+  );
+  makeSortable(ul, (href, index) => ctx.run("ui.moveList", () => ctx.app.moveList(href, index)));
+  return ul;
 }

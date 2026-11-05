@@ -3,7 +3,7 @@ SHELL := /bin/sh
 NPX := npx --no-install
 CONFIG ?= web/config.json
 
-.PHONY: build build-demo test test-unit test-browser test-go lint fmt validate e2e check run clean gateway
+.PHONY: build build-demo test test-unit test-browser test-go lint fmt validate e2e check check-container coverage run clean gateway
 
 build:
 	rm -rf dist
@@ -23,14 +23,16 @@ test-browser: build
 
 lint:
 	$(NPX) biome ci .
+	$(NPX) tsc -p tsconfig.e2e.json
 	cd gateway && test -z "$$(gofmt -l .)" && go vet ./...
 
 fmt:
 	$(NPX) biome check --write .
 	cd gateway && gofmt -w .
 
+# vnu does not know `field-sizing` (CSS Basic User Interface 4) yet.
 validate: build
-	java -jar node_modules/vnu-jar/build/dist/vnu.jar --skip-non-html --filterpattern ".*Content Security Policy.*" --also-check-css --also-check-svg \
+	java -jar node_modules/vnu-jar/build/dist/vnu.jar --skip-non-html --filterpattern ".*Content Security Policy.*|.*field-sizing.*" --also-check-css --also-check-svg \
 		dist/web/index.html dist/web/styles dist/web/icons
 
 gateway: build
@@ -46,9 +48,25 @@ e2e: gateway
 
 check: lint test-unit test-browser validate test-go e2e
 
+# Coverage of unit (TypeScript, mapped to the sources) and gateway tests, as LCOV and Go profile.
+coverage: gateway
+	$(NPX) tsc -p tsconfig.json --sourceMap
+	mkdir -p coverage
+	node --enable-source-maps --test --experimental-test-coverage \
+		--test-coverage-exclude='dist/web/vendor/**' --test-coverage-exclude='tests/**' \
+		--test-reporter=dot --test-reporter-destination=stdout \
+		--test-reporter=lcov --test-reporter-destination=coverage/lcov.info "dist/tests/unit/*.test.js"
+	cd gateway && go test -coverprofile=../coverage/go.out ./...
+
+# The CI run, locally: committed HEAD in the pinned CI image (needs Docker).
+CI_IMAGE := $(shell sed -n 's/^ *container: *//p' .github/workflows/check.yml)
+check-container:
+	git archive --format=tar HEAD | docker run --rm -i -e PLAYWRIGHT_CHANNEL=chromium $(CI_IMAGE) \
+		sh -c 'mkdir /src && tar -x -C /src && cd /src && tools/ci.sh'
+
 # Local development: Radicale (pip) on :5232, gateway on :8080.
 run: gateway
 	tools/dev-run.sh
 
 clean:
-	rm -rf dist test-results && git checkout -- gateway/cmd/haken/dist
+	rm -rf dist test-results coverage && git checkout -- gateway/cmd/haken/dist

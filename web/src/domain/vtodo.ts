@@ -25,6 +25,9 @@ export const PRODID = "-//haken//haken//EN";
 /** Marks a task as put on *Focus* by the user; the value is that day ([Focus ADR](../../../docs/arc42/adr/ADR-20261104-focus.md)). */
 export const FOCUS_PROP = "x-haken-focus";
 
+/** Manual order of a task inside its part of *Focus* (integer, ascending). */
+export const FOCUS_ORDER_PROP = "x-haken-focus-order";
+
 /** Apple's reference date (2001-01-01T00:00:00Z) in Unix seconds; base of `X-APPLE-SORT-ORDER` defaults. */
 export const APPLE_EPOCH_SECONDS = 978_307_200;
 
@@ -79,6 +82,8 @@ export interface TaskView {
   readonly recurrence: Recurrence | null;
   /** Day the task was put on *Focus* (`YYYY-MM-DD`), `null` if not. It stays until removed. */
   readonly focus: string | null;
+  /** Manual order inside *Focus*; `null` = by due date or by the day added. */
+  readonly focusOrder: number | null;
   readonly prodid: string | null;
 }
 
@@ -377,6 +382,16 @@ export function readTask(resource: ParsedResource): TaskView {
     focus = `${m[1]}-${m[2]}-${m[3]}`;
   }
 
+  const focusOrderProp = single(todo, FOCUS_ORDER_PROP, prodid);
+  let focusOrder: number | null = null;
+  if (focusOrderProp !== null) {
+    const raw = String(focusOrderProp.getFirstValue());
+    if (!INTEGER_RE.test(raw)) {
+      invalid("X-HAKEN-FOCUS-ORDER must be an integer", ctx(FOCUS_ORDER_PROP, raw, prodid));
+    }
+    focusOrder = Number(raw);
+  }
+
   const attachments = todo
     .getAllProperties("attach")
     .map((prop, index) => readAttachment(prop, index, prodid));
@@ -399,6 +414,7 @@ export function readTask(resource: ParsedResource): TaskView {
     repeats: recurrence.repeats,
     recurrence: recurrence.rule,
     focus,
+    focusOrder,
     prodid,
   };
 }
@@ -473,6 +489,7 @@ export type TaskEdit =
   | { readonly kind: "due"; readonly value: Due | null }
   /** Put on *Focus* (`value`: that day, `YYYY-MM-DD`) or take it off (`null`). */
   | { readonly kind: "focus"; readonly value: string | null }
+  | { readonly kind: "focusOrder"; readonly value: number }
   /** `today` (device date) becomes the due date if the task has none. */
   | { readonly kind: "recurrence"; readonly value: Recurrence | null; readonly today: string }
   | { readonly kind: "categories"; readonly value: readonly string[] }
@@ -516,7 +533,10 @@ function isoUtc(date: Date): InstanceType<typeof ICAL.Time> {
 function setText(todo: Component, name: string, value: string): boolean {
   const current = todo.getFirstPropertyValue(name);
   if (value === "") {
-    return todo.removeAllProperties(name);
+    // ical.js's removeAllProperties returns nothing; check first.
+    if (!todo.hasProperty(name)) return false;
+    todo.removeAllProperties(name);
+    return true;
   }
   if (current === value) return false;
   todo.updatePropertyWithValue(name, value);
@@ -557,10 +577,14 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
     case "description":
       mark(setText(todo, "description", edit.value), "description");
       break;
-    case "done":
-      if (edit.value && !view.done && view.recurrence !== null) {
-        // Completing a repeating task advances it; it stays open.
-        for (const name of advance(todo, view.recurrence)) groups.add(groupOf(name));
+    case "done": {
+      // Completing a repeating task advances it and it stays open, unless this was its last occurrence.
+      const advanced =
+        edit.value && !view.done && view.recurrence !== null
+          ? advance(todo, view.recurrence)
+          : null;
+      if (advanced !== null && advanced !== "last") {
+        for (const name of advanced) groups.add(groupOf(name));
         if (
           todo.hasProperty("percent-complete") ||
           todo.hasProperty("completed") ||
@@ -586,6 +610,7 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
         groups.add("COMPLETION");
       }
       break;
+    }
     case "important":
       if (edit.value !== view.important) {
         todo.updatePropertyWithValue("priority", edit.value ? 1 : 0);
@@ -614,8 +639,22 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
         if (!checkDateString(edit.value))
           throw new HakenError("domain", "Invalid Focus date", { value: edit.value });
         todo.addPropertyWithValue(FOCUS_PROP, edit.value.replaceAll("-", ""));
+      } else if (todo.hasProperty(FOCUS_ORDER_PROP)) {
+        // Taken off Focus: its place there goes too.
+        todo.removeAllProperties(FOCUS_ORDER_PROP);
+        groups.add("X-HAKEN-FOCUS-ORDER");
       }
       groups.add("X-HAKEN-FOCUS");
+      break;
+    }
+    case "focusOrder": {
+      if (!Number.isSafeInteger(edit.value)) {
+        throw new HakenError("domain", "Focus order must be a safe integer", { value: edit.value });
+      }
+      if (edit.value === view.focusOrder) break;
+      todo.removeAllProperties(FOCUS_ORDER_PROP);
+      todo.addPropertyWithValue(FOCUS_ORDER_PROP, String(edit.value));
+      groups.add("X-HAKEN-FOCUS-ORDER");
       break;
     }
     case "recurrence": {

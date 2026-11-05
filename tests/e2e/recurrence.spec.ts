@@ -120,14 +120,14 @@ test("a recurring task from Tasks.org is advanced and keeps its own properties",
 test("a rule haken cannot edit is shown read-only and never written", async ({ page, request }) => {
   await setupServer(page);
   const list = await firstList(request);
-  const count = readFileSync("tests/fixtures/vtodo/recurring-count.ics", "utf8").replace(
-    "SUMMARY:Five times",
+  const count = readFileSync("tests/fixtures/vtodo/recurring-bymonthday.ics", "utf8").replace(
+    "SUMMARY:Twice a month",
     "SUMMARY:Five times e2e",
   );
   const put = await request.fetch(`${list}e2e-count.ics`, {
     method: "PUT",
     headers: { ...AUTH, "Content-Type": "text/calendar", "If-None-Match": "*" },
-    data: count.replace("UID:count-1", "UID:e2e-count"),
+    data: count.replace("UID:bymonthday-1", "UID:e2e-count"),
   });
   expect(put.status()).toBe(201);
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
@@ -154,3 +154,36 @@ async function firstList(request: APIRequestContext): Promise<string> {
   }
   throw new Error("list Haken not found");
 }
+
+test("a task that ends after two times completes for good on the second", async ({
+  page,
+  request,
+}) => {
+  await setupServer(page);
+  await addTask(page, "Twice only");
+  await page.locator(".task-row .title", { hasText: "Twice only" }).click();
+  await page.getByLabel("Repeat").selectOption("daily");
+  await page.getByLabel("Ends").selectOption("count");
+  await page.getByLabel("times", { exact: true }).fill("2");
+  await page.getByLabel("times", { exact: true }).press("Enter");
+  const row = page.locator(".task-row", { hasText: "Twice only" });
+  await expect(row.locator(".meta")).toContainText("2 times left");
+  await waitSynced(page);
+  await expect
+    .poll(async () => (await serverTask(request, "Twice only").catch(() => "")).includes("COUNT=2"))
+    .toBe(true);
+
+  await row.getByRole("button", { name: "Mark as completed" }).click();
+  await expect(row.locator(".meta")).toContainText("1 time left");
+  await row.getByRole("button", { name: "Mark as completed" }).click();
+  await expect(page.locator(".completed")).toHaveCount(1);
+  await waitSynced(page);
+  await expect
+    .poll(
+      async () =>
+        (await serverTask(request, "Twice only").catch(() => "")).includes("STATUS:COMPLETED"),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+  expect(await serverTask(request, "Twice only")).toContain("RRULE:FREQ=DAILY;COUNT=1");
+});

@@ -735,6 +735,8 @@ haken-task {
 .task-heading-input {
   flex: 1;
   min-width: 0;
+  /* Grows with a long title; browsers without field-sizing scroll inside the field. */
+  field-sizing: content;
   padding: 8px 4px;
   border: 0 !important;
   background: none !important;
@@ -1253,4 +1255,92 @@ haken-setup {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
   background: var(--selected);
+}
+
+/* ------------------------------------------------------------ focus parts, row actions */
+
+.focus-part + .focus-part {
+  margin-top: 12px;
+}
+
+.part-title {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.task-row {
+  -webkit-touch-callout: none;
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sheet h2 {
+  overflow-wrap: anywhere;
+}
+
+.sheet-label {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.sheet-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 15px;
+  text-align: start;
+}
+
+.sheet-action:hover {
+  background: var(--surface-2);
+}
+
+.sheet-action .icon {
+  color: var(--accent);
+}
+
+.sheet .button {
+  margin-top: 8px;
+}
+
+/* ------------------------------------------------------------ list order */
+
+.own-lists {
+  position: relative;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+}
+
+.list-item > .list-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-item.dragging {
+  position: relative;
+  z-index: 2;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px var(--shadow);
+}
+
+.list-item.dragging .grip {
+  color: var(--accent);
 }

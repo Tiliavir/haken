@@ -1,5 +1,6 @@
 /** Smart lists: views over the user's lists, never stored on the server (chapter 8). */
 import type { ListItem, Snapshot, TaskItem } from "../app/service.js";
+import { compareFocus, type FocusPart } from "../domain/focus.js";
 import type { Due } from "../domain/vtodo.js";
 import type { ListId, SmartId } from "./route.js";
 
@@ -29,32 +30,39 @@ export function dueNow(item: TaskItem, today: string): boolean {
  * second part does not reset at midnight; a task stays until it is taken
  * off. Completed: tasks completed today that were due or put on Focus.
  */
-export function focusTasks(snapshot: Snapshot, now: number): TaskItem[] {
+export interface FocusParts {
+  readonly due: TaskItem[];
+  readonly picked: TaskItem[];
+  readonly completed: TaskItem[];
+}
+
+/**
+ * *Focus*: first everything due today or overdue, then the tasks the user put
+ * on Focus; each part in its own order (manual, else by due date or by the day
+ * added). No reset at midnight. Completed: tasks completed today that were due
+ * or on Focus.
+ */
+export function focusParts(snapshot: Snapshot, now: number): FocusParts {
   const today = localDate(now);
   const all = snapshot.lists.filter((l) => !l.errorlogs).flatMap((l) => l.tasks);
-  const due = all
-    .filter((t) => dueNow(t, today))
-    .sort((a, b) => {
-      const da = a.view?.due ? dueDate(a.view.due) : "";
-      const db = b.view?.due ? dueDate(b.view.due) : "";
-      return da < db ? -1 : da > db ? 1 : 0;
-    });
-  const pinned = all
+  const byPart = (part: FocusPart) => (a: TaskItem, b: TaskItem) =>
+    a.view === null || b.view === null ? 0 : compareFocus(part)(a.view, b.view);
+  const due = all.filter((t) => dueNow(t, today)).sort(byPart("due"));
+  const picked = all
     .filter((t) => t.view !== null && !t.view.done && t.view.focus !== null && !dueNow(t, today))
-    .sort((a, b) =>
-      (a.view?.focus ?? "") < (b.view?.focus ?? "")
-        ? 1
-        : (a.view?.focus ?? "") > (b.view?.focus ?? "")
-          ? -1
-          : 0,
-    );
+    .sort(byPart("picked"));
   const completed = all.filter((t) => {
     const v = t.view;
     if (v === null || !v.done || v.completedAt === null || localDate(v.completedAt) !== today)
       return false;
     return v.focus !== null || (v.due !== null && dueDate(v.due) <= today);
   });
-  return [...due, ...pinned, ...completed];
+  return { due, picked, completed };
+}
+
+export function focusTasks(snapshot: Snapshot, now: number): TaskItem[] {
+  const p = focusParts(snapshot, now);
+  return [...p.due, ...p.picked, ...p.completed];
 }
 
 function matches(id: SmartId, item: TaskItem, today: string): boolean {
