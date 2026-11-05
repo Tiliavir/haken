@@ -1,6 +1,6 @@
 # ADR-20261105: Home network deployment
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 
