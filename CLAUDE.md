@@ -123,5 +123,5 @@ Then push new branches with `git push -u origin <branch>`.
   around. Unknown iCalendar properties are expected and preserved; invalid
   values in properties haken interprets are errors.
 - Small, focused commits with descriptive messages.
-- The repo is private now and will become public: write everything
-  (code, comments, commit messages, docs) as if it were public already.
+- The repo is public: never commit anything that must not be public
+  (see *No data leaks*).

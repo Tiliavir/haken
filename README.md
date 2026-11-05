@@ -40,6 +40,11 @@ first and foremost. No accounts, no cloud, no tracking.
 - [x] Browser-only mode without a server, `.ics` export and import
 - [x] English, German (also Swiss spelling), French, Spanish, Italian; light and dark; custom accent
 
+## Try it
+
+[Demo](https://tiliavir.github.io/haken/) — browser-only mode, your data stays
+in your browser.
+
 ## Running it
 
 Locally (needs Node 22, Go 1.24 and `pip install radicale`):
@@ -57,7 +62,7 @@ behind a reverse proxy that terminates TLS. See
 
 ## Contributing
 
-Issues and pull requests are welcome once the project is public. See
+Issues and pull requests are welcome. See
 [CONTRIBUTING.md](CONTRIBUTING.md). Security issues: see
 [SECURITY.md](SECURITY.md).
 
