@@ -6,13 +6,17 @@ on:
 
 permissions:
   contents: read
+  packages: read # the CI image on ghcr.io
 
 jobs:
   check:
     runs-on: ubuntu-24.04
-    # Node and Playwright browsers; tools/ci.sh adds the rest. Pinned by digest
-    # (the tag is for people): update both together.
-    container: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+    # tools/ci.Dockerfile, built by ci-image.yml. Pinned by digest (the tag is the commit it was built from).
+    container:
+      image: ghcr.io/tiliavir/haken-ci:0f75c21d6a6fbf434724a768f7d73b5c054b6cd7@sha256:48f6f0b9382acf52f38a239e7d12f5f0aa411763333c28d2a85ba462b8a5d317
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
     env:
       PLAYWRIGHT_CHANNEL: chromium
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -24,7 +28,7 @@ jobs:
       # without this git refuses the repository and go build/list fail on VCS stamping.
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: tools/ci.sh
-      - run: GOTOOLCHAIN=go1.24.7 make coverage
+      - run: make coverage
       # Only where the secret exists (not on forks).
       - if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1
