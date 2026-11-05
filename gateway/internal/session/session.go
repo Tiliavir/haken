@@ -155,7 +155,7 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manager) login(w http.ResponseWriter, r *http.Request) {
-	if ct := r.Header.Get("Content-Type"); ct != "application/json" {
+	if r.Header.Get("Content-Type") != "application/json" {
 		httpx.Fail(w, r, http.StatusUnsupportedMediaType, "content type")
 		return
 	}

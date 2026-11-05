@@ -5,7 +5,7 @@ import { makeSortable } from "../dnd/sortable.js";
 import { fill, h } from "../dom.js";
 import { t, tp } from "../i18n.js";
 import { type IconName, icon } from "../icons.js";
-import { type ListId, SMART, type SmartId, sameList } from "../route.js";
+import { type ListId, SMART, type SmartId, sameList, toHash } from "../route.js";
 import { smartCount } from "../views.js";
 
 const SMART_ICON: Readonly<Record<SmartId, IconName>> = {
@@ -41,7 +41,7 @@ function row(
   count: number,
   options: { readonly sortable?: boolean; readonly color?: string | null } = {},
 ): HTMLElement {
-  const href = id.kind === "smart" ? `#/smart/${id.id}` : `#/list/${encodeURIComponent(id.href)}`;
+  const href = toHash({ kind: "list", list: id });
   const glyph = icon(iconName);
   // The list's own colour (calendar-color) as an SVG presentation attribute: no inline style.
   if (options.color != null) glyph.setAttribute("color", options.color.slice(0, 7));

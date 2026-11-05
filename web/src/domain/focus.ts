@@ -4,6 +4,7 @@
  * `X-HAKEN-FOCUS-ORDER`, computed between its new neighbours' effective
  * values, so manual and default orders mix on one scale.
  */
+import { byCodeUnit } from "./compare.js";
 import { APPLE_EPOCH_SECONDS, type Due, type TaskView } from "./vtodo.js";
 
 export type FocusPart = "due" | "picked";
@@ -33,7 +34,7 @@ export function compareFocus(part: FocusPart): (a: TaskView, b: TaskView) => num
   return (a, b) => {
     const d = focusRank(a, part) - focusRank(b, part);
     if (d !== 0) return d;
-    return a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0;
+    return byCodeUnit(a.uid, b.uid);
   };
 }
 

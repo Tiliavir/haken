@@ -9,6 +9,7 @@
  * merge without notes ([set merge](../../../docs/arc42/adr/ADR-20261104-set-merge.md)).
  */
 import ICAL from "../../vendor/ical.js/ical.js";
+import { byCodeUnit } from "./compare.js";
 import { HakenError } from "./errors.js";
 import {
   type Component,
@@ -70,7 +71,7 @@ export function merge(
 
   const notes: ConflictNote[] = [];
   const localWins: string[] = [];
-  for (const group of [...groups].sort()) {
+  for (const group of [...groups].sort(byCodeUnit)) {
     const lv = groupLines(l.todo, group);
     const sv = groupLines(s.todo, group);
     if (lv === sv) continue;

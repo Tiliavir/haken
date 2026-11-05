@@ -50,7 +50,9 @@ const multistatus = (responses: string): Reply =>
     `<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:a="http://apple.com/ns/ical/">${responses}</d:multistatus>`,
   );
 const escapeXml = (s: string): string =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+const colorProp = (color: string): string =>
+  `<a:calendar-color>${escapeXml(color)}</a:calendar-color>`;
 const ok = (href: string, props: string): string =>
   `<d:response><d:href>${href}</d:href><d:propstat><d:prop>${props}</d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`;
 const parentOf = (href: string): string => href.slice(0, href.lastIndexOf("/") + 1);
@@ -115,7 +117,7 @@ export class CalDavStub {
   }
 
   token(href: string): string {
-    return `http://stub/sync/${this.list(href).version}`;
+    return `urn:x-stub:sync:${this.list(href).version}`;
   }
 
   count(request: string): number {
@@ -194,7 +196,7 @@ export class CalDavStub {
     for (const [href, list] of this.lists) {
       out += ok(
         href,
-        `<d:resourcetype><d:collection/><c:calendar/></d:resourcetype><d:displayname>${escapeXml(list.displayName)}</d:displayname>${list.color === null ? "" : `<a:calendar-color>${escapeXml(list.color)}</a:calendar-color>`}<d:sync-token>${this.token(href)}</d:sync-token>`,
+        `<d:resourcetype><d:collection/><c:calendar/></d:resourcetype><d:displayname>${escapeXml(list.displayName)}</d:displayname>${list.color === null ? "" : colorProp(list.color)}<d:sync-token>${this.token(href)}</d:sync-token>`,
       );
     }
     return multistatus(out);
@@ -208,8 +210,8 @@ export class CalDavStub {
 
   private syncCollection(href: string, list: Collection, body: string): Reply {
     const token = /<d:sync-token>([^<]*)</.exec(body)?.[1] ?? "";
-    const since = token === "" ? 0 : Number(token.slice("http://stub/sync/".length));
-    if (token !== "" && (this.invalidTokens || !(since <= list.version)))
+    const since = token === "" ? 0 : Number(token.slice("urn:x-stub:sync:".length));
+    if (token !== "" && (this.invalidTokens || !Number.isInteger(since) || since > list.version))
       return xml(403, '<d:error xmlns:d="DAV:"><d:valid-sync-token/></d:error>');
     let out = "";
     for (const [m, member] of list.members)

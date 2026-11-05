@@ -37,6 +37,14 @@ interface Focus {
   readonly end: number | null;
 }
 
+/** Re-render focus key: `data-focus`, then `#id`, then `@name` of a text field. */
+function focusKey(el: HTMLElement, name: string | null): string | null {
+  const explicit = el.dataset["focus"];
+  if (explicit !== undefined) return explicit;
+  if (el.id !== "") return `#${el.id}`;
+  return name === null ? null : `@${name}`;
+}
+
 export class HakenApp extends HTMLElement {
   private app: AppService | null = null;
   private readonly sidebar = new HakenSidebar();
@@ -121,7 +129,7 @@ export class HakenApp extends HTMLElement {
     const focus = this.captureFocus();
     let route = parseHash(location.hash);
     const account = snapshot.account;
-    if (account === null || !account.ready) {
+    if (!account?.ready) {
       this.setup.render(this.ctx(app, route));
       fill(this, this.setup, this.toast, this.dialog);
       this.restoreFocus(focus);
@@ -171,8 +179,7 @@ export class HakenApp extends HTMLElement {
       el instanceof HTMLTextAreaElement ||
       (el instanceof HTMLInputElement && ["text", "password", "search"].includes(el.type));
     const name = textual ? el.getAttribute("name") : null;
-    const key =
-      el.dataset["focus"] ?? (el.id !== "" ? `#${el.id}` : name !== null ? `@${name}` : null);
+    const key = focusKey(el, name);
     if (key === null) return null;
     const editable =
       el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el : null;
@@ -187,24 +194,24 @@ export class HakenApp extends HTMLElement {
   /** Keeps focus and any text the user is still typing across a re-render. */
   private restoreFocus(focus: Focus | null): void {
     if (focus === null) return;
-    const el = focus.key.startsWith("#")
-      ? document.getElementById(focus.key.slice(1))
-      : focus.key.startsWith("@")
-        ? this.querySelector(`[name="${CSS.escape(focus.key.slice(1))}"]`)
-        : this.querySelector(`[data-focus="${CSS.escape(focus.key)}"]`);
+    const el = this.focusTarget(focus.key);
     if (!(el instanceof HTMLElement)) return;
     if (
       (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) &&
       focus.value !== null
     ) {
       if (el.type !== "file" && el.type !== "color" && el.type !== "date") el.value = focus.value;
-      if (focus.start !== null && focus.end !== null && el.type === "text")
+      const selectable = el instanceof HTMLTextAreaElement || el.type === "text";
+      if (selectable && focus.start !== null && focus.end !== null)
         el.setSelectionRange(focus.start, focus.end);
-      if (el instanceof HTMLTextAreaElement && focus.start !== null && focus.end !== null) {
-        el.setSelectionRange(focus.start, focus.end);
-      }
     }
     el.focus();
+  }
+
+  private focusTarget(key: string): Element | null {
+    if (key.startsWith("#")) return document.getElementById(key.slice(1));
+    if (key.startsWith("@")) return this.querySelector(`[name="${CSS.escape(key.slice(1))}"]`);
+    return this.querySelector(`[data-focus="${CSS.escape(key)}"]`);
   }
 
   notify(text: string): void {

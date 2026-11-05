@@ -6,6 +6,7 @@
  * parameters haken does not interpret are written back untouched.
  */
 import ICAL from "../../vendor/ical.js/ical.js";
+import { byCodeUnit } from "./compare.js";
 import { HakenError, InvalidInputError, unreachable } from "./errors.js";
 import {
   advance,
@@ -102,7 +103,7 @@ function rawRulesOf(ics: string): string[] {
     const upper = line.toUpperCase();
     if (upper.startsWith("BEGIN:")) stack.push(upper.slice(6));
     else if (upper.startsWith("END:")) stack.pop();
-    else if (stack[stack.length - 1] === "VTODO" && /^RRULE[;:]/.test(upper)) {
+    else if (stack.at(-1) === "VTODO" && /^RRULE[;:]/.test(upper)) {
       out.push(line.slice(line.indexOf(":") + 1));
     }
   }
@@ -435,7 +436,8 @@ function readAttachment(prop: Property, index: number, prodid: string | null): A
     if (!/^[A-Za-z0-9+/]*={0,2}$/.test(value) || value.length % 4 !== 0) {
       invalid("Malformed base64 in ATTACH", ctx("ATTACH", `length ${value.length}`, prodid));
     }
-    const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
+    let padding = 0;
+    if (value.endsWith("=")) padding = value.endsWith("==") ? 2 : 1;
     return {
       kind: "binary",
       index,
@@ -465,8 +467,11 @@ export function attachmentData(
     throw new HakenError("domain", "Attachment is not binary", { index });
   const [, , , value] = jcalOf(prop);
   const binary = atob(String(value));
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const bytes = Uint8Array.from(binary, (c) => {
+    const code = c.codePointAt(0);
+    if (code === undefined) throw new HakenError("domain", "Empty character from atob", { index });
+    return code;
+  });
   return { bytes, mediaType: attachment.mediaType, filename: attachment.filename };
 }
 
@@ -474,7 +479,7 @@ export function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;
   for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    binary += String.fromCodePoint(...bytes.subarray(i, i + chunk));
   }
   return btoa(binary);
 }
@@ -890,5 +895,5 @@ export function appleSeconds(now: Date): number {
 
 /** Property groups present in a resource (used for the outbox entry of a create or import). */
 export function resourceGroups(ics: string): string[] {
-  return [...groupsOf(parseResource(ics).todo)].sort();
+  return [...groupsOf(parseResource(ics).todo)].sort(byCodeUnit);
 }

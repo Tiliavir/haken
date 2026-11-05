@@ -3,6 +3,7 @@
  * on every read (ADR-20261104-strict-errors). Each record carries `schema`;
  * a future migration bumps it and must keep a backup of the old shape.
  */
+import { byCodeUnit } from "../domain/compare.js";
 import { InvalidInputError } from "../domain/errors.js";
 
 export const SCHEMA = 1 as const;
@@ -122,8 +123,8 @@ function object(value: unknown, store: string, keys: readonly string[]): Obj {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     fail(store, "not an object");
   const record = value as Obj;
-  const actual = Object.keys(record).sort();
-  const expected = [...keys].sort();
+  const actual = Object.keys(record).sort(byCodeUnit);
+  const expected = [...keys].sort(byCodeUnit);
   if (actual.length !== expected.length || actual.some((k, i) => k !== expected[i])) {
     fail(store, `keys ${actual.join(",")}`);
   }

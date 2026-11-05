@@ -51,7 +51,7 @@ export function makeSortable(
     const grip = (event.target as Element | null)?.closest(".grip");
     if (!(grip instanceof HTMLElement) || event.button !== 0) return;
     const row = grip.closest<HTMLElement>("[data-sortable]");
-    if (row === null || row.parentElement !== container) return;
+    if (row?.parentElement !== container) return;
     event.preventDefault();
     startPointerDrag(container, row, grip, event, onMove, onDrop);
   });
@@ -59,7 +59,7 @@ export function makeSortable(
     const grip = (event.target as Element | null)?.closest(".grip");
     if (!(grip instanceof HTMLElement)) return;
     const row = grip.closest<HTMLElement>("[data-sortable]");
-    if (row === null || row.parentElement !== container) return;
+    if (row?.parentElement !== container) return;
     handleKey(container, row, grip, event, onMove);
   });
 }
@@ -150,7 +150,7 @@ function handleKey(
     case "ArrowUp":
     case "ArrowDown": {
       event.preventDefault();
-      if (keyState === null || keyState.row !== row) {
+      if (keyState?.row !== row) {
         keyState = { row, originalIndex: index };
         active = true;
         row.classList.add("dragging");
@@ -164,7 +164,7 @@ function handleKey(
     }
     case "Enter":
     case " ": {
-      if (keyState === null || keyState.row !== row) return;
+      if (keyState?.row !== row) return;
       event.preventDefault();
       const original = keyState.originalIndex;
       keyState = null;
@@ -175,7 +175,7 @@ function handleKey(
       return;
     }
     case "Escape": {
-      if (keyState === null || keyState.row !== row) return;
+      if (keyState?.row !== row) return;
       event.preventDefault();
       const original = keyState.originalIndex;
       keyState = null;

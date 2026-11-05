@@ -24,7 +24,7 @@ function flush(key: string): void {
 
 /** Saves every typed value now: the page may be about to be hidden or unloaded. */
 export function flushAll(): void {
-  for (const key of [...pending.keys()]) flush(key);
+  for (const key of pending.keys()) flush(key);
 }
 
 function listen(): void {

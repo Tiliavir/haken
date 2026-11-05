@@ -27,7 +27,12 @@ export type Frequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 export type Weekday = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";
 
 export const WEEKDAYS: readonly Weekday[] = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
-const FREQUENCIES: readonly Frequency[] = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"];
+const FREQUENCIES: ReadonlySet<string> = new Set<Frequency>([
+  "DAILY",
+  "WEEKLY",
+  "MONTHLY",
+  "YEARLY",
+]);
 const ALL_FREQUENCIES = new Set(["SECONDLY", "MINUTELY", "HOURLY", ...FREQUENCIES]);
 const MAX_INTERVAL = 999;
 
@@ -53,7 +58,7 @@ export interface Recurrence {
 }
 
 export const NEVER: RecurrenceEnd = { kind: "never" };
-const NTHS: readonly Nth[] = [1, 2, 3, 4, -1];
+const NTHS: ReadonlySet<number> = new Set<Nth>([1, 2, 3, 4, -1]);
 const MAX_COUNT = 999;
 
 export interface RecurrenceInfo {
@@ -73,7 +78,7 @@ function fail(message: string, value: string, prodid: string | null): never {
 
 /** Validates a recurrence in haken's own model. Throws `HakenError`. */
 export function checkRecurrence(rule: Recurrence): void {
-  if (!FREQUENCIES.includes(rule.freq))
+  if (!FREQUENCIES.has(rule.freq))
     throw new HakenError("domain", "Unsupported frequency", { value: rule.freq });
   if (!Number.isInteger(rule.interval) || rule.interval < 1 || rule.interval > MAX_INTERVAL) {
     throw new HakenError("domain", "Interval must be an integer 1-999", { value: rule.interval });
@@ -92,7 +97,7 @@ export function checkRecurrence(rule: Recurrence): void {
   if (rule.monthlyNth !== null) {
     if (
       rule.freq !== "MONTHLY" ||
-      !NTHS.includes(rule.monthlyNth.nth) ||
+      !NTHS.has(rule.monthlyNth.nth) ||
       !WEEKDAYS.includes(rule.monthlyNth.day)
     ) {
       throw new HakenError("domain", "Invalid monthly weekday", {
@@ -234,13 +239,7 @@ export function readRecurrence(
       ["FREQ", "INTERVAL", "BYDAY", "COUNT", "UNTIL"].includes(k) ||
       (k === "WKST" && parts.get(k) === "MO"),
   );
-  if (
-    extra ||
-    anchor === null ||
-    !keysOk ||
-    !FREQUENCIES.includes(freq as Frequency) ||
-    interval > MAX_INTERVAL
-  ) {
+  if (extra || anchor === null || !keysOk || !FREQUENCIES.has(freq) || interval > MAX_INTERVAL) {
     return readOnly;
   }
   let byDay: Weekday[] = [];
@@ -251,8 +250,7 @@ export function readRecurrence(
   } else {
     const m = /^([+-]?\d)(MO|TU|WE|TH|FR|SA|SU)$/.exec(days[0] ?? "");
     const nth = m === null ? Number.NaN : Number(m[1]);
-    if (freq !== "MONTHLY" || days.length !== 1 || m === null || !NTHS.includes(nth as Nth))
-      return readOnly;
+    if (freq !== "MONTHLY" || days.length !== 1 || m === null || !NTHS.has(nth)) return readOnly;
     monthlyNth = { nth: nth as Nth, day: m[2] as Weekday };
   }
   let end: RecurrenceEnd = NEVER;
@@ -461,8 +459,7 @@ export function followDue(todo: Component, previous: Time | null): boolean {
   if (
     previous === null ||
     due === null ||
-    start === null ||
-    due.isDate !== start.isDate ||
+    due.isDate !== start?.isDate ||
     previous.isDate !== due.isDate
   ) {
     return false;

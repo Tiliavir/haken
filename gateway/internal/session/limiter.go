@@ -15,9 +15,9 @@ type Limiter struct {
 	failures map[string][]time.Time
 }
 
-// NewLimiter allows max failures per key within window.
-func NewLimiter(max int, window time.Duration) *Limiter {
-	return &Limiter{max: max, window: window, now: time.Now, failures: map[string][]time.Time{}}
+// NewLimiter allows limit failures per key within window.
+func NewLimiter(limit int, window time.Duration) *Limiter {
+	return &Limiter{max: limit, window: window, now: time.Now, failures: map[string][]time.Time{}}
 }
 
 func (l *Limiter) prune(key string, now time.Time) []time.Time {

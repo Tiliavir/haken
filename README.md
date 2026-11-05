@@ -50,7 +50,7 @@ in your browser.
 Locally (needs Node 22, Go 1.24 and `pip install radicale`):
 
 ```sh
-npm ci
+npm ci --ignore-scripts
 make run        # http://127.0.0.1:8080, user dev / password dev
 ```
 

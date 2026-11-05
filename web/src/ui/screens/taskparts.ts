@@ -128,10 +128,13 @@ export function metaLine(
   if (due !== null) {
     const overdue = isOverdue(view, now);
     const dueToday = isDueToday(view, now);
+    let dueClass = "meta-item";
+    if (overdue) dueClass = "meta-item overdue";
+    else if (dueToday) dueClass = "meta-item due-today";
     parts.push(
       h(
         "span",
-        { class: overdue ? "meta-item overdue" : dueToday ? "meta-item due-today" : "meta-item" },
+        { class: dueClass },
         icon(dueToday ? "exclaim" : "calendar", "icon small"),
         overdue ? t("due.overdue", { date: due }) : due,
       ),

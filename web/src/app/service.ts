@@ -31,7 +31,7 @@ import {
 } from "../domain/vtodo.js";
 import * as api from "../net/api.js";
 import * as caldav from "../net/caldav.js";
-import { setBasePath, staticJson, UnreachableError } from "../net/http.js";
+import { setBasePath, staticJson } from "../net/http.js";
 import { AccountStore, type Changes, StaleError } from "../store/account.js";
 import { usable } from "../store/idb.js";
 import { MetaStore, type Settings } from "../store/meta.js";
@@ -344,7 +344,8 @@ export class AppService extends EventTarget implements ErrorSink {
     const result = await api.login(user, password);
     if (result.kind !== "ok") return result;
     const origin = location.origin;
-    const id = `server-${hex(`${origin}|${user}`)}`;
+    const key = `${origin}|${user}`;
+    const id = `server-${hex(key)}`;
     const existing = await this.meta.account(id);
     const account: AccountRecord = existing ?? {
       schema: SCHEMA,
@@ -457,7 +458,7 @@ export class AppService extends EventTarget implements ErrorSink {
     });
     try {
       const result = await runner.run();
-      this.syncState = result === "offline" ? "offline" : result === "expired" ? "expired" : "idle";
+      this.syncState = result === "offline" || result === "expired" ? result : "idle";
     } catch (error) {
       this.syncState = "error";
       await this.refresh();
@@ -771,8 +772,7 @@ export class AppService extends EventTarget implements ErrorSink {
 
   private async moveNow(href: string, targetIndex: number): Promise<void> {
     const item = this.findItem(href);
-    if (item === null || item.view === null)
-      throw new HakenError("app", "Unknown task", { path: href });
+    if (!item?.view) throw new HakenError("app", "Unknown task", { path: href });
     const list = this.current.lists.find((l) => l.href === item.list);
     if (list === undefined) throw new HakenError("app", "Unknown list", { path: item.list });
     const siblings =
@@ -827,8 +827,7 @@ export class AppService extends EventTarget implements ErrorSink {
   ): Promise<void> {
     const siblings = siblingHrefs.map((h) => {
       const item = this.findItem(h);
-      if (item === null || item.view === null)
-        throw new HakenError("app", "Unknown task", { path: h });
+      if (!item?.view) throw new HakenError("app", "Unknown task", { path: h });
       return item;
     });
     const moved = siblings.find((s) => s.href === href);
@@ -1268,9 +1267,9 @@ function buildLists(
     }
     const withSteps = top.map((t): TaskItem => {
       const own = t.view === null ? [] : (steps.get(t.view.uid) ?? []);
-      return { ...stripParent(t), steps: own.sort(byOrder) };
+      return { ...stripParent(t), steps: own.toSorted(byOrder) };
     });
-    const open = withSteps.filter((t) => t.view === null || !t.view.done).sort(byOrder);
+    const open = withSteps.filter((t) => !t.view?.done).sort(byOrder);
     const done = withSteps
       .filter((t) => t.view?.done === true)
       .sort((a, b) => (b.view?.completedAt ?? 0) - (a.view?.completedAt ?? 0));
@@ -1315,4 +1314,4 @@ function hex(input: string): string {
   return `${h1.toString(16).padStart(8, "0")}${h2.toString(16).padStart(8, "0")}`;
 }
 
-export { UnreachableError };
+export { UnreachableError } from "../net/http.js";

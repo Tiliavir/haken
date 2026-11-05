@@ -14,6 +14,7 @@
  * - Run-level errors (inconsistent outbox, local store) stop the run; the
  *   outbox is untouched and the next trigger retries.
  */
+import { byCodeUnit } from "../domain/compare.js";
 import { HakenError, InvalidInputError } from "../domain/errors.js";
 import { merge } from "../domain/merge.js";
 import { parseResource, readTask } from "../domain/vtodo.js";
@@ -108,7 +109,7 @@ function readQuarantine(key: string, value: string | number | null): QuarantineR
   const server = o["server"];
   const local = o["local"];
   if (
-    Object.keys(o).sort().join(",") !== "local,server" ||
+    Object.keys(o).sort(byCodeUnit).join(",") !== "local,server" ||
     (server !== null && typeof server !== "string") ||
     typeof local !== "string"
   )
@@ -230,11 +231,7 @@ export class SyncRunner {
     const key = `${scope}${href}`;
     if (this.skipped.has(key)) return;
     const held = this.quarantine.get(key);
-    if (
-      held !== undefined &&
-      held.local === (await this.localHash(href)) &&
-      (server === null || server === held.server)
-    ) {
+    if (held !== undefined && (await this.unchanged(held, href, server))) {
       this.skipped.add(key);
       return;
     }
@@ -253,6 +250,16 @@ export class SyncRunner {
       await this.store.commit({ putState: { [`${QUARANTINE}${key}`]: null } });
       this.quarantine.delete(key);
     }
+  }
+
+  /** The quarantined resource is still as it was when it failed, locally and on the server. */
+  private async unchanged(
+    held: QuarantineRecord,
+    href: string,
+    server: string | null,
+  ): Promise<boolean> {
+    if (server !== null && server !== held.server) return false;
+    return held.local === (await this.localHash(href));
   }
 
   /**
@@ -665,7 +672,7 @@ export class SyncRunner {
     if (record.invalid !== null)
       throw new RunError("sync", "Outbox entry for unreadable task", { path: href });
     const list = (await this.store.lists()).find((l) => l.href === record.list);
-    if (list === undefined || list.state !== "synced") return true; // waits for MKCALENDAR
+    if (list?.state !== "synced") return true; // waits for MKCALENDAR
     const ids = ops.map((o) => o.id);
 
     if (record.deleted) {

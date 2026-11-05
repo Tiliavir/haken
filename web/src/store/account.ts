@@ -32,6 +32,9 @@ export class StaleError extends HakenError {
   override readonly name: string = "StaleError";
 }
 
+/** Value of a `state` entry. */
+export type StateValue = string | number | null;
+
 export interface Changes {
   readonly putLists?: readonly ListRecord[];
   readonly deleteLists?: readonly string[];
@@ -43,7 +46,7 @@ export interface Changes {
   readonly deleteOps?: readonly number[];
   readonly addConflicts?: readonly ConflictInput[];
   readonly deleteConflicts?: readonly number[];
-  readonly putState?: Readonly<Record<string, string | number | null>>;
+  readonly putState?: Readonly<Record<string, StateValue>>;
   /** Each task's `ics` must still be this (`null`: must not exist), else `StaleError`. */
   readonly expect?: readonly { readonly href: string; readonly ics: string | null }[];
   /** These outbox ids must still exist, else `StaleError`. */
@@ -125,7 +128,7 @@ export class AccountStore {
     return row === undefined ? null : toBase(row);
   }
 
-  async state(key: string): Promise<string | number | null> {
+  async state(key: string): Promise<StateValue> {
     const row = (await transact(this.db, ["state"], "readonly", (tx) =>
       request(tx.objectStore("state").get(key)),
     )) as { value?: unknown } | undefined;
@@ -140,11 +143,11 @@ export class AccountStore {
     return v;
   }
 
-  async allState(): Promise<Map<string, string | number | null>> {
+  async allState(): Promise<Map<string, StateValue>> {
     const rows = (await transact(this.db, ["state"], "readonly", (tx) =>
       request(tx.objectStore("state").getAll()),
     )) as unknown[];
-    const out = new Map<string, string | number | null>();
+    const out = new Map<string, StateValue>();
     for (const row of rows) {
       const { key, value } = (row ?? {}) as { key?: unknown; value?: unknown };
       if (

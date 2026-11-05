@@ -8,7 +8,8 @@ const RADICALE = `http://127.0.0.1:${PORT + 10}`;
 
 /** Basic auth for Radicale, as another CalDAV client sends it. */
 export function basicAuth(user: string): { Authorization: string } {
-  return { Authorization: `Basic ${Buffer.from(`${user}:${user}`).toString("base64")}` };
+  const credentials = Buffer.from(`${user}:${user}`).toString("base64");
+  return { Authorization: `Basic ${credentials}` };
 }
 
 /** Radicale URL of a gateway href (`/dav/<user>/…`, as the app shows it) or a Radicale href (`/<user>/…`). */
@@ -76,6 +77,6 @@ export async function waitSynced(page: Page): Promise<void> {
   await expect(page.locator(".sync-line .status")).toHaveText("Synced", { timeout: 15_000 });
 }
 
-export async function titles(page: Page): Promise<string[]> {
+export function titles(page: Page): Promise<string[]> {
   return page.locator("haken-list > .tasks .task-row .title").allInnerTexts();
 }

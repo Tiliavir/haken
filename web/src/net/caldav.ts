@@ -45,7 +45,7 @@ function unexpected(
 }
 
 function escapeXml(value: string): string {
-  return value.replace(/[<>&'"]/g, (c) => `&#${c.charCodeAt(0)};`);
+  return value.replace(/[<>&'"]/g, (c) => `&#${c.codePointAt(0)};`);
 }
 
 function parseMultistatus(method: string, path: string, response: ServerResponse): Element[] {

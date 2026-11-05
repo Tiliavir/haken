@@ -43,6 +43,19 @@ function button(
   );
 }
 
+type LoginFailure = Exclude<Awaited<ReturnType<Ctx["app"]["signIn"]>>, { kind: "ok" }>;
+
+function signInError(result: LoginFailure): string {
+  switch (result.kind) {
+    case "invalid":
+      return t("setup.signin.invalid");
+    case "rate-limited":
+      return t("setup.signin.rateLimited", { seconds: result.retryAfterSeconds });
+    case "unreachable":
+      return t("setup.signin.unreachable");
+  }
+}
+
 export class HakenSetup extends HTMLElement {
   private introPage = 0;
   private busy = false;
@@ -317,23 +330,12 @@ export class HakenSetup extends HTMLElement {
             try {
               const result = await ctx.app.signIn(user.value.trim(), password.value);
               password.value = "";
-              switch (result.kind) {
-                case "ok":
-                  await ctx.app.setSetupStep(afterAccount());
-                  return;
-                case "invalid":
-                  this.message = t("setup.signin.invalid");
-                  break;
-                case "rate-limited":
-                  this.message = t("setup.signin.rateLimited", {
-                    seconds: result.retryAfterSeconds,
-                  });
-                  break;
-                case "unreachable":
-                  this.message = t("setup.signin.unreachable");
-                  this.unreachable = true;
-                  break;
+              if (result.kind === "ok") {
+                await ctx.app.setSetupStep(afterAccount());
+                return;
               }
+              this.message = signInError(result);
+              this.unreachable = result.kind === "unreachable";
             } finally {
               this.busy = false;
               ctx.rerender();
@@ -401,12 +403,7 @@ export function reauthDialog(ctx: Ctx, dialog: HTMLDialogElement): void {
               return;
             }
             error.hidden = false;
-            error.textContent =
-              result.kind === "invalid"
-                ? t("setup.signin.invalid")
-                : result.kind === "rate-limited"
-                  ? t("setup.signin.rateLimited", { seconds: result.retryAfterSeconds })
-                  : t("setup.signin.unreachable");
+            error.textContent = signInError(result);
           });
         },
       },

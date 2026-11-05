@@ -1,5 +1,6 @@
 /** Smart lists: views over the user's lists, never stored on the server (chapter 8). */
 import type { ListItem, Snapshot, TaskItem } from "../app/service.js";
+import { byCodeUnit } from "../domain/compare.js";
 import { compareFocus, type FocusPart } from "../domain/focus.js";
 import type { Due } from "../domain/vtodo.js";
 import type { ListId, SmartId } from "./route.js";
@@ -100,7 +101,7 @@ export function smartTasks(snapshot: Snapshot, id: SmartId, now: number): TaskIt
     return all.sort((a, b) => {
       const da = a.view?.due ? dueDate(a.view.due) : "";
       const db = b.view?.due ? dueDate(b.view.due) : "";
-      return da < db ? -1 : da > db ? 1 : 0;
+      return byCodeUnit(da, db);
     });
   }
   return all;
