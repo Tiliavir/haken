@@ -150,11 +150,8 @@ a {
   cursor: default;
 }
 
-input[type="text"],
-input[type="password"],
-input[type="date"],
-select,
-textarea {
+/* Zero specificity: a component class (.add-input, .label-input, …) overrides it. */
+:where(input[type="text"], input[type="password"], input[type="date"], select, textarea) {
   min-height: 44px;
   padding: 10px 12px;
   border: 1px solid var(--border);
@@ -271,8 +268,8 @@ label {
     background: var(--bg);
   }
 
-  haken-list {
-    display: flex !important;
+  .pane-main > haken-list {
+    display: flex;
     flex-direction: column;
     min-height: 100vh;
   }
@@ -283,16 +280,6 @@ label {
 
   .detail-header .close {
     display: none;
-  }
-}
-
-@media (min-width: 721px) {
-  .back {
-    display: none !important;
-  }
-
-  .detail-header .back {
-    display: none !important;
   }
 }
 
@@ -420,8 +407,8 @@ label {
 .new-list-input {
   flex: 1;
   min-width: 0;
-  border: 0 !important;
-  background: none !important;
+  border: 0;
+  background: none;
 }
 
 /* ------------------------------------------------------------ list */
@@ -449,6 +436,12 @@ haken-task {
   min-height: 44px;
   color: var(--accent);
   text-decoration: none;
+}
+
+@media (min-width: 721px) {
+  .back {
+    display: none;
+  }
 }
 
 .page-title {
@@ -484,8 +477,8 @@ haken-task {
 .add-input {
   flex: 1;
   min-width: 0;
-  border: 0 !important;
-  background: none !important;
+  border: 0;
+  background: none;
 }
 
 .tasks {
@@ -502,6 +495,7 @@ haken-task {
   min-height: 56px;
   border-bottom: 1px solid var(--divider);
   background: var(--bg);
+  -webkit-touch-callout: none;
 }
 
 .task-row[aria-current="true"] {
@@ -738,8 +732,8 @@ haken-task {
   /* Grows with a long title; browsers without field-sizing scroll inside the field. */
   field-sizing: content;
   padding: 8px 4px;
-  border: 0 !important;
-  background: none !important;
+  border: 0;
+  background: none;
   font-size: 22px;
   font-weight: 700;
   resize: none;
@@ -824,9 +818,9 @@ haken-task {
 }
 
 .label-input {
-  min-height: 36px !important;
+  min-height: 36px;
   width: 9em;
-  border-radius: 999px !important;
+  border-radius: 999px;
   font-size: 13px;
 }
 
@@ -876,8 +870,8 @@ haken-task {
 .step-title {
   flex: 1;
   min-width: 0;
-  border: 0 !important;
-  background: none !important;
+  border: 0;
+  background: none;
 }
 
 .step-title.done {
@@ -1268,10 +1262,6 @@ haken-setup {
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 600;
-}
-
-.task-row {
-  -webkit-touch-callout: none;
 }
 
 .sheet {

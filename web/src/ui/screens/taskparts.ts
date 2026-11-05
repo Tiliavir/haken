@@ -100,6 +100,26 @@ export function isOverdue(view: TaskView, now: number): boolean {
   return view.due !== null && !view.done && dueDate(view.due) < localDate(now);
 }
 
+function dueMeta(view: TaskView, now: number): HTMLElement | null {
+  const overdue = isOverdue(view, now);
+  const due = overdue ? dueText(view, now) : dueLabel(view, now);
+  if (due === null) return null;
+  if (overdue)
+    return h(
+      "span",
+      { class: "meta-item overdue" },
+      icon("calendar", "icon small"),
+      t("due.overdue", { date: due }),
+    );
+  const dueToday = isDueToday(view, now);
+  return h(
+    "span",
+    { class: dueToday ? "meta-item due-today" : "meta-item" },
+    icon(dueToday ? "exclaim" : "calendar", "icon small"),
+    due,
+  );
+}
+
 export function metaLine(
   item: TaskItem,
   view: TaskView,
@@ -124,22 +144,8 @@ export function metaLine(
       ),
     );
   }
-  const due = isOverdue(view, now) ? dueText(view, now) : dueLabel(view, now);
-  if (due !== null) {
-    const overdue = isOverdue(view, now);
-    const dueToday = isDueToday(view, now);
-    let dueClass = "meta-item";
-    if (overdue) dueClass = "meta-item overdue";
-    else if (dueToday) dueClass = "meta-item due-today";
-    parts.push(
-      h(
-        "span",
-        { class: dueClass },
-        icon(dueToday ? "exclaim" : "calendar", "icon small"),
-        overdue ? t("due.overdue", { date: due }) : due,
-      ),
-    );
-  }
+  const due = dueMeta(view, now);
+  if (due !== null) parts.push(due);
   if (view.repeats) {
     parts.push(
       h(

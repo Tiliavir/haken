@@ -172,23 +172,28 @@ export class CalDavStub {
         body: '{"user":"u"}',
       };
     if (path === HOME && method === "PROPFIND") return this.collections();
-    const list = this.lists.get(path);
-    if (list !== undefined) {
-      if (method === "PROPFIND") return this.etagsOf(path, list);
-      if (method === "REPORT" && body.includes("sync-collection"))
-        return this.syncCollection(path, list, body);
-      if (method === "REPORT" && body.includes("calendar-multiget")) return this.multiget(body);
-    }
-    const parent = this.lists.get(parentOf(path));
-    if (parent !== undefined && !path.endsWith("/")) {
-      const member = parent.members.get(path);
-      if (method === "GET")
-        return member === undefined
-          ? { status: 404 }
-          : { status: 200, headers: { ETag: member.etag }, body: member.ics };
-    }
+    const reply = this.answerList(method, path, body) ?? this.answerMember(method, path);
+    if (reply !== null) return reply;
     this.unhandled.push(`${method} ${path}`);
     return { status: 501 };
+  }
+
+  private answerList(method: string, path: string, body: string): Reply | null {
+    const list = this.lists.get(path);
+    if (list === undefined) return null;
+    if (method === "PROPFIND") return this.etagsOf(path, list);
+    if (method !== "REPORT") return null;
+    if (body.includes("sync-collection")) return this.syncCollection(path, list, body);
+    if (body.includes("calendar-multiget")) return this.multiget(body);
+    return null;
+  }
+
+  private answerMember(method: string, path: string): Reply | null {
+    const parent = this.lists.get(parentOf(path));
+    if (parent === undefined || path.endsWith("/") || method !== "GET") return null;
+    const member = parent.members.get(path);
+    if (member === undefined) return { status: 404 };
+    return { status: 200, headers: { ETag: member.etag }, body: member.ics };
   }
 
   private collections(): Reply {

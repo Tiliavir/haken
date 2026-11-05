@@ -124,16 +124,7 @@ export async function listCollections(home: string): Promise<Collections> {
     const href = hrefOf(r, "PROPFIND", home);
     if (href === encodeURI(decodeURI(home))) continue;
     const prop = okProps(r);
-    if (prop === null) continue;
-    const resourcetype = child(prop, DAV, "resourcetype");
-    if (resourcetype === null || child(resourcetype, CALDAV, "calendar") === null) continue;
-    const components = child(prop, CALDAV, "supported-calendar-component-set");
-    const names =
-      components === null
-        ? null
-        : children(components, CALDAV, "comp").map((c) => c.getAttribute("name"));
-    // Without the property the collection accepts every component type (RFC 4791 5.2.3).
-    if (names !== null && !names.includes("VTODO")) continue;
+    if (prop === null || !holdsTasks(prop)) continue;
     const list = href.endsWith("/") ? href : `${href}/`;
     try {
       lists.push(collection(list, prop));
@@ -149,6 +140,16 @@ export async function listCollections(home: string): Promise<Collections> {
     }
   }
   return { lists, invalid };
+}
+
+/** A calendar collection that accepts VTODOs. */
+function holdsTasks(prop: Element): boolean {
+  const resourcetype = child(prop, DAV, "resourcetype");
+  if (resourcetype === null || child(resourcetype, CALDAV, "calendar") === null) return false;
+  const components = child(prop, CALDAV, "supported-calendar-component-set");
+  // Without the property the collection accepts every component type (RFC 4791 5.2.3).
+  if (components === null) return true;
+  return children(components, CALDAV, "comp").some((c) => c.getAttribute("name") === "VTODO");
 }
 
 function collection(href: string, prop: Element): RemoteList {
@@ -200,31 +201,35 @@ export async function makeCalendar(
   throw unexpected("MKCALENDAR", href, response);
 }
 
-export async function patchList(
-  href: string,
-  fields: {
-    readonly displayName?: string;
-    readonly color?: string | null;
-    readonly order?: number | null;
-  },
-): Promise<void> {
+export interface ListFields {
+  readonly displayName?: string;
+  readonly color?: string | null;
+  readonly order?: number | null;
+}
+
+/** PROPPATCH body: set the given fields, remove those that are `null`. */
+function propertyUpdate(fields: ListFields): string {
   const set: string[] = [];
   const del: string[] = [];
   if (fields.displayName !== undefined)
     set.push(`<d:displayname>${escapeXml(fields.displayName)}</d:displayname>`);
-  if (fields.color !== undefined) {
-    if (fields.color === null) del.push("<a:calendar-color/>");
-    else set.push(`<a:calendar-color>${escapeXml(fields.color)}</a:calendar-color>`);
-  }
-  if (fields.order !== undefined) {
-    if (fields.order === null) del.push("<a:calendar-order/>");
-    else set.push(`<a:calendar-order>${fields.order}</a:calendar-order>`);
-  }
-  const body = `<?xml version="1.0" encoding="utf-8"?>
+  if (fields.color === null) del.push("<a:calendar-color/>");
+  else if (fields.color !== undefined)
+    set.push(`<a:calendar-color>${escapeXml(fields.color)}</a:calendar-color>`);
+  if (fields.order === null) del.push("<a:calendar-order/>");
+  else if (fields.order !== undefined)
+    set.push(`<a:calendar-order>${fields.order}</a:calendar-order>`);
+  const setXml = set.length > 0 ? `<d:set><d:prop>${set.join("")}</d:prop></d:set>` : "";
+  const delXml = del.length > 0 ? `<d:remove><d:prop>${del.join("")}</d:prop></d:remove>` : "";
+  return `<?xml version="1.0" encoding="utf-8"?>
 <d:propertyupdate xmlns:d="DAV:" xmlns:a="${APPLE}">
-  ${set.length > 0 ? `<d:set><d:prop>${set.join("")}</d:prop></d:set>` : ""}
-  ${del.length > 0 ? `<d:remove><d:prop>${del.join("")}</d:prop></d:remove>` : ""}
+  ${setXml}
+  ${delXml}
 </d:propertyupdate>`;
+}
+
+export async function patchList(href: string, fields: ListFields): Promise<void> {
+  const body = propertyUpdate(fields);
   const response = await server("PROPPATCH", href, { headers: XML_HEADERS, body });
   for (const r of parseMultistatus("PROPPATCH", href, response)) {
     for (const ps of children(r, DAV, "propstat")) {
