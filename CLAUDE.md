@@ -58,7 +58,8 @@ These outrank every other consideration, including feature velocity.
 First implementation in place. Architecture lives in
 [`docs/arc42/`](docs/arc42/README.md); stack and decisions are ADRs there.
 Implementation decisions waiting for review: [`decisions.md`](decisions.md).
-Work in progress: [`BACKLOG.md`](BACKLOG.md); planned work: GitHub issues.
+Planned work: GitHub issues. `BACKLOG.md` (work in progress on the current
+branch) and `OPEN.md` exist only while they have entries.
 
 ## Commands
 
@@ -102,8 +103,8 @@ Then push new branches with `git push -u origin <branch>`.
 - Update the affected chapters and ADRs in the same change as the code.
 - UI rules, screens and design tokens: [`08-crosscutting-concepts.md`](docs/arc42/08-crosscutting-concepts.md).
   Follow it for every UI change; update it when the design changes.
-- Questions still waiting for a decision live in [`OPEN.md`](OPEN.md).
-  Do not implement anything listed there before it is decided.
+- Questions still waiting for a decision live in `OPEN.md`. Do not
+  implement anything listed there before it is decided.
 
 ## Working conventions
 
