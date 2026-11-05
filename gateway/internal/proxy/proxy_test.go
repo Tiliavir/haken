@@ -34,30 +34,53 @@ func TestAllowedPath(t *testing.T) {
 	}
 }
 
-func TestProxyInjectsSessionAndStripsCookies(t *testing.T) {
-	var seen *http.Request
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "PROPFIND" && r.URL.Path == "/alice/" && r.Header.Get("Depth") == "0" {
-			w.WriteHeader(http.StatusMultiStatus)
-			return
+// signedIn returns a session manager and the cookie of alice's session. The
+// login check runs against its own stub, so the upstream under test sees only
+// proxied requests.
+func signedIn(t *testing.T) (*session.Manager, *http.Cookie) {
+	t.Helper()
+	verify := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PROPFIND" || r.URL.Path != "/alice/" || r.Header.Get("Depth") != "0" {
+			t.Errorf("unexpected login check %s %s", r.Method, r.URL.Path)
 		}
-		seen = r.Clone(r.Context())
-		w.Header().Set("Set-Cookie", "radicale=1")
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusMultiStatus)
 	}))
-	defer upstream.Close()
-	u, _ := url.Parse(upstream.URL)
+	t.Cleanup(verify.Close)
+	u, _ := url.Parse(verify.URL)
 	sessions := session.New(u, time.Hour, session.NewLimiter(5, time.Minute))
 	login := httptest.NewRequest(http.MethodPost, "/api/session", strings.NewReader(`{"user":"alice","password":"secret"}`))
 	login.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	sessions.ServeHTTP(rec, login)
-	cookie := rec.Result().Cookies()[0]
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("login: status %d, %d cookies", rec.Code, len(cookies))
+	}
+	return sessions, cookies[0]
+}
+
+// upstream starts a Radicale stand-in.
+func upstream(t *testing.T, h http.HandlerFunc) *url.URL {
+	t.Helper()
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+	u, _ := url.Parse(srv.URL)
+	return u
+}
+
+func TestProxyInjectsSessionAndStripsCookies(t *testing.T) {
+	var seen *http.Request
+	sessions, cookie := signedIn(t)
+	u := upstream(t, func(w http.ResponseWriter, r *http.Request) {
+		seen = r.Clone(r.Context())
+		w.Header().Set("Set-Cookie", "radicale=1")
+		w.WriteHeader(http.StatusOK)
+	})
 
 	h := New(u, sessions)
 	req := httptest.NewRequest(http.MethodGet, "/dav/alice/list/x.ics?leak=1", nil)
 	req.AddCookie(cookie)
-	rec = httptest.NewRecorder()
+	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d", rec.Code)
@@ -86,11 +109,37 @@ func TestProxyInjectsSessionAndStripsCookies(t *testing.T) {
 		t.Errorf("foreign path: %d", rec.Code)
 	}
 
-	anon := httptest.NewRequest(http.MethodGet, "/dav/alice/", nil)
-	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, anon)
-	if rec.Code != http.StatusUnauthorized || rec.Header().Get("WWW-Authenticate") == "" {
-		t.Errorf("anonymous: %d", rec.Code)
+}
+
+// /dav serves only the haken app: no Basic auth, no challenge, no cross-site use.
+func TestOnlySessionAccepted(t *testing.T) {
+	reached := false
+	sessions, cookie := signedIn(t)
+	u := upstream(t, func(w http.ResponseWriter, r *http.Request) {
+		reached = true
+		w.WriteHeader(http.StatusOK)
+	})
+	h := New(u, sessions)
+	cases := map[string]struct {
+		prepare func(*http.Request)
+		want    int
+	}{
+		"anonymous":            {func(*http.Request) {}, http.StatusUnauthorized},
+		"basic auth":           {func(r *http.Request) { r.SetBasicAuth("alice", "secret") }, http.StatusUnauthorized},
+		"bearer":               {func(r *http.Request) { r.Header.Set("Authorization", "Bearer x") }, http.StatusUnauthorized},
+		"session + basic auth": {func(r *http.Request) { r.AddCookie(cookie); r.SetBasicAuth("alice", "secret") }, http.StatusUnauthorized},
+		"session cross-site":   {func(r *http.Request) { r.AddCookie(cookie); r.Header.Set("Sec-Fetch-Site", "cross-site") }, http.StatusForbidden},
+		"session":              {func(r *http.Request) { r.AddCookie(cookie) }, http.StatusOK},
+	}
+	for name, c := range cases {
+		reached = false
+		req := httptest.NewRequest("PROPFIND", "/dav/alice/", nil)
+		c.prepare(req)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != c.want || rec.Header().Get("WWW-Authenticate") != "" || reached != (c.want == http.StatusOK) {
+			t.Errorf("%s: status %d, challenge %q, reached Radicale %v", name, rec.Code, rec.Header().Get("WWW-Authenticate"), reached)
+		}
 	}
 }
 
@@ -120,11 +169,12 @@ func TestEarlyRejectionOfLargeBody(t *testing.T) {
 		}
 	}()
 	u, _ := url.Parse("http://" + ln.Addr().String())
-	h := New(u, session.New(u, time.Hour, session.NewLimiter(5, time.Minute)))
+	sessions, cookie := signedIn(t)
+	h := New(u, sessions)
 	body := bytes.Repeat([]byte("x"), 4<<20)
 	for i := 0; i < 20; i++ {
 		req := httptest.NewRequest(http.MethodPut, "/dav/alice/list/x.ics", bytes.NewReader(body))
-		req.SetBasicAuth("alice", "secret")
+		req.AddCookie(cookie)
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusRequestEntityTooLarge {
@@ -135,21 +185,20 @@ func TestEarlyRejectionOfLargeBody(t *testing.T) {
 
 func TestLargeBodyAccepted(t *testing.T) {
 	var got int
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	u := upstream(t, func(w http.ResponseWriter, r *http.Request) {
 		b, err := io.ReadAll(r.Body)
 		if err != nil {
 			t.Error(err)
 		}
 		got = len(b)
 		w.WriteHeader(http.StatusCreated)
-	}))
-	defer upstream.Close()
-	u, _ := url.Parse(upstream.URL)
-	gw := httptest.NewServer(New(u, session.New(u, time.Hour, session.NewLimiter(5, time.Minute))))
+	})
+	sessions, cookie := signedIn(t)
+	gw := httptest.NewServer(New(u, sessions))
 	defer gw.Close()
 	body := bytes.Repeat([]byte("x"), 4<<20)
 	req, _ := http.NewRequest(http.MethodPut, gw.URL+"/dav/alice/list/x.ics", bytes.NewReader(body))
-	req.SetBasicAuth("alice", "secret")
+	req.AddCookie(cookie)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -161,12 +210,11 @@ func TestLargeBodyAccepted(t *testing.T) {
 }
 
 func TestMethodAllowlist(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	u := upstream(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-	}))
-	defer upstream.Close()
-	u, _ := url.Parse(upstream.URL)
-	h := New(u, session.New(u, time.Hour, session.NewLimiter(5, time.Minute)))
+	})
+	sessions, cookie := signedIn(t)
+	h := New(u, sessions)
 	cases := map[string]int{
 		http.MethodGet:     http.StatusOK,
 		http.MethodHead:    http.StatusOK,
@@ -190,7 +238,7 @@ func TestMethodAllowlist(t *testing.T) {
 	}
 	for method, want := range cases {
 		req := httptest.NewRequest(method, "/dav/alice/list/", nil)
-		req.SetBasicAuth("alice", "secret")
+		req.AddCookie(cookie)
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 		if rec.Code != want {

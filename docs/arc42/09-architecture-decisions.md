@@ -26,3 +26,4 @@ Status: `Proposed` → `Accepted` | `Rejected` | `Superseded by …`.
 | [ADR-20261105-implementation-baseline](adr/ADR-20261105-implementation-baseline.md) | Reviewed implementation decisions of the first version; local accounts have no outbox | Accepted |
 | [ADR-20261105-gateway-security](adr/ADR-20261105-gateway-security.md) | `/dav` only for the app (cookie); other clients reach Radicale directly; 7-day idle session | Accepted |
 | [ADR-20261105-reminders](adr/ADR-20261105-reminders.md) | Reminders fire only while haken is open; no Web Push | Accepted |
+| [ADR-20261105-home-network](adr/ADR-20261105-home-network.md) | Gateway and Radicale only in the home network; no fail2ban | Accepted |

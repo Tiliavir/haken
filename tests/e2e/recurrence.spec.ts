@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import { type APIRequestContext, expect, test } from "@playwright/test";
-import { addTask, setupServer, waitSynced } from "./helpers.js";
+import { addTask, basicAuth, radicale, setupServer, waitSynced } from "./helpers.js";
 
-const AUTH = { Authorization: `Basic ${Buffer.from("dev:dev").toString("base64")}` };
+const AUTH = basicAuth("dev");
 
 /** All task resources of the user's lists, as written on the server. */
 async function serverTasks(request: APIRequestContext): Promise<string[]> {
-  const home = await request.fetch("/dav/dev/", {
+  const home = await request.fetch(radicale("/dev/"), {
     method: "PROPFIND",
     headers: { ...AUTH, Depth: "1", "Content-Type": "application/xml" },
     data: '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>',
@@ -15,8 +15,8 @@ async function serverTasks(request: APIRequestContext): Promise<string[]> {
     (m) => m[1] as string,
   );
   const out: string[] = [];
-  for (const href of hrefs.filter((h) => h !== "/dav/dev/")) {
-    const res = await request.fetch(href, {
+  for (const href of hrefs.filter((h) => h !== "/dev/")) {
+    const res = await request.fetch(radicale(href), {
       method: "REPORT",
       headers: { ...AUTH, Depth: "1", "Content-Type": "application/xml" },
       data: '<?xml version="1.0"?><c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><c:calendar-data/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VTODO"/></c:comp-filter></c:filter></c:calendar-query>',
@@ -90,7 +90,7 @@ test("a recurring task from Tasks.org is advanced and keeps its own properties",
   const foreign = readFileSync("tests/fixtures/vtodo/tasksorg-recurring.ics", "utf8")
     .replace("UID:4d2c1b0a-9f8e-4d7c-8b6a-5f4e3d2c1b0a", "UID:e2e-tasksorg-recurring")
     .replace("SUMMARY:Example every two weeks", "SUMMARY:Fortnightly");
-  const put = await request.fetch(`${list}e2e-tasksorg-recurring.ics`, {
+  const put = await request.fetch(radicale(`${list}e2e-tasksorg-recurring.ics`), {
     method: "PUT",
     headers: { ...AUTH, "Content-Type": "text/calendar", "If-None-Match": "*" },
     data: foreign,
@@ -124,7 +124,7 @@ test("a rule haken cannot edit is shown read-only and never written", async ({ p
     "SUMMARY:Twice a month",
     "SUMMARY:Five times e2e",
   );
-  const put = await request.fetch(`${list}e2e-count.ics`, {
+  const put = await request.fetch(radicale(`${list}e2e-count.ics`), {
     method: "PUT",
     headers: { ...AUTH, "Content-Type": "text/calendar", "If-None-Match": "*" },
     data: count.replace("UID:bymonthday-1", "UID:e2e-count"),
@@ -140,7 +140,7 @@ test("a rule haken cannot edit is shown read-only and never written", async ({ p
 });
 
 async function firstList(request: APIRequestContext): Promise<string> {
-  const res = await request.fetch("/dav/dev/", {
+  const res = await request.fetch(radicale("/dev/"), {
     method: "PROPFIND",
     headers: { ...AUTH, Depth: "1", "Content-Type": "application/xml" },
     data: '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>',

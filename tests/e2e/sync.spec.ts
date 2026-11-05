@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
-import { addTask, setupServer, waitSynced } from "./helpers.js";
+import { addTask, basicAuth, radicale, setupServer, waitSynced } from "./helpers.js";
 
 // Sync paths that need a second writer: the test itself plays "another
-// CalDAV client" (Basic auth through the gateway, like DAVx⁵ would).
-const AUTH = { Authorization: `Basic ${Buffer.from("dev:dev").toString("base64")}` };
+// CalDAV client" (Basic auth to Radicale directly, like DAVx⁵ would).
+const AUTH = basicAuth("dev");
 
 async function listHref(request: APIRequestContext, name: string): Promise<string> {
-  const res = await request.fetch("/dav/dev/", {
+  const res = await request.fetch(radicale("/dev/"), {
     method: "PROPFIND",
     headers: { ...AUTH, Depth: "1", "Content-Type": "application/xml" },
     data: '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>',
@@ -28,7 +28,7 @@ async function findResource(
   list: string,
   summary: string,
 ): Promise<{ href: string; etag: string; ics: string }> {
-  const res = await request.fetch(list, {
+  const res = await request.fetch(radicale(list), {
     method: "REPORT",
     headers: { ...AUTH, Depth: "1", "Content-Type": "application/xml" },
     data: `<?xml version="1.0"?><c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/><c:calendar-data/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VTODO"/></c:comp-filter></c:filter></c:calendar-query>`,
@@ -60,7 +60,7 @@ test("an unreadable VTODO from another client is shown read-only and logged", as
     "UID:broken-1",
     "UID:e2e-broken",
   );
-  const put = await request.fetch(`${list}e2e-broken.ics`, {
+  const put = await request.fetch(radicale(`${list}e2e-broken.ics`), {
     method: "PUT",
     headers: { ...AUTH, "Content-Type": "text/calendar", "If-None-Match": "*" },
     data: broken,
@@ -70,7 +70,7 @@ test("an unreadable VTODO from another client is shown read-only and logged", as
   await expect(page.locator(".task-row.invalid")).toHaveCount(1, { timeout: 15_000 });
   await expect(page.getByRole("link", { name: /errorlogs/ })).toBeVisible();
   // haken never writes it back.
-  const after = await request.fetch(`${list}e2e-broken.ics`, { headers: AUTH });
+  const after = await request.fetch(radicale(`${list}e2e-broken.ics`), { headers: AUTH });
   expect((await after.text()).includes("PRIORITY:12")).toBe(true);
 });
 
@@ -88,7 +88,7 @@ test("a task deleted on the server while edited locally is re-created", async ({
   await page.locator(".task-row .title", { hasText: "Recreate me" }).click();
   await page.getByLabel("Title").fill("Recreated");
   await page.getByLabel("Title").press("Enter");
-  const del = await request.fetch(res.href, {
+  const del = await request.fetch(radicale(res.href), {
     method: "DELETE",
     headers: { ...AUTH, "If-Match": res.etag },
   });
@@ -118,7 +118,7 @@ test("a local delete against a newer server change restores the task", async ({
   await page.locator("dialog").getByRole("button", { name: "Delete" }).click();
   await expect(page.locator(".task-row .title", { hasText: "Keep me" })).toHaveCount(0);
   const changed = res.ics.replace("SUMMARY:Keep me", "SUMMARY:Kept by server");
-  const put = await request.fetch(res.href, {
+  const put = await request.fetch(radicale(res.href), {
     method: "PUT",
     headers: { ...AUTH, "Content-Type": "text/calendar", "If-Match": res.etag },
     data: changed,
@@ -140,7 +140,7 @@ test("unknown properties written by another client survive a haken edit", async 
   const foreign = readFileSync("tests/fixtures/vtodo/thunderbird-tzid.ics", "utf8")
     .replace("UID:9f3e1d22-6c4b-4a1e-9b2f-5d6e7f8a9b0c", "UID:e2e-foreign")
     .replace("SUMMARY:Example with time zone", "SUMMARY:Foreign task");
-  const put = await request.fetch(`${list}e2e-foreign.ics`, {
+  const put = await request.fetch(radicale(`${list}e2e-foreign.ics`), {
     method: "PUT",
     headers: { ...AUTH, "Content-Type": "text/calendar", "If-None-Match": "*" },
     data: foreign,
@@ -180,7 +180,7 @@ test("a local edit lost to an unreadable server version can be exported", async 
   await page.locator(".task-row .title", { hasText: "Whole" }).click();
   await page.getByLabel("Title").fill("Whole edited offline");
   await page.getByLabel("Title").press("Enter");
-  const put = await request.fetch(res.href, {
+  const put = await request.fetch(radicale(res.href), {
     method: "PUT",
     headers: { ...AUTH, "Content-Type": "text/calendar", "If-Match": res.etag },
     data: res.ics.replace(/PRIORITY:\d+\r\n/, "").replace("END:VTODO", "PRIORITY:12\r\nEND:VTODO"),
