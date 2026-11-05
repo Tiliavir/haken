@@ -1,6 +1,6 @@
 # ADR-20261103: Feature to iCalendar mapping
 
-Status: Accepted; partly superseded by [ADR-20261104-recurrence](ADR-20261104-recurrence.md) (repeat), [ADR-20261104-focus](ADR-20261104-focus.md) (My Day → Focus)
+Status: Accepted; partly superseded by [ADR-20261104-recurrence](ADR-20261104-recurrence.md) (repeat), [ADR-20261104-focus](ADR-20261104-focus.md) (today list → Focus)
 
 ## Decision
 
@@ -15,7 +15,7 @@ Status: Accepted; partly superseded by [ADR-20261104-recurrence](ADR-20261104-re
 | Manual order | `X-APPLE-SORT-ORDER` |
 | Steps | Child `VTODO` with `RELATED-TO` (RFC 9253) |
 | Attachments | `ATTACH;VALUE=BINARY;ENCODING=BASE64;FMTTYPE=…;FILENAME=…` (see below) |
-| My Day | `X-HAKEN-MYDAY:<date>` |
+| Today list | `X-HAKEN-TODAY:<date>` |
 | Modification time | `LAST-MODIFIED`, `DTSTAMP` (UTC, written on every change) |
 
 Edits modify the parsed component in place; unknown properties are written back unchanged.
@@ -45,4 +45,4 @@ RFC 5545 defines `PRIORITY` 1–4 as high, 5 as medium, 6–9 as low and 0 or ab
 - Following the RFC 5545 priority ranges means a high priority set elsewhere shows as *Important*, and unstarring never rewrites medium or low priorities.
 - Inline attachments need no second store and travel with the task. The whole `VTODO` is transferred on every change and pull, so files stay small. Tasks.org does not sync attachments ([Tasks.org sync](https://tasks.org/docs/sync.html)); whether it keeps haken's `ATTACH` on its own writes is covered by the interop round-trip tests.
 - Fetching URI attachments automatically would contact hosts other than the user's server.
-- No standard exists for My Day; an `X-` property is ignored by others.
+- No standard exists for a today list; an `X-` property is ignored by others.
