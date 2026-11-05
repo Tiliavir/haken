@@ -33,6 +33,7 @@ test("move a task with its checklist to another list; the server has it once, in
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Other" })).toBeVisible();
   await page.getByRole("link", { name: /^Haken/ }).click();
+  await expect(page.getByRole("heading", { name: "Haken", exact: true })).toBeVisible();
   await addTask(page, "Travelling task");
   await page.locator("haken-list .task-row .title", { hasText: "Travelling task" }).click();
   await page.getByPlaceholder(/Add (step|item)/).fill("Packed item");
