@@ -1223,6 +1223,8 @@ function viewsOf(items: readonly TaskItem[]): TaskView[] {
   return items.flatMap((i) => (i.view === null ? [] : [i.view]));
 }
 
+type Row = TaskItem & { parentUid: string | null };
+
 function buildLists(
   lists: readonly ListRecord[],
   tasks: readonly TaskRecord[],
@@ -1232,47 +1234,12 @@ function buildLists(
 ): { lists: ListItem[]; orphans: string[] } {
   const orphans: string[] = [];
   const out: ListItem[] = [];
-  const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
   for (const list of lists) {
     if (list.deleted) continue;
-    const items: (TaskItem & { parentUid: string | null })[] = [];
-    for (const t of tasks) {
-      if (t.list !== list.href || t.deleted) continue;
-      let view: TaskView | null = null;
-      if (t.invalid === null) view = readTask(parseResource(t.ics));
-      items.push({
-        href: t.href,
-        list: t.list,
-        view,
-        invalid: t.invalid,
-        steps: [],
-        conflicts: conflicts.filter((c) => c.href === t.href),
-        pending: pending.has(t.href),
-        tooLarge: tooLarge.has(t.href),
-        parentUid: view?.parentUid ?? null,
-      });
-    }
-    const byUid = new Map(items.filter((i) => i.view !== null).map((i) => [i.view?.uid ?? "", i]));
-    const steps = new Map<string, TaskItem[]>();
-    const top: (TaskItem & { parentUid: string | null })[] = [];
-    for (const item of items) {
-      if (item.parentUid !== null && byUid.has(item.parentUid)) {
-        const bucket = steps.get(item.parentUid) ?? [];
-        bucket.push(item);
-        steps.set(item.parentUid, bucket);
-      } else {
-        if (item.parentUid !== null) orphans.push(item.view?.uid ?? item.href);
-        top.push(item);
-      }
-    }
-    const withSteps = top.map((t): TaskItem => {
-      const own = t.view === null ? [] : (steps.get(t.view.uid) ?? []);
-      return { ...stripParent(t), steps: own.toSorted(byOrder) };
-    });
-    const open = withSteps.filter((t) => !t.view?.done).sort(byOrder);
-    const done = withSteps
-      .filter((t) => t.view?.done === true)
-      .sort((a, b) => (b.view?.completedAt ?? 0) - (a.view?.completedAt ?? 0));
+    const items: Row[] = tasks
+      .filter((t) => t.list === list.href && !t.deleted)
+      .map((t) => row(t, conflicts, pending, tooLarge));
+    const { open, done } = nest(items, orphans);
     out.push({
       href: list.href,
       name: list.displayName,
@@ -1282,18 +1249,72 @@ function buildLists(
       openCount: open.length,
     });
   }
-  out.sort((a, b) => {
-    if (a.errorlogs !== b.errorlogs) return a.errorlogs ? 1 : -1;
-    const la = lists.find((l) => l.href === a.href)?.order ?? null;
-    const lb = lists.find((l) => l.href === b.href)?.order ?? null;
-    if (la !== null && lb !== null && la !== lb) return la - lb;
-    if ((la === null) !== (lb === null)) return la === null ? 1 : -1;
-    return collator.compare(a.name, b.name);
-  });
+  out.sort(compareLists(lists));
   return { lists: out, orphans };
 }
 
-function stripParent(item: TaskItem & { parentUid: string | null }): TaskItem {
+function row(
+  t: TaskRecord,
+  conflicts: readonly ConflictRecord[],
+  pending: ReadonlySet<string>,
+  tooLarge: ReadonlySet<string>,
+): Row {
+  const view = t.invalid === null ? readTask(parseResource(t.ics)) : null;
+  return {
+    href: t.href,
+    list: t.list,
+    view,
+    invalid: t.invalid,
+    steps: [],
+    conflicts: conflicts.filter((c) => c.href === t.href),
+    pending: pending.has(t.href),
+    tooLarge: tooLarge.has(t.href),
+    parentUid: view?.parentUid ?? null,
+  };
+}
+
+/** Steps under their parent; steps whose parent is missing stay on top and are reported. */
+function nest(items: readonly Row[], orphans: string[]): { open: TaskItem[]; done: TaskItem[] } {
+  const byUid = new Map(items.filter((i) => i.view !== null).map((i) => [i.view?.uid ?? "", i]));
+  const steps = new Map<string, TaskItem[]>();
+  const top: Row[] = [];
+  for (const item of items) {
+    if (item.parentUid !== null && byUid.has(item.parentUid)) {
+      const bucket = steps.get(item.parentUid) ?? [];
+      bucket.push(item);
+      steps.set(item.parentUid, bucket);
+    } else {
+      if (item.parentUid !== null) orphans.push(item.view?.uid ?? item.href);
+      top.push(item);
+    }
+  }
+  const withSteps = top.map((t): TaskItem => {
+    const own = t.view === null ? [] : (steps.get(t.view.uid) ?? []);
+    return { ...stripParent(t), steps: own.toSorted(byOrder) };
+  });
+  const open = withSteps.filter((t) => !t.view?.done).sort(byOrder);
+  const done = withSteps
+    .filter((t) => t.view?.done === true)
+    .sort((a, b) => (b.view?.completedAt ?? 0) - (a.view?.completedAt ?? 0));
+  return { open, done };
+}
+
+/** errorlogs last; then lists with an order by it, then the rest by name. */
+function compareLists(lists: readonly ListRecord[]): (a: ListItem, b: ListItem) => number {
+  const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+  const orderOf = (item: ListItem): number | null =>
+    lists.find((l) => l.href === item.href)?.order ?? null;
+  return (a, b) => {
+    if (a.errorlogs !== b.errorlogs) return a.errorlogs ? 1 : -1;
+    const la = orderOf(a);
+    const lb = orderOf(b);
+    if (la !== null && lb !== null && la !== lb) return la - lb;
+    if ((la === null) !== (lb === null)) return la === null ? 1 : -1;
+    return collator.compare(a.name, b.name);
+  };
+}
+
+function stripParent(item: Row): TaskItem {
   const { parentUid: _ignored, ...rest } = item;
   return rest;
 }

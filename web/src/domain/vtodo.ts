@@ -256,147 +256,27 @@ export function readTask(resource: ParsedResource): TaskView {
   const todo = resource.todo;
   const prodidValue = resource.calendar.getFirstPropertyValue("prodid");
   const prodid = typeof prodidValue === "string" ? prodidValue : null;
-
-  const uidProp = single(todo, "uid", prodid);
-  if (uidProp === null) invalid("VTODO without UID", ctx("UID", "", prodid));
-  const uid = textValue(uidProp, prodid);
-  if (uid.trim() === "") invalid("Empty UID", ctx("UID", "", prodid));
-
-  const summaryProp = single(todo, "summary", prodid);
-  const summary = summaryProp === null ? "" : textValue(summaryProp, prodid);
-  const descriptionProp = single(todo, "description", prodid);
-  const description = descriptionProp === null ? "" : textValue(descriptionProp, prodid);
-
-  const statusProp = single(todo, "status", prodid);
-  let status: Status = "NEEDS-ACTION";
-  if (statusProp !== null) {
-    const value = textValue(statusProp, prodid).toUpperCase();
-    if (!STATUSES.has(value)) invalid("Unknown STATUS", ctx("STATUS", value, prodid));
-    status = value as Status;
-  }
-
-  const priorityProp = single(todo, "priority", prodid);
-  let priority = 0;
-  if (priorityProp !== null) {
-    const [, , type, value] = jcalOf(priorityProp);
-    if (
-      type !== "integer" ||
-      typeof value !== "number" ||
-      !Number.isInteger(value) ||
-      value < 0 ||
-      value > 9
-    ) {
-      invalid("PRIORITY must be an integer 0-9", ctx("PRIORITY", String(value), prodid));
-    }
-    priority = value;
-  }
-
-  const percentProp = single(todo, "percent-complete", prodid);
-  if (percentProp !== null) {
-    const [, , type, value] = jcalOf(percentProp);
-    if (
-      type !== "integer" ||
-      typeof value !== "number" ||
-      !Number.isInteger(value) ||
-      value < 0 ||
-      value > 100
-    ) {
-      invalid(
-        "PERCENT-COMPLETE must be an integer 0-100",
-        ctx("PERCENT-COMPLETE", String(value), prodid),
-      );
-    }
-  }
-
-  const dueProp = single(todo, "due", prodid);
-  let due: Due | null = null;
-  if (dueProp !== null) {
-    const [, , type, value] = jcalOf(dueProp);
-    if (type === "date") {
-      if (typeof value !== "string" || !checkDateString(value)) {
-        invalid("Malformed DUE date", ctx("DUE", String(value), prodid));
-      }
-      due = { kind: "date", date: value };
-    } else {
-      due = { kind: "date-time", instant: dateTimeInstant(resource, dueProp, prodid) };
-    }
-  }
-
-  const completedProp = single(todo, "completed", prodid);
-  const completedAt =
-    completedProp === null ? null : dateTimeInstant(resource, completedProp, prodid);
-  const createdProp = single(todo, "created", prodid);
-  const created = createdProp === null ? null : dateTimeInstant(resource, createdProp, prodid);
-  const modifiedProp = single(todo, "last-modified", prodid);
-  const lastModified =
-    modifiedProp === null ? null : dateTimeInstant(resource, modifiedProp, prodid);
-  const stampProp = single(todo, "dtstamp", prodid);
-  const dtstamp = stampProp === null ? null : dateTimeInstant(resource, stampProp, prodid);
-
-  const categories: string[] = [];
-  for (const prop of todo.getAllProperties("categories")) {
-    const [, , type, ...values] = jcalOf(prop);
-    if (type !== "text") invalid("CATEGORIES must be text", ctx("CATEGORIES", type, prodid));
-    for (const v of values) {
-      if (typeof v !== "string")
-        invalid("CATEGORIES must be text", ctx("CATEGORIES", String(v), prodid));
-      if (v !== "" && !categories.includes(v)) categories.push(v);
-    }
-  }
-
-  const orderProp = single(todo, "x-apple-sort-order", prodid);
-  let sortOrder: number;
-  if (orderProp !== null) {
-    const [, , , value] = jcalOf(orderProp);
-    const text = String(value);
-    if (!INTEGER_RE.test(text))
-      invalid("X-APPLE-SORT-ORDER must be an integer", ctx("X-APPLE-SORT-ORDER", text, prodid));
-    sortOrder = Number(text);
-  } else {
-    const base = created ?? dtstamp ?? 0;
-    sortOrder = Math.floor(base / 1000) - APPLE_EPOCH_SECONDS;
-  }
-
-  let parentUid: string | null = null;
-  for (const prop of todo.getAllProperties("related-to")) {
-    const reltype = prop.getFirstParameter("reltype");
-    const kind = typeof reltype === "string" ? reltype.toUpperCase() : "PARENT";
-    if (kind !== "PARENT") continue;
-    const value = textValue(prop, prodid);
-    if (parentUid !== null)
-      invalid("More than one parent RELATED-TO", ctx("RELATED-TO", value, prodid));
-    if (value === "" || value === uid)
-      invalid("Invalid parent RELATED-TO", ctx("RELATED-TO", value, prodid));
-    parentUid = value;
-  }
-
+  // Validated in a fixed order: with several invalid properties the first one is reported.
+  const uid = readUid(todo, prodid);
+  const summary = readText(todo, "summary", prodid);
+  const description = readText(todo, "description", prodid);
+  const status = readStatus(todo, prodid);
+  const priority = readInteger(todo, "PRIORITY", 0, 9, prodid) ?? 0;
+  readInteger(todo, "PERCENT-COMPLETE", 0, 100, prodid);
+  const due = readDue(resource, prodid);
+  const completedAt = readInstant(resource, "completed", prodid);
+  const created = readInstant(resource, "created", prodid);
+  const lastModified = readInstant(resource, "last-modified", prodid);
+  const dtstamp = readInstant(resource, "dtstamp", prodid);
+  const categories = readCategories(todo, prodid);
+  const sortOrder = readSortOrder(todo, created ?? dtstamp ?? 0, prodid);
+  const parentUid = readParent(todo, uid, prodid);
   const recurrence = readRecurrence(todo, resource.rawRules, prodid);
-
-  const focusProp = single(todo, FOCUS_PROP, prodid);
-  let focus: string | null = null;
-  if (focusProp !== null) {
-    const raw = String(focusProp.getFirstValue());
-    const m = /^(\d{4})(\d{2})(\d{2})$/.exec(raw);
-    if (m === null || !validDate(Number(m[1]), Number(m[2]), Number(m[3]))) {
-      invalid("X-HAKEN-FOCUS must be a date YYYYMMDD", ctx(FOCUS_PROP, raw, prodid));
-    }
-    focus = `${m[1]}-${m[2]}-${m[3]}`;
-  }
-
-  const focusOrderProp = single(todo, FOCUS_ORDER_PROP, prodid);
-  let focusOrder: number | null = null;
-  if (focusOrderProp !== null) {
-    const raw = String(focusOrderProp.getFirstValue());
-    if (!INTEGER_RE.test(raw)) {
-      invalid("X-HAKEN-FOCUS-ORDER must be an integer", ctx(FOCUS_ORDER_PROP, raw, prodid));
-    }
-    focusOrder = Number(raw);
-  }
-
+  const focus = readFocus(todo, prodid);
+  const focusOrder = readFocusOrder(todo, prodid);
   const attachments = todo
     .getAllProperties("attach")
     .map((prop, index) => readAttachment(prop, index, prodid));
-
   return {
     uid,
     summary,
@@ -418,6 +298,132 @@ export function readTask(resource: ParsedResource): TaskView {
     focusOrder,
     prodid,
   };
+}
+
+function readUid(todo: Component, prodid: string | null): string {
+  const uidProp = single(todo, "uid", prodid);
+  if (uidProp === null) invalid("VTODO without UID", ctx("UID", "", prodid));
+  const uid = textValue(uidProp, prodid);
+  if (uid.trim() === "") invalid("Empty UID", ctx("UID", "", prodid));
+  return uid;
+}
+
+/** A single text property; absent is "". */
+function readText(todo: Component, name: string, prodid: string | null): string {
+  const prop = single(todo, name, prodid);
+  return prop === null ? "" : textValue(prop, prodid);
+}
+
+function readStatus(todo: Component, prodid: string | null): Status {
+  const statusProp = single(todo, "status", prodid);
+  if (statusProp === null) return "NEEDS-ACTION";
+  const value = textValue(statusProp, prodid).toUpperCase();
+  if (!STATUSES.has(value)) invalid("Unknown STATUS", ctx("STATUS", value, prodid));
+  return value as Status;
+}
+
+/** A single INTEGER property within `min`…`max`; null if absent. */
+function readInteger(
+  todo: Component,
+  name: string,
+  min: number,
+  max: number,
+  prodid: string | null,
+): number | null {
+  const prop = single(todo, name.toLowerCase(), prodid);
+  if (prop === null) return null;
+  const [, , type, value] = jcalOf(prop);
+  if (
+    type !== "integer" ||
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < min ||
+    value > max
+  ) {
+    invalid(`${name} must be an integer ${min}-${max}`, ctx(name, String(value), prodid));
+  }
+  return value;
+}
+
+/** A single DATE-TIME property as an instant; null if absent. */
+function readInstant(resource: ParsedResource, name: string, prodid: string | null): number | null {
+  const prop = single(resource.todo, name, prodid);
+  return prop === null ? null : dateTimeInstant(resource, prop, prodid);
+}
+
+function readDue(resource: ParsedResource, prodid: string | null): Due | null {
+  const dueProp = single(resource.todo, "due", prodid);
+  if (dueProp === null) return null;
+  const [, , type, value] = jcalOf(dueProp);
+  if (type !== "date")
+    return { kind: "date-time", instant: dateTimeInstant(resource, dueProp, prodid) };
+  if (typeof value !== "string" || !checkDateString(value)) {
+    invalid("Malformed DUE date", ctx("DUE", String(value), prodid));
+  }
+  return { kind: "date", date: value };
+}
+
+function readCategories(todo: Component, prodid: string | null): string[] {
+  const categories: string[] = [];
+  for (const prop of todo.getAllProperties("categories")) {
+    const [, , type, ...values] = jcalOf(prop);
+    if (type !== "text") invalid("CATEGORIES must be text", ctx("CATEGORIES", type, prodid));
+    for (const v of values) {
+      if (typeof v !== "string")
+        invalid("CATEGORIES must be text", ctx("CATEGORIES", String(v), prodid));
+      if (v !== "" && !categories.includes(v)) categories.push(v);
+    }
+  }
+  return categories;
+}
+
+/** `X-APPLE-SORT-ORDER`; absent: seconds since the Apple epoch of `fallbackMs` (creation). */
+function readSortOrder(todo: Component, fallbackMs: number, prodid: string | null): number {
+  const orderProp = single(todo, "x-apple-sort-order", prodid);
+  if (orderProp === null) return Math.floor(fallbackMs / 1000) - APPLE_EPOCH_SECONDS;
+  const [, , , value] = jcalOf(orderProp);
+  const text = String(value);
+  if (!INTEGER_RE.test(text))
+    invalid("X-APPLE-SORT-ORDER must be an integer", ctx("X-APPLE-SORT-ORDER", text, prodid));
+  return Number(text);
+}
+
+/** The UID of the parent task (`RELATED-TO`, `RELTYPE=PARENT` is the default). */
+function readParent(todo: Component, uid: string, prodid: string | null): string | null {
+  let parentUid: string | null = null;
+  for (const prop of todo.getAllProperties("related-to")) {
+    const reltype = prop.getFirstParameter("reltype");
+    const kind = typeof reltype === "string" ? reltype.toUpperCase() : "PARENT";
+    if (kind !== "PARENT") continue;
+    const value = textValue(prop, prodid);
+    if (parentUid !== null)
+      invalid("More than one parent RELATED-TO", ctx("RELATED-TO", value, prodid));
+    if (value === "" || value === uid)
+      invalid("Invalid parent RELATED-TO", ctx("RELATED-TO", value, prodid));
+    parentUid = value;
+  }
+  return parentUid;
+}
+
+function readFocus(todo: Component, prodid: string | null): string | null {
+  const focusProp = single(todo, FOCUS_PROP, prodid);
+  if (focusProp === null) return null;
+  const raw = String(focusProp.getFirstValue());
+  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(raw);
+  if (m === null || !validDate(Number(m[1]), Number(m[2]), Number(m[3]))) {
+    invalid("X-HAKEN-FOCUS must be a date YYYYMMDD", ctx(FOCUS_PROP, raw, prodid));
+  }
+  return `${m[1]}-${m[2]}-${m[3]}`;
+}
+
+function readFocusOrder(todo: Component, prodid: string | null): number | null {
+  const focusOrderProp = single(todo, FOCUS_ORDER_PROP, prodid);
+  if (focusOrderProp === null) return null;
+  const raw = String(focusOrderProp.getFirstValue());
+  if (!INTEGER_RE.test(raw)) {
+    invalid("X-HAKEN-FOCUS-ORDER must be an integer", ctx(FOCUS_ORDER_PROP, raw, prodid));
+  }
+  return Number(raw);
 }
 
 function readAttachment(prop: Property, index: number, prodid: string | null): Attachment {
@@ -569,173 +575,188 @@ export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
   if (view.repeats && view.recurrence === null) {
     throw new HakenError("domain", "This repeating task is read-only", { uid: view.uid });
   }
-  const todo = resource.todo;
-  const groups = new Set<string>();
-  const mark = (changed: boolean, name: string): void => {
-    if (changed) groups.add(groupOf(name));
-  };
-
-  switch (edit.kind) {
-    case "summary":
-      mark(setText(todo, "summary", edit.value), "summary");
-      break;
-    case "description":
-      mark(setText(todo, "description", edit.value), "description");
-      break;
-    case "done": {
-      // Completing a repeating task advances it and it stays open, unless this was its last occurrence.
-      const advanced =
-        edit.value && !view.done && view.recurrence !== null
-          ? advance(todo, view.recurrence)
-          : null;
-      if (advanced !== null && advanced !== "last") {
-        for (const name of advanced) groups.add(groupOf(name));
-        if (
-          todo.hasProperty("percent-complete") ||
-          todo.hasProperty("completed") ||
-          view.status !== "NEEDS-ACTION"
-        ) {
-          todo.updatePropertyWithValue("status", "NEEDS-ACTION");
-          todo.removeAllProperties("completed");
-          todo.removeAllProperties("percent-complete");
-          groups.add("COMPLETION");
-        }
-        break;
-      }
-      if (edit.value !== view.done || (edit.value && view.status === "CANCELLED")) {
-        if (edit.value) {
-          todo.updatePropertyWithValue("status", "COMPLETED");
-          todo.updatePropertyWithValue("completed", isoUtc(now));
-          todo.updatePropertyWithValue("percent-complete", 100);
-        } else {
-          todo.updatePropertyWithValue("status", "NEEDS-ACTION");
-          todo.removeAllProperties("completed");
-          todo.removeAllProperties("percent-complete");
-        }
-        groups.add("COMPLETION");
-      }
-      break;
-    }
-    case "important":
-      if (edit.value !== view.important) {
-        todo.updatePropertyWithValue("priority", edit.value ? 1 : 0);
-        groups.add("PRIORITY");
-      }
-      break;
-    case "due": {
-      const previous = dueTime(todo);
-      if (!setDue(todo, view.due, edit.value)) break;
-      groups.add("DUE");
-      if (view.recurrence !== null) {
-        if (edit.value === null) {
-          // No due date, no schedule: removing the date ends the repetition.
-          writeRecurrence(todo, null);
-          groups.add("RRULE");
-        } else if (followDue(todo, previous)) {
-          groups.add("DTSTART");
-        }
-      }
-      break;
-    }
-    case "focus": {
-      if (edit.value === view.focus || (edit.value !== null && view.focus !== null)) break;
-      todo.removeAllProperties(FOCUS_PROP);
-      if (edit.value !== null) {
-        if (!checkDateString(edit.value))
-          throw new HakenError("domain", "Invalid Focus date", { value: edit.value });
-        todo.addPropertyWithValue(FOCUS_PROP, edit.value.replaceAll("-", ""));
-      } else if (todo.hasProperty(FOCUS_ORDER_PROP)) {
-        // Taken off Focus: its place there goes too.
-        todo.removeAllProperties(FOCUS_ORDER_PROP);
-        groups.add("X-HAKEN-FOCUS-ORDER");
-      }
-      groups.add("X-HAKEN-FOCUS");
-      break;
-    }
-    case "focusOrder": {
-      if (!Number.isSafeInteger(edit.value)) {
-        throw new HakenError("domain", "Focus order must be a safe integer", { value: edit.value });
-      }
-      if (edit.value === view.focusOrder) break;
-      todo.removeAllProperties(FOCUS_ORDER_PROP);
-      todo.addPropertyWithValue(FOCUS_ORDER_PROP, String(edit.value));
-      groups.add("X-HAKEN-FOCUS-ORDER");
-      break;
-    }
-    case "recurrence": {
-      if (sameRecurrence(view.recurrence, edit.value)) break;
-      if (edit.value !== null && view.due === null) {
-        setDue(todo, null, { kind: "date", date: edit.today });
-        groups.add("DUE");
-      }
-      const hadStart = todo.hasProperty("dtstart");
-      writeRecurrence(todo, edit.value);
-      groups.add("RRULE");
-      if (!hadStart && todo.hasProperty("dtstart")) groups.add("DTSTART");
-      break;
-    }
-    case "categories":
-      mark(setCategories(todo, view.categories, edit.value), "categories");
-      break;
-    case "sortOrder": {
-      if (!Number.isSafeInteger(edit.value)) {
-        throw new HakenError("domain", "Sort order must be a safe integer", { value: edit.value });
-      }
-      const current = todo.getFirstProperty("x-apple-sort-order");
-      if (current === null || String(current.getFirstValue()) !== String(edit.value)) {
-        todo.removeAllProperties("x-apple-sort-order");
-        todo.addPropertyWithValue("x-apple-sort-order", String(edit.value));
-        groups.add("X-APPLE-SORT-ORDER");
-      }
-      break;
-    }
-    case "parent":
-      if (edit.value !== view.parentUid) {
-        for (const prop of todo.getAllProperties("related-to")) {
-          const reltype = prop.getFirstParameter("reltype");
-          if (typeof reltype !== "string" || reltype.toUpperCase() === "PARENT")
-            todo.removeProperty(prop);
-        }
-        if (edit.value !== null) todo.addPropertyWithValue("related-to", edit.value);
-        groups.add("RELATED-TO");
-      }
-      break;
-    case "addAttachment": {
-      const prop = new ICAL.Property("attach", todo);
-      prop.resetType("binary");
-      prop.setParameter("encoding", "BASE64");
-      prop.setParameter("fmttype", edit.mediaType);
-      prop.setParameter("filename", edit.filename);
-      prop.setValue(edit.base64);
-      todo.addProperty(prop);
-      groups.add("ATTACH");
-      break;
-    }
-    case "removeAttachment": {
-      const prop = todo.getAllProperties("attach")[edit.index];
-      if (prop === undefined) {
-        throw new HakenError("domain", "Attachment index out of range", {
-          uid: view.uid,
-          index: edit.index,
-        });
-      }
-      todo.removeProperty(prop);
-      groups.add("ATTACH");
-      break;
-    }
-    case "restoreGroup":
-      if (replaceGroup(todo, edit.group, edit.lines)) groups.add(edit.group);
-      break;
-    default:
-      unreachable(edit, "domain");
-  }
-
+  const groups = new Set(editGroups(resource.todo, view, edit, now));
   if (groups.size === 0) return { ics, groups: [] };
-  touch(todo, now);
+  touch(resource.todo, now);
   const out = serialize(resource);
   // The result must stay readable: an edit never produces an invalid task.
   readTask(parseResource(out));
   return { ics: out, groups: [...groups] };
+}
+
+type EditOf<K extends TaskEdit["kind"]> = Extract<TaskEdit, { readonly kind: K }>;
+
+/** Applies the edit to `todo`; returns the property groups it changed. */
+function editGroups(todo: Component, view: TaskView, edit: TaskEdit, now: Date): string[] {
+  const changed = (yes: boolean, name: string): string[] => (yes ? [groupOf(name)] : []);
+  switch (edit.kind) {
+    case "summary":
+      return changed(setText(todo, "summary", edit.value), "summary");
+    case "description":
+      return changed(setText(todo, "description", edit.value), "description");
+    case "done":
+      return editDone(todo, view, edit, now);
+    case "important":
+      if (edit.value === view.important) return [];
+      todo.updatePropertyWithValue("priority", edit.value ? 1 : 0);
+      return ["PRIORITY"];
+    case "due":
+      return editDue(todo, view, edit);
+    case "focus":
+      return editFocus(todo, view, edit);
+    case "focusOrder":
+      return editFocusOrder(todo, view, edit);
+    case "recurrence":
+      return editRecurrence(todo, view, edit);
+    case "categories":
+      return changed(setCategories(todo, view.categories, edit.value), "categories");
+    case "sortOrder":
+      return editSortOrder(todo, edit);
+    case "parent":
+      return editParent(todo, view, edit);
+    case "addAttachment":
+      return addAttachment(todo, edit);
+    case "removeAttachment":
+      return removeAttachment(todo, view, edit);
+    case "restoreGroup":
+      return replaceGroup(todo, edit.group, edit.lines) ? [edit.group] : [];
+    default:
+      return unreachable(edit, "domain");
+  }
+}
+
+/** Reopens: NEEDS-ACTION without COMPLETED and PERCENT-COMPLETE. */
+function reopen(todo: Component): void {
+  todo.updatePropertyWithValue("status", "NEEDS-ACTION");
+  todo.removeAllProperties("completed");
+  todo.removeAllProperties("percent-complete");
+}
+
+function editDone(todo: Component, view: TaskView, edit: EditOf<"done">, now: Date): string[] {
+  // Completing a repeating task advances it and it stays open, unless this was its last occurrence.
+  const advanced =
+    edit.value && !view.done && view.recurrence !== null ? advance(todo, view.recurrence) : null;
+  if (advanced !== null && advanced !== "last") {
+    const groups = advanced.map(groupOf);
+    if (
+      todo.hasProperty("percent-complete") ||
+      todo.hasProperty("completed") ||
+      view.status !== "NEEDS-ACTION"
+    ) {
+      reopen(todo);
+      groups.push("COMPLETION");
+    }
+    return groups;
+  }
+  if (edit.value === view.done && !(edit.value && view.status === "CANCELLED")) return [];
+  if (edit.value) {
+    todo.updatePropertyWithValue("status", "COMPLETED");
+    todo.updatePropertyWithValue("completed", isoUtc(now));
+    todo.updatePropertyWithValue("percent-complete", 100);
+  } else {
+    reopen(todo);
+  }
+  return ["COMPLETION"];
+}
+
+function editDue(todo: Component, view: TaskView, edit: EditOf<"due">): string[] {
+  const previous = dueTime(todo);
+  if (!setDue(todo, view.due, edit.value)) return [];
+  if (view.recurrence === null) return ["DUE"];
+  if (edit.value === null) {
+    // No due date, no schedule: removing the date ends the repetition.
+    writeRecurrence(todo, null);
+    return ["DUE", "RRULE"];
+  }
+  return followDue(todo, previous) ? ["DUE", "DTSTART"] : ["DUE"];
+}
+
+function editFocus(todo: Component, view: TaskView, edit: EditOf<"focus">): string[] {
+  if (edit.value === view.focus || (edit.value !== null && view.focus !== null)) return [];
+  todo.removeAllProperties(FOCUS_PROP);
+  if (edit.value !== null) {
+    if (!checkDateString(edit.value))
+      throw new HakenError("domain", "Invalid Focus date", { value: edit.value });
+    todo.addPropertyWithValue(FOCUS_PROP, edit.value.replaceAll("-", ""));
+    return ["X-HAKEN-FOCUS"];
+  }
+  if (!todo.hasProperty(FOCUS_ORDER_PROP)) return ["X-HAKEN-FOCUS"];
+  // Taken off Focus: its place there goes too.
+  todo.removeAllProperties(FOCUS_ORDER_PROP);
+  return ["X-HAKEN-FOCUS-ORDER", "X-HAKEN-FOCUS"];
+}
+
+function editFocusOrder(todo: Component, view: TaskView, edit: EditOf<"focusOrder">): string[] {
+  if (!Number.isSafeInteger(edit.value)) {
+    throw new HakenError("domain", "Focus order must be a safe integer", { value: edit.value });
+  }
+  if (edit.value === view.focusOrder) return [];
+  todo.removeAllProperties(FOCUS_ORDER_PROP);
+  todo.addPropertyWithValue(FOCUS_ORDER_PROP, String(edit.value));
+  return ["X-HAKEN-FOCUS-ORDER"];
+}
+
+function editRecurrence(todo: Component, view: TaskView, edit: EditOf<"recurrence">): string[] {
+  if (sameRecurrence(view.recurrence, edit.value)) return [];
+  const groups: string[] = [];
+  if (edit.value !== null && view.due === null) {
+    setDue(todo, null, { kind: "date", date: edit.today });
+    groups.push("DUE");
+  }
+  const hadStart = todo.hasProperty("dtstart");
+  writeRecurrence(todo, edit.value);
+  groups.push("RRULE");
+  if (!hadStart && todo.hasProperty("dtstart")) groups.push("DTSTART");
+  return groups;
+}
+
+function editSortOrder(todo: Component, edit: EditOf<"sortOrder">): string[] {
+  if (!Number.isSafeInteger(edit.value)) {
+    throw new HakenError("domain", "Sort order must be a safe integer", { value: edit.value });
+  }
+  const current = todo.getFirstProperty("x-apple-sort-order");
+  if (current !== null && String(current.getFirstValue()) === String(edit.value)) return [];
+  todo.removeAllProperties("x-apple-sort-order");
+  todo.addPropertyWithValue("x-apple-sort-order", String(edit.value));
+  return ["X-APPLE-SORT-ORDER"];
+}
+
+function editParent(todo: Component, view: TaskView, edit: EditOf<"parent">): string[] {
+  if (edit.value === view.parentUid) return [];
+  for (const prop of todo.getAllProperties("related-to")) {
+    const reltype = prop.getFirstParameter("reltype");
+    if (typeof reltype !== "string" || reltype.toUpperCase() === "PARENT")
+      todo.removeProperty(prop);
+  }
+  if (edit.value !== null) todo.addPropertyWithValue("related-to", edit.value);
+  return ["RELATED-TO"];
+}
+
+function addAttachment(todo: Component, edit: EditOf<"addAttachment">): string[] {
+  const prop = new ICAL.Property("attach", todo);
+  prop.resetType("binary");
+  prop.setParameter("encoding", "BASE64");
+  prop.setParameter("fmttype", edit.mediaType);
+  prop.setParameter("filename", edit.filename);
+  prop.setValue(edit.base64);
+  todo.addProperty(prop);
+  return ["ATTACH"];
+}
+
+function removeAttachment(
+  todo: Component,
+  view: TaskView,
+  edit: EditOf<"removeAttachment">,
+): string[] {
+  const prop = todo.getAllProperties("attach")[edit.index];
+  if (prop === undefined) {
+    throw new HakenError("domain", "Attachment index out of range", {
+      uid: view.uid,
+      index: edit.index,
+    });
+  }
+  todo.removeProperty(prop);
+  return ["ATTACH"];
 }
 
 function sameDue(a: Due | null, b: Due | null): boolean {

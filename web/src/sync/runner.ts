@@ -21,7 +21,7 @@ import { parseResource, readTask } from "../domain/vtodo.js";
 import * as api from "../net/api.js";
 import * as caldav from "../net/caldav.js";
 import { ExpiredError, UnreachableError } from "../net/http.js";
-import { type AccountStore, type Changes, StaleError } from "../store/account.js";
+import { type AccountStore, StaleError } from "../store/account.js";
 import {
   type ListRecord,
   type OutboxInput,
@@ -134,6 +134,48 @@ function quarantinable(error: unknown): boolean {
 
 export function homeOf(user: string): string {
   return `/dav/${encodeURIComponent(user)}/`;
+}
+
+interface ListChanges {
+  readonly putLists: ListRecord[];
+  readonly deleteLists: string[];
+  readonly deleteTasks: string[];
+  readonly deleteBase: string[];
+  readonly addOps: OutboxInput[];
+  readonly putTasks: TaskRecord[];
+}
+
+/** The list with the server's name, colour and order, or null if they are the same. */
+function withRemoteProps(list: ListRecord, r: caldav.RemoteList): ListRecord | null {
+  if (r.displayName === list.displayName && r.color === list.color && r.order === list.order)
+    return null;
+  return { ...list, displayName: r.displayName, color: r.color, order: r.order };
+}
+
+/**
+ * The list was deleted on the server (by another client, or our confirmed
+ * deletelist). Tasks with local edits re-create it instead of being lost.
+ */
+function goneOnServer(
+  list: ListRecord,
+  tasks: readonly TaskRecord[],
+  ops: readonly OutboxRecord[],
+  changes: ListChanges,
+): void {
+  const listTasks = tasks.filter((t) => t.list === list.href);
+  const pending = listTasks.filter((t) => ops.some((o) => o.href === t.href && o.kind === "put"));
+  for (const t of listTasks) changes.deleteBase.push(t.href);
+  if (pending.length === 0 || list.deleted) {
+    changes.deleteLists.push(list.href);
+    for (const t of listTasks) changes.deleteTasks.push(t.href);
+    return;
+  }
+  changes.putLists.push({ ...list, state: "new", syncToken: null });
+  changes.addOps.push({ kind: "mkcalendar", href: list.href, groups: [], editedAt: Date.now() });
+  for (const t of listTasks) {
+    if (pending.includes(t)) changes.putTasks.push({ ...t, etag: null });
+    else changes.deleteTasks.push(t.href);
+  }
 }
 
 export class SyncRunner {
@@ -325,14 +367,14 @@ export class SyncRunner {
     const local = await this.store.lists();
     const ops = await this.store.outbox();
     const tasks = await this.store.tasks();
-    const changes = {
-      putLists: [] as ListRecord[],
-      deleteLists: [] as string[],
-      deleteTasks: [] as string[],
-      deleteBase: [] as string[],
-      addOps: [] as OutboxInput[],
-      putTasks: [] as TaskRecord[],
-    } satisfies Changes;
+    const changes: ListChanges = {
+      putLists: [],
+      deleteLists: [],
+      deleteTasks: [],
+      deleteBase: [],
+      addOps: [],
+      putTasks: [],
+    };
     const localHrefs = new Set(local.map((l) => l.href));
 
     for (const r of remote) {
@@ -352,50 +394,10 @@ export class SyncRunner {
     for (const list of local) {
       if (list.state === "new" || invalid.has(list.href)) continue;
       const r = remoteByHref.get(list.href);
-      if (r !== undefined) {
-        const pendingPatch = ops.some((o) => o.kind === "proppatch" && o.href === list.href);
-        if (
-          !pendingPatch &&
-          (r.displayName !== list.displayName || r.color !== list.color || r.order !== list.order)
-        ) {
-          changes.putLists.push({
-            ...list,
-            displayName: r.displayName,
-            color: r.color,
-            order: r.order,
-          });
-        }
-        continue;
-      }
-      // Deleted on the server (by another client, or our confirmed deletelist).
-      const listTasks = tasks.filter((t) => t.list === list.href);
-      const pending = listTasks.filter((t) =>
-        ops.some((o) => o.href === t.href && o.kind === "put"),
-      );
-      if (pending.length === 0 || list.deleted) {
-        changes.deleteLists.push(list.href);
-        for (const t of listTasks) {
-          changes.deleteTasks.push(t.href);
-          changes.deleteBase.push(t.href);
-        }
-        continue;
-      }
-      // Local edits exist: re-create the list and those tasks instead of losing them.
-      changes.putLists.push({ ...list, state: "new", syncToken: null });
-      changes.addOps.push({
-        kind: "mkcalendar",
-        href: list.href,
-        groups: [],
-        editedAt: Date.now(),
-      });
-      for (const t of listTasks) {
-        if (pending.includes(t)) {
-          changes.putTasks.push({ ...t, etag: null });
-          changes.deleteBase.push(t.href);
-        } else {
-          changes.deleteTasks.push(t.href);
-          changes.deleteBase.push(t.href);
-        }
+      if (r === undefined) goneOnServer(list, tasks, ops, changes);
+      else if (!ops.some((o) => o.kind === "proppatch" && o.href === list.href)) {
+        const updated = withRemoteProps(list, r);
+        if (updated !== null) changes.putLists.push(updated);
       }
     }
     const ids = ops.filter((o) => changes.deleteTasks.includes(o.href)).map((o) => o.id);
@@ -674,89 +676,54 @@ export class SyncRunner {
     const list = (await this.store.lists()).find((l) => l.href === record.list);
     if (list?.state !== "synced") return true; // waits for MKCALENDAR
     const ids = ops.map((o) => o.id);
+    return record.deleted ? this.pushDelete(href, record, ids) : this.pushPut(href, record, ids);
+  }
 
-    if (record.deleted) {
-      // A task moved to another list: the old copy goes only after the new one is on the server.
-      const moved = (await this.store.tasks()).some(
-        (t) => t.uid === record.uid && t.href !== href && !t.deleted && t.etag === null,
-      );
-      if (moved) return true;
-      if (record.etag === null) {
-        await this.store.commit({
-          deleteTasks: [href],
-          deleteBase: [href],
-          deleteOps: ids,
-          expectOps: ids,
-        });
-        return true;
-      }
-      const result = await caldav.del(href, record.etag);
-      if (result === "deleted" || result === "gone") {
-        const conflicts = (await this.store.conflicts())
-          .filter((c) => c.href === href)
-          .map((c) => c.id);
-        await this.store.commit({
-          deleteTasks: [href],
-          deleteBase: [href],
-          deleteOps: ids,
-          deleteConflicts: conflicts,
-        });
-        return true;
-      }
-      const remote = await caldav.get(href);
-      if (remote === null) await this.retryStale(() => this.applyRemoval(href));
-      else await this.retryStale(() => this.applyRemote(record.list, remote));
-      return false;
+  private async pushDelete(href: string, record: TaskRecord, ids: number[]): Promise<boolean> {
+    // A task moved to another list: the old copy goes only after the new one is on the server.
+    const moved = (await this.store.tasks()).some(
+      (t) => t.uid === record.uid && t.href !== href && !t.deleted && t.etag === null,
+    );
+    if (moved) return true;
+    if (record.etag === null) {
+      await this.store.commit({
+        deleteTasks: [href],
+        deleteBase: [href],
+        deleteOps: ids,
+        expectOps: ids,
+      });
+      return true;
     }
+    const result = await caldav.del(href, record.etag);
+    if (result === "deleted" || result === "gone") {
+      const conflicts = (await this.store.conflicts())
+        .filter((c) => c.href === href)
+        .map((c) => c.id);
+      await this.store.commit({
+        deleteTasks: [href],
+        deleteBase: [href],
+        deleteOps: ids,
+        deleteConflicts: conflicts,
+      });
+      return true;
+    }
+    await this.refetch(href, record.list);
+    return false;
+  }
 
+  private async pushPut(href: string, record: TaskRecord, ids: number[]): Promise<boolean> {
     const sent = record.ics;
     // The server refused this exact content as too large: retry only after the task changed.
     const refused = await this.store.state(`tooLarge:${href}`);
     if (typeof refused === "string" && refused === (await sha256(sent))) return true;
     const result = await caldav.put(href, sent, record.etag);
     switch (result.kind) {
-      case "ok": {
-        let etag = result.etag;
-        let serverIcs = sent;
-        if (etag === null) {
-          // The server changed the content on write and returned no ETag (RFC 4791 5.3.4).
-          const remote = await caldav.get(href);
-          if (remote === null)
-            throw new HakenError("sync", "Resource missing right after PUT", { path: href });
-          etag = remote.etag;
-          serverIcs = remote.ics;
-        }
-        // The server has the new version now. An edit made during the PUT makes the commit
-        // stale; it is retried on the fresh record, which keeps that edit and its outbox
-        // entries for the next push.
-        const confirmed = etag;
-        await this.retryStale(async () => {
-          const current = await this.store.task(href);
-          if (current === null)
-            throw new RunError("sync", "Task vanished during push", { path: href });
-          await this.store.commit({
-            putTasks: [
-              {
-                ...current,
-                etag: confirmed,
-                ics: current.ics === sent ? serverIcs : current.ics,
-              },
-            ],
-            putBase: [{ schema: SCHEMA, href, ics: serverIcs, etag: confirmed }],
-            deleteOps: ids,
-            putState: { [`tooLarge:${href}`]: null },
-            expect: [{ href, ics: current.ics }],
-            expectOps: ids,
-          });
-        });
+      case "ok":
+        await this.confirmPut(href, sent, ids, result.etag);
         return true;
-      }
-      case "precondition": {
-        const remote = await caldav.get(href);
-        if (remote === null) await this.retryStale(() => this.applyRemoval(href));
-        else await this.retryStale(() => this.applyRemote(record.list, remote));
+      case "precondition":
+        await this.refetch(href, record.list);
         return false;
-      }
       case "too-large":
         await this.store.commit({ putState: { [`tooLarge:${href}`]: await sha256(sent) } });
         this.hooks.onNotice({ kind: "too-large", href });
@@ -769,5 +736,53 @@ export class SyncRunner {
           uid: record.uid,
         });
     }
+  }
+
+  /** The server has `sent` now: store its ETag (and content, if it changed it on write). */
+  private async confirmPut(
+    href: string,
+    sent: string,
+    ids: number[],
+    returned: string | null,
+  ): Promise<void> {
+    let etag = returned;
+    let serverIcs = sent;
+    if (etag === null) {
+      // The server changed the content on write and returned no ETag (RFC 4791 5.3.4).
+      const remote = await caldav.get(href);
+      if (remote === null)
+        throw new HakenError("sync", "Resource missing right after PUT", { path: href });
+      etag = remote.etag;
+      serverIcs = remote.ics;
+    }
+    // The server has the new version now. An edit made during the PUT makes the commit
+    // stale; it is retried on the fresh record, which keeps that edit and its outbox
+    // entries for the next push.
+    const confirmed = etag;
+    await this.retryStale(async () => {
+      const current = await this.store.task(href);
+      if (current === null) throw new RunError("sync", "Task vanished during push", { path: href });
+      await this.store.commit({
+        putTasks: [
+          {
+            ...current,
+            etag: confirmed,
+            ics: current.ics === sent ? serverIcs : current.ics,
+          },
+        ],
+        putBase: [{ schema: SCHEMA, href, ics: serverIcs, etag: confirmed }],
+        deleteOps: ids,
+        putState: { [`tooLarge:${href}`]: null },
+        expect: [{ href, ics: current.ics }],
+        expectOps: ids,
+      });
+    });
+  }
+
+  /** After a refused write: apply the server's version, or its removal. */
+  private async refetch(href: string, list: string): Promise<void> {
+    const remote = await caldav.get(href);
+    if (remote === null) await this.retryStale(() => this.applyRemoval(href));
+    else await this.retryStale(() => this.applyRemote(list, remote));
   }
 }
