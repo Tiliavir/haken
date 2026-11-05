@@ -1314,3 +1314,31 @@ haken-setup {
 .sheet .button {
   margin-top: 8px;
 }
+
+/* ------------------------------------------------------------ list order */
+
+.own-lists {
+  position: relative;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+}
+
+.list-item > .list-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-item.dragging {
+  position: relative;
+  z-index: 2;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px var(--shadow);
+}
+
+.list-item.dragging .grip {
+  color: var(--accent);
+}

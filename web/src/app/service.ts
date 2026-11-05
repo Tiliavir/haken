@@ -509,6 +509,32 @@ export class AppService extends EventTarget implements ErrorSink {
     });
   }
 
+  /**
+   * Moves a list to `targetIndex` among the shown lists (errorlogs stays last).
+   * The order is written as `calendar-order` 1…n; only lists whose order changes are patched.
+   */
+  moveList(href: string, targetIndex: number): Promise<void> {
+    return this.exclusive(() => this.moveListNow(href, targetIndex));
+  }
+
+  private async moveListNow(href: string, targetIndex: number): Promise<void> {
+    const shown = this.snapshot.lists.filter((l) => !l.errorlogs).map((l) => l.href);
+    if (!shown.includes(href))
+      throw new HakenError("app", "Moved list is not shown", { path: href });
+    const rest = shown.filter((h) => h !== href);
+    rest.splice(Math.max(0, Math.min(targetIndex, rest.length)), 0, href);
+    const putLists: ListRecord[] = [];
+    const addOps: OutboxInput[] = [];
+    for (const [i, h] of rest.entries()) {
+      const list = await this.listRecord(h);
+      if (list.order === i + 1) continue;
+      putLists.push({ ...list, order: i + 1 });
+      if (this.isServer && list.state === "synced")
+        addOps.push({ kind: "proppatch", href: h, groups: ["order"], editedAt: Date.now() });
+    }
+    if (putLists.length > 0) await this.changed({ putLists, addOps });
+  }
+
   deleteList(href: string): Promise<void> {
     return this.exclusive(() => this.deleteListNow(href));
   }

@@ -258,5 +258,6 @@
   "repeat.nth3": "troisième",
   "repeat.nth4": "quatrième",
   "repeat.nthLast": "dernier",
-  "notice.storageFull": "Le stockage de cet appareil est plein à {percent} %. Supprimez des pièces jointes ou des tâches terminées pour pouvoir enregistrer de nouvelles modifications."
+  "notice.storageFull": "Le stockage de cet appareil est plein à {percent} %. Supprimez des pièces jointes ou des tâches terminées pour pouvoir enregistrer de nouvelles modifications.",
+  "lists.drag": "Déplacer « {name} »"
 }

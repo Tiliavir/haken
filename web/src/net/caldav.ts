@@ -177,11 +177,19 @@ function collection(href: string, prop: Element): RemoteList {
 export async function makeCalendar(
   href: string,
   displayName: string,
+  order: number | null,
 ): Promise<"created" | "exists"> {
+  if (order !== null && !Number.isInteger(order))
+    throw new HakenError("net", "calendar-order must be an integer", { path: href });
   const body = `<?xml version="1.0" encoding="utf-8"?>
-<c:mkcalendar xmlns:d="DAV:" xmlns:c="${CALDAV}">
+<c:mkcalendar xmlns:d="DAV:" xmlns:c="${CALDAV}" xmlns:a="${APPLE}">
   <d:set><d:prop>
-    <d:displayname>${escapeXml(displayName)}</d:displayname>
+    <d:displayname>${escapeXml(displayName)}</d:displayname>${
+      order === null
+        ? ""
+        : `
+    <a:calendar-order>${order}</a:calendar-order>`
+    }
     <c:supported-calendar-component-set><c:comp name="VTODO"/></c:supported-calendar-component-set>
   </d:prop></d:set>
 </c:mkcalendar>`;

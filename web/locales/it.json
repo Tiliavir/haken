@@ -258,5 +258,6 @@
   "repeat.nth3": "terzo",
   "repeat.nth4": "quarto",
   "repeat.nthLast": "ultimo",
-  "notice.storageFull": "La memoria di questo dispositivo è piena al {percent} %. Rimuovi allegati o attività completate per poter salvare nuove modifiche."
+  "notice.storageFull": "La memoria di questo dispositivo è piena al {percent} %. Rimuovi allegati o attività completate per poter salvare nuove modifiche.",
+  "lists.drag": "Sposta «{name}»"
 }

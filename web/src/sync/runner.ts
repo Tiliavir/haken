@@ -290,7 +290,7 @@ export class SyncRunner {
         });
       await this.isolated(list.href, null, async () => {
         if (op.kind === "mkcalendar") {
-          await caldav.makeCalendar(list.href, list.displayName);
+          await caldav.makeCalendar(list.href, list.displayName, list.order);
           const synced: ListRecord = { ...list, state: "synced" };
           await this.store.commit({ putLists: [synced], deleteOps: [op.id] });
           lists.set(list.href, synced);
