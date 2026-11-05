@@ -15,7 +15,6 @@ Work in progress on the current branch. Planned work beyond it is in
 ## UI
 
 - Design the screens chapter 8 lists as *Not designed yet*; update the sketches.
-- Trusted Types with a single policy for the service-worker URL.
 
 ## Quality gates and delivery
 

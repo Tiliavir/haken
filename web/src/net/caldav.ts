@@ -7,6 +7,7 @@
 import { HakenError, InvalidInputError } from "../domain/errors.js";
 import { errorId } from "./api.js";
 import { type ServerResponse, server } from "./http.js";
+import { parseXml } from "./trusted.js";
 
 const DAV = "DAV:";
 const CALDAV = "urn:ietf:params:xml:ns:caldav";
@@ -52,7 +53,7 @@ function parseMultistatus(method: string, path: string, response: ServerResponse
   const type = response.headers.get("Content-Type") ?? "";
   if (!/^(application|text)\/xml\b/.test(type))
     throw unexpected(method, path, response, "content type");
-  const doc = new DOMParser().parseFromString(response.text, "application/xml");
+  const doc = parseXml(response.text);
   if (doc.getElementsByTagName("parsererror").length > 0)
     throw unexpected(method, path, response, "malformed XML");
   const root = doc.documentElement;
@@ -269,7 +270,7 @@ export async function syncCollection(href: string, token: string | null): Promis
     return { kind: "invalid-token" };
   }
   const responses = parseMultistatus("REPORT", href, response);
-  const doc = new DOMParser().parseFromString(response.text, "application/xml");
+  const doc = parseXml(response.text);
   const newToken = child(doc.documentElement, DAV, "sync-token")?.textContent?.trim() ?? "";
   if (newToken === "") throw unexpected("REPORT", href, response, "no sync-token");
   const changed: { href: string; etag: string }[] = [];

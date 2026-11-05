@@ -40,6 +40,7 @@ Decisions taken while implementing the accepted ADRs, reviewed one by one. Detai
 - User names `[A-Za-z0-9._@-]{1,64}`; `/api/session` accepts exact JSON only.
 - `/dav`: query strings removed, cookies never forwarded, `Set-Cookie` dropped, body limit 32 MiB, `X-Script-Name: /dav`, same-origin only, `/dav/<user>` and below only.
 - CSP `default-src 'none'` with `'self'` per resource type, as header and `<meta>`.
+- Trusted Types enforced (`require-trusted-types-for 'script'`). Two policies in `net/trusted.ts`: `haken-sw` allows only `sw.js`; `haken-xml` passes CalDAV responses to `DOMParser` as XML, an inert document that is never inserted. Everything else builds the DOM without HTML strings.
 
 ### UI
 

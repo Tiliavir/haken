@@ -1,6 +1,7 @@
 /** Composition root: wires everything, registers the service worker. */
 import { SyncScheduler } from "./app/scheduler.js";
 import { AppService } from "./app/service.js";
+import { serviceWorkerUrl } from "./net/trusted.js";
 import { defineElements, type HakenApp } from "./ui/app-root.js";
 import { h } from "./ui/dom.js";
 import { initI18n, t } from "./ui/i18n.js";
@@ -53,7 +54,7 @@ async function main(): Promise<void> {
         void app.reporter.report(new Error(`Service worker: ${message}`), "sw");
       }
     });
-    await navigator.serviceWorker.register("sw.js", { type: "module", scope: "./" });
+    await navigator.serviceWorker.register(serviceWorkerUrl(), { type: "module", scope: "./" });
   }
 }
 

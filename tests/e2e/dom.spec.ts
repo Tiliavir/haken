@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { addTask, setupLocal } from "./helpers.js";
+import { addTask, guard, setupLocal, setupServer, waitSynced } from "./helpers.js";
 
 // Rendered DOM validity: every screen's DOM is checked with the W3C validator.
 const OUT = join("test-results", "dom");
@@ -55,4 +55,20 @@ test("every screen renders valid HTML", async ({ page }) => {
     const stderr = (error as { stderr?: Buffer }).stderr?.toString() ?? String(error);
     throw new Error(`vnu found errors in the rendered DOM:\n${stderr}`);
   }
+});
+
+test("Trusted Types are enforced: HTML strings cannot reach the DOM", async ({ page }) => {
+  const problems = guard(page);
+  await setupServer(page);
+  await waitSynced(page);
+  const refused = await page.evaluate(() => {
+    try {
+      document.body.insertAdjacentHTML("beforeend", "<b>x</b>");
+      return false;
+    } catch (e) {
+      return e instanceof TypeError;
+    }
+  });
+  expect(refused).toBe(true);
+  expect(problems.filter((p) => !p.includes("TrustedHTML"))).toEqual([]);
 });

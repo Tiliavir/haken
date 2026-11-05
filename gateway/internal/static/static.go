@@ -12,7 +12,8 @@ import (
 // CSP is the policy for every response. The app loads only its own files and
 // talks only to its own origin.
 const CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; " +
-	"manifest-src 'self'; worker-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
+	"manifest-src 'self'; worker-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; " +
+	"require-trusted-types-for 'script'; trusted-types haken-sw haken-xml"
 
 // SecurityHeaders sets the headers shared by all responses.
 func SecurityHeaders(h http.Header) {
