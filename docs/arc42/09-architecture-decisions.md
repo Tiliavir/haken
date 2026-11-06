@@ -23,9 +23,10 @@ Status: `Proposed` → `Accepted` | `Rejected` | `Superseded by …`.
 | [ADR-20261104-error-task-content](adr/ADR-20261104-error-task-content.md) | Error tasks may contain task values; never credentials or query strings | Accepted |
 | [ADR-20261104-sync-quarantine](adr/ADR-20261104-sync-quarantine.md) | A failing resource is quarantined; the sync run continues | Accepted |
 | [ADR-20261104-set-merge](adr/ADR-20261104-set-merge.md) | Labels and attachments merge as sets, without conflict note | Accepted |
-| [ADR-20261105-implementation-baseline](adr/ADR-20261105-implementation-baseline.md) | Reviewed implementation decisions of the first version; local accounts have no outbox | Accepted; partly superseded by ci-image |
+| [ADR-20261105-implementation-baseline](adr/ADR-20261105-implementation-baseline.md) | Reviewed implementation decisions of the first version; local accounts have no outbox | Accepted; partly superseded by ci-image, release-from-main |
 | [ADR-20261105-gateway-security](adr/ADR-20261105-gateway-security.md) | `/dav` only for the app (cookie); other clients reach Radicale directly; 7-day idle session | Accepted |
 | [ADR-20261105-reminders](adr/ADR-20261105-reminders.md) | Reminders fire only while haken is open; no Web Push | Accepted |
 | [ADR-20261105-home-network](adr/ADR-20261105-home-network.md) | Gateway and Radicale only in the home network; no fail2ban | Accepted |
 | [ADR-20261105-ci-image](adr/ADR-20261105-ci-image.md) | CI runs in a prebuilt, digest-pinned image; runs download only npm packages | Accepted; partly superseded by ci-browser-per-run |
 | [ADR-20261106-ci-browser-per-run](adr/ADR-20261106-ci-browser-per-run.md) | CI installs the locked Playwright browser per run (cached); the image has none | Proposed |
+| [ADR-20261106-release-from-main](adr/ADR-20261106-release-from-main.md) | A merge to `main` with an untagged `package.json` version releases it; CI creates the tag | Proposed |
