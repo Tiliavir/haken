@@ -1,14 +1,43 @@
 name: release
 
+# A push to main whose package.json version has no tag yet releases that version.
 on:
   push:
-    tags: ["v*.*.*"]
+    branches: [main]
 
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - id: v
+        name: Untagged version?
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          set +e
+          git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null
+          status=$?
+          set -e
+          case "$status" in
+            0) echo "release=false" >> "$GITHUB_OUTPUT" ;;
+            2) echo "release=true" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$status" ;;
+          esac
+
   check:
+    needs: version
+    if: needs.version.outputs.release == 'true'
     permissions:
       contents: read
       packages: read
@@ -16,25 +45,24 @@ jobs:
     secrets: inherit
 
   release:
-    needs: check
+    needs: [version, check]
     runs-on: ubuntu-24.04
     permissions:
-      contents: write # GitHub release
+      contents: write # tag and GitHub release
       packages: write # ghcr.io image
     env:
       GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - name: Tag, package.json and changelog agree
+      - name: Changelog section
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          test "$(node -p 'require("./package.json").version')" = "$version"
-          awk -v v="$version" '$0 ~ "^## \\[" v "\\]" {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > notes.md
+          awk -v v="$VERSION" '$0 ~ "^## \\[" v "\\]" {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > notes.md
           test -s notes.md
       - name: Image
         run: |
           image="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
-          docker build -f deploy/Dockerfile -t "$image:${GITHUB_REF_NAME#v}" -t "$image:latest" .
+          docker build -f deploy/Dockerfile -t "$image:$VERSION" -t "$image:latest" .
           echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           docker push --all-tags "$image"
-      - run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+      - run: gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file notes.md
