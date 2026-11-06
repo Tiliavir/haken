@@ -1,6 +1,6 @@
 # ADR-20261105: Prebuilt CI image
 
-Status: Proposed
+Status: Accepted
 
 Supersedes the CI image in [ADR-20261105-implementation-baseline](ADR-20261105-implementation-baseline.md) (*Build*).
 
