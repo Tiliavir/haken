@@ -180,7 +180,6 @@
   "task.uncomplete": "Segna come non completata",
   "task.star": "Segna come importante",
   "task.unstar": "Rimuovi importanza",
-  "task.drag": "Sposta «{title}»",
   "task.steps": "{done}/{total}",
   "task.stepsTitle": "Lista di controllo",
   "task.stepTitle": "Elemento della lista",
@@ -259,6 +258,5 @@
   "repeat.nth4": "quarto",
   "repeat.nthLast": "ultimo",
   "notice.storageFull": "La memoria di questo dispositivo è piena al {percent} %. Rimuovi allegati o attività completate per poter salvare nuove modifiche.",
-  "lists.drag": "Sposta «{name}»",
   "task.taskTooLarge": "Con questo file l’attività supererebbe i 32 MB. Rimuovi prima un allegato."
 }

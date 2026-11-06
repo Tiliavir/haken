@@ -12,7 +12,6 @@
   --text-2: light-dark(#3d4249, #c9cdd2);
   --text-muted: light-dark(#5e636b, #a4aab2);
   --control: light-dark(#8a8f97, #7c838c);
-  --grip: light-dark(#9aa0a8, #6b727b);
   --accent: light-dark(#1f4d45, #618f86);
   --on-accent: light-dark(#ffffff, #000000);
   --danger: light-dark(#a1262b, #f08a8e);
@@ -20,6 +19,13 @@
   --shadow: light-dark(rgb(0 0 0 / 16%), rgb(0 0 0 / 50%));
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   accent-color: var(--accent);
+}
+
+/* Touch screens: every size one step larger (sizes are rem, borders px). */
+@media (pointer: coarse) {
+  :root {
+    font-size: 112.5%;
+  }
 }
 
 :root[data-theme="light"] {
@@ -45,7 +51,7 @@ body {
 body {
   background: var(--bg);
   color: var(--text);
-  font: 15px / 1.4 var(--font);
+  font: 0.9375rem / 1.4 var(--font);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -83,8 +89,8 @@ a {
 /* ------------------------------------------------------------ icons */
 
 .icon {
-  width: 22px;
-  height: 22px;
+  width: 1.375rem;
+  height: 1.375rem;
   flex: none;
   fill: none;
   stroke: currentColor;
@@ -94,8 +100,8 @@ a {
 }
 
 .icon.small {
-  width: 16px;
-  height: 16px;
+  width: 1rem;
+  height: 1rem;
 }
 
 /* ------------------------------------------------------------ buttons and fields */
@@ -103,8 +109,8 @@ a {
 .icon-button {
   display: inline-grid;
   place-items: center;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0;
   border: 0;
   border-radius: 8px;
@@ -122,15 +128,15 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 16px;
+  gap: 0.375rem;
+  min-height: 2.75rem;
+  padding: 0 1rem;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg);
   color: var(--text);
   cursor: pointer;
-  font-size: 15px;
+  font-size: 0.9375rem;
   text-decoration: none;
 }
 
@@ -152,16 +158,16 @@ a {
 
 /* Zero specificity: a component class (.add-input, .label-input, …) overrides it. */
 :where(input[type="text"], input[type="password"], input[type="date"], select, textarea) {
-  min-height: 44px;
-  padding: 10px 12px;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg);
 }
 
 input[type="color"] {
-  width: 44px;
-  height: 44px;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 2px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -170,7 +176,7 @@ input[type="color"] {
 
 label {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .muted {
@@ -180,25 +186,25 @@ label {
 .warning {
   color: var(--text-2);
   border-left: 3px solid var(--accent);
-  padding-left: 10px;
+  padding-left: 0.625rem;
 }
 
 .warning.small {
-  font-size: 12px;
-  margin: 4px 0 0;
+  font-size: 0.75rem;
+  margin: 0.25rem 0 0;
 }
 
 .field-error {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.375rem;
   color: var(--danger);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .hint {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 /* ------------------------------------------------------------ layout */
@@ -211,7 +217,7 @@ label {
 
 .pane {
   min-width: 0;
-  padding: 0 16px calc(16px + env(safe-area-inset-bottom));
+  padding: 0 1rem calc(1rem + env(safe-area-inset-bottom));
 }
 
 .pane-sidebar {
@@ -288,43 +294,43 @@ label {
 .app-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding-top: 12px;
+  gap: 0.625rem;
+  padding-top: 0.75rem;
 }
 
 .logo {
-  width: 28px;
-  height: 28px;
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
 @media (min-width: 721px) {
   .logo {
-    width: 26px;
-    height: 26px;
+    width: 1.625rem;
+    height: 1.625rem;
   }
 }
 
 .app-name {
   flex: 1;
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
 }
 
 .sync-line {
-  min-height: 24px;
-  margin: 2px 0 12px;
+  min-height: 1.5rem;
+  margin: 2px 0 0.75rem;
 }
 
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .status.link {
-  min-height: 44px;
+  min-height: 2.75rem;
   padding: 0;
   border: 0;
   background: none;
@@ -334,8 +340,8 @@ label {
 }
 
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
   background: var(--control);
 }
@@ -359,9 +365,9 @@ label {
 .list-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 52px;
-  padding: 0 10px;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0 0.625rem;
   border-radius: 8px;
   color: var(--text);
   text-decoration: none;
@@ -388,11 +394,11 @@ label {
 
 .count {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .divider {
-  margin: 8px 0;
+  margin: 0.5rem 0;
   border: 0;
   border-top: 1px solid var(--border);
 }
@@ -400,8 +406,8 @@ label {
 .new-list {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 0;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
 }
 
 .new-list-input {
@@ -422,7 +428,7 @@ haken-task {
 .list-header {
   display: grid;
   grid-template-columns: 1fr auto;
-  padding-top: 12px;
+  padding-top: 0.75rem;
 }
 
 .list-header .back {
@@ -432,8 +438,8 @@ haken-task {
 .back {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 44px;
+  gap: 0.25rem;
+  min-height: 2.75rem;
   color: var(--accent);
   text-decoration: none;
 }
@@ -445,17 +451,17 @@ haken-task {
 }
 
 .page-title {
-  margin: 8px 0 0;
-  font-size: 30px;
+  margin: 0.5rem 0 0;
+  font-size: 1.875rem;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .subtitle {
   grid-column: 1;
-  margin: 2px 0 12px;
+  margin: 2px 0 0.75rem;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .list-actions {
@@ -468,8 +474,8 @@ haken-task {
 .add-task {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin: 8px 0;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
   border-radius: 12px;
   background: var(--surface-2);
 }
@@ -491,8 +497,8 @@ haken-task {
 .task-row {
   display: flex;
   align-items: center;
-  gap: 4px;
-  min-height: 56px;
+  gap: 0.25rem;
+  min-height: 3.5rem;
   border-bottom: 1px solid var(--divider);
   background: var(--bg);
   -webkit-touch-callout: none;
@@ -509,56 +515,40 @@ haken-task {
   box-shadow: 0 10px 28px var(--shadow);
 }
 
-.task-row.dragging .grip {
-  color: var(--accent);
+/* Rows slide aside to open the gap where the lifted row will land. */
+.sorting > [data-sortable] {
+  transition: translate 160ms ease-out;
 }
 
-.drop-line {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--accent);
-  pointer-events: none;
+/* The lifted row follows the pointer without lag and grows a little. */
+.sorting > .dragging {
+  scale: 1.02;
+  transition:
+    scale 120ms ease-out,
+    box-shadow 120ms ease-out;
 }
 
-.drop-line::before {
-  content: "";
-  position: absolute;
-  top: -4px;
-  left: -2px;
-  width: 6px;
-  height: 6px;
-  border: 2px solid var(--accent);
-  border-radius: 50%;
-  background: var(--bg);
+.shift-down {
+  translate: 0 var(--drag-gap);
 }
 
-.grip {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--grip);
-  cursor: grab;
-  touch-action: none;
+.shift-up {
+  translate: 0 calc(-1 * var(--drag-gap));
 }
 
-.grip-placeholder {
-  width: 28px;
-  flex: none;
+@media (prefers-reduced-motion: reduce) {
+  .sorting > [data-sortable],
+  .sorting > .dragging {
+    transition: none;
+  }
 }
 
 .check {
   display: grid;
   place-items: center;
   flex: none;
-  width: 44px;
-  height: 44px;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
   border: 0;
   background: none;
@@ -568,16 +558,16 @@ haken-task {
 .check::before {
   content: "";
   grid-area: 1 / 1;
-  width: 22px;
-  height: 22px;
+  width: 1.375rem;
+  height: 1.375rem;
   border: 1.75px solid var(--control);
   border-radius: 50%;
 }
 
 .check .check-mark {
   grid-area: 1 / 1;
-  width: 16px;
-  height: 16px;
+  width: 1rem;
+  height: 1rem;
   opacity: 0;
 }
 
@@ -594,7 +584,7 @@ haken-task {
 .check-placeholder {
   display: grid;
   place-items: center;
-  width: 72px;
+  width: 4.5rem;
   color: var(--text-muted);
 }
 
@@ -604,9 +594,9 @@ haken-task {
   flex-direction: column;
   justify-content: center;
   min-width: 0;
-  min-height: 56px;
+  min-height: 3.5rem;
   color: var(--text);
-  font-size: 16px;
+  font-size: 1rem;
   text-decoration: none;
 }
 
@@ -622,15 +612,15 @@ haken-task {
 .meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 10px;
+  gap: 0.25rem 0.625rem;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .meta-item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 0.25rem;
 }
 
 .meta-item.overdue {
@@ -660,19 +650,19 @@ haken-task {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 2px 10px;
+  padding: 2px 0.625rem;
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .star {
   display: grid;
   place-items: center;
   flex: none;
-  width: 44px;
-  height: 44px;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
   border: 0;
   background: none;
@@ -691,13 +681,13 @@ haken-task {
 .empty {
   color: var(--text-muted);
   text-align: center;
-  padding: 24px 0;
+  padding: 1.5rem 0;
 }
 
 .completed summary {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 2.75rem;
   color: var(--text-2);
   cursor: pointer;
   font-weight: 600;
@@ -709,21 +699,21 @@ haken-task {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 12px;
+  padding-top: 0.75rem;
 }
 
 .task-head {
   display: flex;
   align-items: flex-start;
-  gap: 4px;
-  margin: 8px 0 12px;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0.75rem;
 }
 
 .task-heading {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 22px;
+  gap: 0.5rem;
+  font-size: 1.375rem;
 }
 
 .task-heading-input {
@@ -731,10 +721,10 @@ haken-task {
   min-width: 0;
   /* Grows with a long title; browsers without field-sizing scroll inside the field. */
   field-sizing: content;
-  padding: 8px 4px;
+  padding: 0.5rem 0.25rem;
   border: 0;
   background: none;
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
   resize: none;
 }
@@ -746,19 +736,19 @@ haken-task {
 
 .group,
 .card {
-  margin: 12px 0;
-  padding: 4px 12px;
+  margin: 0.75rem 0;
+  padding: 0.25rem 0.75rem;
   border-radius: 14px;
   background: var(--surface);
 }
 
 .card {
-  padding: 12px 16px 16px;
+  padding: 0.75rem 1rem 1rem;
 }
 
 .card-title {
-  margin: 0 0 8px;
-  font-size: 13px;
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -768,8 +758,8 @@ haken-task {
 .group-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 52px;
+  gap: 0.625rem;
+  min-height: 3.25rem;
   border-bottom: 1px solid var(--divider);
   color: var(--text-2);
 }
@@ -780,20 +770,20 @@ haken-task {
 
 .group-row.wrap {
   flex-wrap: wrap;
-  padding: 6px 0;
+  padding: 0.375rem 0;
 }
 
 .row-label {
   flex: 1;
   color: var(--text-2);
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 .chips,
 .attachments {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 0.375rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -807,8 +797,8 @@ haken-task {
 .chip-remove {
   display: inline-grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 1.5rem;
+  height: 1.5rem;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -818,25 +808,25 @@ haken-task {
 }
 
 .label-input {
-  min-height: 36px;
+  min-height: 2.25rem;
   width: 9em;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .attachment {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .attachment-name {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.375rem;
   flex: 1;
   min-width: 0;
-  min-height: 44px;
+  min-height: 2.75rem;
   padding: 0;
   border: 0;
   background: none;
@@ -848,11 +838,11 @@ haken-task {
 
 .size {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .steps {
-  margin: 0 0 12px;
+  margin: 0 0 0.75rem;
 }
 
 .step-list {
@@ -887,14 +877,14 @@ haken-task {
 .icon-slot {
   display: grid;
   place-items: center;
-  width: 44px;
+  width: 2.75rem;
   color: var(--accent);
 }
 
 .note {
   width: 100%;
-  min-height: 120px;
-  margin: 12px 0;
+  min-height: 7.5rem;
+  margin: 0.75rem 0;
   resize: vertical;
 }
 
@@ -903,36 +893,36 @@ haken-task {
   align-items: center;
   justify-content: space-between;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .conflicts {
-  padding: 12px;
+  padding: 0.75rem;
 }
 
 .conflict + .conflict {
   border-top: 1px solid var(--divider);
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
 }
 
 .conflict-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.375rem;
   margin: 0;
   color: var(--accent);
   font-weight: 600;
 }
 
 .conflict-why {
-  margin: 4px 0;
+  margin: 0.25rem 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .conflict-value {
-  margin: 4px 0 8px;
+  margin: 0.25rem 0 0.5rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -942,8 +932,8 @@ haken-task {
 .facts {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 4px 16px;
-  margin: 0 0 12px;
+  gap: 0.25rem 1rem;
+  margin: 0 0 0.75rem;
 }
 
 .facts dt {
@@ -957,25 +947,25 @@ haken-task {
 
 .segmented {
   display: flex;
-  margin: 0 0 12px;
-  padding: 3px;
+  margin: 0 0 0.75rem;
+  padding: 0.1875rem;
   border: 0;
   border-radius: 12px;
   background: var(--surface-2);
 }
 
 .segmented legend {
-  margin-bottom: 6px;
+  margin-bottom: 0.375rem;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .segment {
   flex: 1;
   display: grid;
-  min-height: 40px;
+  min-height: 2.5rem;
   color: var(--text);
-  font-size: 15px;
+  font-size: 0.9375rem;
   cursor: pointer;
 }
 
@@ -1003,8 +993,8 @@ haken-task {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin: 8px 0;
+  gap: 0.625rem;
+  margin: 0.5rem 0;
 }
 
 .field-row label {
@@ -1020,18 +1010,18 @@ haken-task {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .stacked-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .version {
   text-align: center;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 /* ------------------------------------------------------------ setup */
@@ -1044,19 +1034,19 @@ haken-setup {
 .setup-screen {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
   max-width: 440px;
   margin: 0 auto;
-  padding: 48px 20px calc(24px + env(safe-area-inset-bottom));
+  padding: 3rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
 }
 
 .setup-logo {
-  width: 72px;
-  height: 72px;
+  width: 4.5rem;
+  height: 4.5rem;
 }
 
 .lead {
-  font-size: 17px;
+  font-size: 1.0625rem;
   color: var(--text-2);
 }
 
@@ -1064,12 +1054,12 @@ haken-setup {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .setup-hint summary {
-  min-height: 44px;
+  min-height: 2.75rem;
   display: flex;
   align-items: center;
   color: var(--accent);
@@ -1079,14 +1069,14 @@ haken-setup {
 .choices {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .choice {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 16px;
+  gap: 0.25rem;
+  padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface);
@@ -1096,20 +1086,20 @@ haken-setup {
 
 .choice span {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .signin {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 /* ------------------------------------------------------------ dialog, toast */
 
 .dialog {
-  width: min(420px, calc(100% - 32px));
-  padding: 20px;
+  width: min(420px, calc(100% - 2rem));
+  padding: 1.25rem;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--bg);
@@ -1121,26 +1111,26 @@ haken-setup {
 }
 
 .dialog h2 {
-  margin: 0 0 8px;
-  font-size: 18px;
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
 }
 
 .dialog form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(80px + env(safe-area-inset-bottom));
-  max-width: calc(100% - 32px);
-  padding: 10px 16px;
+  bottom: calc(5rem + env(safe-area-inset-bottom));
+  max-width: calc(100% - 2rem);
+  padding: 0.625rem 1rem;
   border-radius: 12px;
   background: var(--text);
   color: var(--bg);
-  font-size: 13px;
+  font-size: 0.8125rem;
   opacity: 0;
   pointer-events: none;
   translate: -50% 0;
@@ -1162,19 +1152,19 @@ haken-setup {
   flex-basis: 100%;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 0 0 8px 32px;
+  gap: 0.5rem;
+  padding: 0 0 0.5rem 2rem;
 }
 
 .repeat-custom > label {
-  font-size: 15px;
+  font-size: 0.9375rem;
   color: var(--text-2);
 }
 
 .interval-input {
   width: 5em;
-  min-height: 44px;
-  padding: 10px 12px;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg);
@@ -1184,16 +1174,16 @@ haken-setup {
   display: flex;
   flex-basis: 100%;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 0.375rem;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
 .weekdays legend {
-  margin-bottom: 6px;
+  margin-bottom: 0.375rem;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .weekday {
@@ -1209,13 +1199,13 @@ haken-setup {
 .weekday span {
   display: grid;
   place-items: center;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 8px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.5rem;
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--text-2);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .weekday input:checked + span {
@@ -1230,13 +1220,13 @@ haken-setup {
 
 .row-button {
   flex: 1;
-  min-height: 44px;
+  min-height: 2.75rem;
   padding: 0;
   border: 0;
   background: none;
   color: var(--text-2);
   cursor: pointer;
-  font-size: 15px;
+  font-size: 0.9375rem;
   text-align: start;
 }
 
@@ -1254,60 +1244,23 @@ haken-setup {
 /* ------------------------------------------------------------ focus parts, row actions */
 
 .focus-part + .focus-part {
-  margin-top: 12px;
+  margin-top: 0.75rem;
 }
 
 .part-title {
-  margin: 8px 0 0;
+  margin: 0.5rem 0 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
 }
 
-.sheet {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.sheet h2 {
-  overflow-wrap: anywhere;
-}
-
-.sheet-label {
-  margin: 8px 0 0;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.sheet-action {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 8px;
-  background: none;
-  color: var(--text);
-  cursor: pointer;
-  font-size: 15px;
-  text-align: start;
-}
-
-.sheet-action:hover {
-  background: var(--surface-2);
-}
-
-.sheet-action .icon {
-  color: var(--accent);
-}
-
-.sheet .button {
-  margin-top: 8px;
-}
-
 /* ------------------------------------------------------------ list order */
+
+/* The whole row is the drag handle: no text selection or link drag on press. */
+[data-sortable] {
+  -webkit-user-select: none;
+  user-select: none;
+}
 
 .own-lists {
   position: relative;
@@ -1329,8 +1282,4 @@ haken-setup {
   border-radius: 8px;
   background: var(--surface);
   box-shadow: 0 10px 28px var(--shadow);
-}
-
-.list-item.dragging .grip {
-  color: var(--accent);
 }

@@ -180,7 +180,6 @@
   "task.uncomplete": "Marquer comme non terminée",
   "task.star": "Marquer comme importante",
   "task.unstar": "Retirer l'importance",
-  "task.drag": "Déplacer « {title} »",
   "task.steps": "{done}/{total}",
   "task.stepsTitle": "Liste de contrôle",
   "task.stepTitle": "Élément de la liste",
@@ -259,6 +258,5 @@
   "repeat.nth4": "quatrième",
   "repeat.nthLast": "dernier",
   "notice.storageFull": "Le stockage de cet appareil est plein à {percent} %. Supprimez des pièces jointes ou des tâches terminées pour pouvoir enregistrer de nouvelles modifications.",
-  "lists.drag": "Déplacer « {name} »",
   "task.taskTooLarge": "Avec ce fichier, la tâche dépasserait 32 Mo. Supprimez d’abord une pièce jointe."
 }

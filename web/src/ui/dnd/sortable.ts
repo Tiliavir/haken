@@ -1,9 +1,11 @@
 /**
  * Drag and drop for manual order (chapter 8): own Pointer Events code, since
- * native HTML5 drag and drop fails on touch. Dragging starts only from the
- * grip. This module is the only code allowed to write `style.transform`.
+ * native HTML5 drag and drop fails on touch. The whole row is the handle:
+ * touch lifts it after a hold (a quick swipe scrolls), mouse and pen after a
+ * short move (a click opens). This module is the only code allowed to write
+ * `style.transform`.
  *
- * Keyboard: focus the grip, ↑/↓ move, Enter or Space drop, Esc cancel.
+ * Keyboard: Alt+↑ / Alt+↓ on the focused row moves it one place.
  */
 
 export type MoveHandler = (href: string, index: number) => void;
@@ -13,6 +15,12 @@ export type MoveHandler = (href: string, index: number) => void;
  * sidebar's *Focus*). Keyboard users use the task screen's button instead.
  */
 export type DropHandler = (href: string, target: string) => void;
+
+const HOLD_MS = 300;
+const TOUCH_SLOP_PX = 8;
+const MOUSE_SLOP_PX = 5;
+/** Controls inside a row keep their own pointer behaviour. */
+const CONTROLS = "button, input, select, textarea, label";
 
 /** The drop target under the pointer, looking past the dragged row (it covers what is below it). */
 function dropTargetAt(x: number, y: number, dragged: HTMLElement): HTMLElement | null {
@@ -42,46 +50,122 @@ function rows(container: HTMLElement): HTMLElement[] {
   return [...container.querySelectorAll<HTMLElement>(":scope > [data-sortable]")];
 }
 
+/** The sortable row of `container` that `target` belongs to, unless it is on a control. */
+function rowOf(container: HTMLElement, target: EventTarget | null): HTMLElement | null {
+  if (!(target instanceof Element) || target.closest(CONTROLS) !== null) return null;
+  const row = target.closest<HTMLElement>("[data-sortable]");
+  return row?.parentElement === container ? row : null;
+}
+
+/** Swallows the click that follows a drag, so dropping never opens the row. */
+function swallowClick(row: HTMLElement): void {
+  const stop = (e: Event): void => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  row.addEventListener("click", stop, { capture: true, once: true });
+  // No click follows when the pointer ended elsewhere: drop the guard.
+  setTimeout(() => row.removeEventListener("click", stop, { capture: true }), 0);
+}
+
 export function makeSortable(
   container: HTMLElement,
   onMove: MoveHandler,
   onDrop?: DropHandler,
 ): void {
   container.addEventListener("pointerdown", (event) => {
-    const grip = (event.target as Element | null)?.closest(".grip");
-    if (!(grip instanceof HTMLElement) || event.button !== 0) return;
-    const row = grip.closest<HTMLElement>("[data-sortable]");
-    if (row?.parentElement !== container) return;
-    event.preventDefault();
-    startPointerDrag(container, row, grip, event, onMove, onDrop);
+    const row = rowOf(container, event.target);
+    if (row === null || event.button !== 0 || !event.isPrimary) return;
+    press(container, row, event, onMove, onDrop);
+  });
+  // A lifted row must not scroll the page or open the native link menu.
+  container.addEventListener(
+    "touchmove",
+    (e) => {
+      if (active) e.preventDefault();
+    },
+    { passive: false },
+  );
+  container.addEventListener("contextmenu", (e) => {
+    if (active) e.preventDefault();
+  });
+  container.addEventListener("dragstart", (e) => {
+    if (rowOf(container, e.target) !== null) e.preventDefault();
   });
   container.addEventListener("keydown", (event) => {
-    const grip = (event.target as Element | null)?.closest(".grip");
-    if (!(grip instanceof HTMLElement)) return;
-    const row = grip.closest<HTMLElement>("[data-sortable]");
-    if (row?.parentElement !== container) return;
-    handleKey(container, row, grip, event, onMove);
+    const row = rowOf(container, event.target);
+    if (row === null || !event.altKey) return;
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const list = rows(container);
+    const index = list.indexOf(row) + (event.key === "ArrowUp" ? -1 : 1);
+    const href = row.dataset["href"];
+    // The re-render shows the stored order; the next press counts from there.
+    if (index >= 0 && index < list.length && href !== undefined) onMove(href, index);
   });
 }
 
-function startPointerDrag(
+/** Waits for a hold (touch) or a move (mouse, pen); a release or a scroll before that is a tap. */
+function press(
   container: HTMLElement,
   row: HTMLElement,
-  grip: HTMLElement,
+  start: PointerEvent,
+  onMove: MoveHandler,
+  onDrop: DropHandler | undefined,
+): void {
+  const touch = start.pointerType === "touch";
+  const cleanup = (): void => {
+    clearTimeout(timer);
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", cleanup);
+    window.removeEventListener("pointercancel", cleanup);
+  };
+  const lift = (): void => {
+    cleanup();
+    startDrag(container, row, start, onMove, onDrop);
+  };
+  const move = (e: PointerEvent): void => {
+    if (e.pointerId !== start.pointerId) return;
+    const distance = Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY);
+    if (touch && distance > TOUCH_SLOP_PX) cleanup();
+    else if (!touch && distance > MOUSE_SLOP_PX) lift();
+  };
+  const timer = touch ? setTimeout(lift, HOLD_MS) : undefined;
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", cleanup);
+  window.addEventListener("pointercancel", cleanup);
+}
+
+/**
+ * Opens the gap at `index` among `others`: rows between the lifted row's own
+ * slot and the gap slide by its height (CSS transitions the slide).
+ */
+function openGap(others: readonly HTMLElement[], originalIndex: number, index: number): void {
+  for (const [i, r] of others.entries()) {
+    r.classList.toggle("shift-up", i >= originalIndex && i < index);
+    r.classList.toggle("shift-down", i >= index && i < originalIndex);
+  }
+}
+
+function startDrag(
+  container: HTMLElement,
+  row: HTMLElement,
   start: PointerEvent,
   onMove: MoveHandler,
   onDrop: DropHandler | undefined,
 ): void {
   active = true;
-  grip.setPointerCapture(start.pointerId);
+  row.setPointerCapture(start.pointerId);
   const others = rows(container).filter((r) => r !== row);
   const originalIndex = rows(container).indexOf(row);
-  const line = document.createElement("div");
-  line.className = "drop-line";
-  line.setAttribute("aria-hidden", "true");
-  container.append(line);
+  // Midpoints before anything slides: the gap must not chase the pointer.
+  const middles = others.map((r) => {
+    const rect = r.getBoundingClientRect();
+    return rect.top + rect.height / 2;
+  });
+  container.style.setProperty("--drag-gap", `${row.getBoundingClientRect().height}px`);
+  container.classList.add("sorting");
   row.classList.add("dragging");
-  const containerTop = container.getBoundingClientRect().top;
   let index = originalIndex;
   let target: HTMLElement | null = null;
 
@@ -95,113 +179,35 @@ function startPointerDrag(
       over?.classList.add("drop-target");
       target = over;
     }
-    line.hidden = target !== null;
-    index = others.filter((r) => {
-      const rect = r.getBoundingClientRect();
-      return rect.top + rect.height / 2 < clientY;
-    }).length;
-    const ref = others[index - 1];
-    const y =
-      ref === undefined
-        ? (others[0]?.getBoundingClientRect().top ?? containerTop) - containerTop
-        : ref.getBoundingClientRect().bottom - containerTop;
-    line.style.transform = `translateY(${y}px)`;
+    index = target === null ? middles.filter((m) => m < clientY).length : originalIndex;
+    openGap(others, originalIndex, index);
   };
   place(start.clientX, start.clientY);
 
   const move = (e: PointerEvent): void => place(e.clientX, e.clientY);
   const end = (e: PointerEvent): void => {
-    grip.removeEventListener("pointermove", move);
-    grip.removeEventListener("pointerup", end);
-    grip.removeEventListener("pointercancel", end);
-    row.classList.remove("dragging");
-    row.style.transform = "";
-    line.remove();
+    row.removeEventListener("pointermove", move);
+    row.removeEventListener("pointerup", end);
+    row.removeEventListener("pointercancel", end);
+    swallowClick(row);
     const href = row.dataset["href"];
     const dropped = target?.dataset["drop"];
     target?.classList.remove("drop-target");
     const up = e.type === "pointerup" && href !== undefined;
+    const reorder = up && dropped === undefined && index !== originalIndex;
+    // Into the gap at once, so nothing slides back before the re-render.
+    const next = index < others.length ? others[index] : others.at(-1)?.nextElementSibling;
+    if (reorder) container.insertBefore(row, next ?? null);
+    container.classList.remove("sorting");
+    container.style.removeProperty("--drag-gap");
+    openGap(others, 0, 0);
+    row.classList.remove("dragging");
+    row.style.transform = "";
     finish();
     if (up && dropped !== undefined && onDrop !== undefined) onDrop(href, dropped);
-    else if (up && index !== originalIndex) onMove(href, index);
+    else if (reorder) onMove(href, index);
   };
-  grip.addEventListener("pointermove", move);
-  grip.addEventListener("pointerup", end);
-  grip.addEventListener("pointercancel", end);
-}
-
-interface KeyState {
-  readonly row: HTMLElement;
-  readonly originalIndex: number;
-}
-
-let keyState: KeyState | null = null;
-
-/** Ends the keyboard move of `row`: its index before the move, or null if it is not moving. */
-function endKeyDrag(row: HTMLElement, event: KeyboardEvent): number | null {
-  if (keyState?.row !== row) return null;
-  event.preventDefault();
-  const original = keyState.originalIndex;
-  keyState = null;
-  row.classList.remove("dragging");
-  return original;
-}
-
-/** Moves `row` one place up or down, starting a keyboard move if none is running. */
-function keyStep(
-  container: HTMLElement,
-  row: HTMLElement,
-  grip: HTMLElement,
-  up: boolean,
-  list: readonly HTMLElement[],
-): void {
-  const index = list.indexOf(row);
-  if (keyState?.row !== row) {
-    keyState = { row, originalIndex: index };
-    active = true;
-    row.classList.add("dragging");
-  }
-  const target = up ? index - 1 : index + 1;
-  if (target < 0 || target >= list.length) return;
-  const ref = up ? list[target] : list[target]?.nextElementSibling;
-  container.insertBefore(row, ref ?? null);
-  grip.focus();
-}
-
-function handleKey(
-  container: HTMLElement,
-  row: HTMLElement,
-  grip: HTMLElement,
-  event: KeyboardEvent,
-  onMove: MoveHandler,
-): void {
-  const list = rows(container);
-  const index = list.indexOf(row);
-  switch (event.key) {
-    case "ArrowUp":
-    case "ArrowDown":
-      event.preventDefault();
-      keyStep(container, row, grip, event.key === "ArrowUp", list);
-      return;
-    case "Enter":
-    case " ": {
-      const original = endKeyDrag(row, event);
-      if (original === null) return;
-      const href = row.dataset["href"];
-      finish();
-      if (index !== original && href !== undefined) onMove(href, index);
-      return;
-    }
-    case "Escape": {
-      const original = endKeyDrag(row, event);
-      if (original === null) return;
-      const rest = rows(container).filter((r) => r !== row);
-      container.insertBefore(row, rest[original] ?? null);
-      grip.focus();
-      finish();
-      return;
-    }
-    default:
-      return;
-  }
+  row.addEventListener("pointermove", move);
+  row.addEventListener("pointerup", end);
+  row.addEventListener("pointercancel", end);
 }

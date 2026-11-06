@@ -8,7 +8,6 @@ import { t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
 import { type ListId, toHash } from "../route.js";
 import { defaultList, focusParts, localDate, show } from "../views.js";
-import { rowActions } from "./rowactions.js";
 import { smartName } from "./sidebar.js";
 import { checkCircle, metaLine, starButton } from "./taskparts.js";
 
@@ -20,12 +19,15 @@ function taskRow(
   showList: boolean,
 ): HTMLElement {
   const selected = ctx.route.kind === "task" && ctx.route.task === item.href;
-  const link = (children: (Node | string | null)[]) =>
+  const link = (children: (Node | string | null)[], movable = false) =>
     h(
       "a",
       {
         class: "task-title",
         href: toHash({ kind: "task", list: listId, task: item.href }),
+        // Keyboard reordering (Alt+↑/↓) keeps focus across the re-render.
+        "data-focus": `task-${item.href}`,
+        "aria-keyshortcuts": movable ? "Alt+ArrowUp Alt+ArrowDown" : undefined,
       },
       ...children,
     );
@@ -42,32 +44,23 @@ function taskRow(
   const listName = showList
     ? (ctx.snapshot.lists.find((l) => l.href === item.list)?.name ?? null)
     : null;
+  const movable = sortable && !view.done && !readonly;
   return h(
     "li",
     {
       class: view.done ? "task-row done" : "task-row",
       "data-href": item.href,
-      "data-sortable": sortable && !view.done && !readonly ? "" : undefined,
+      "data-sortable": movable ? "" : undefined,
       "aria-current": selected ? "true" : undefined,
     },
-    sortable && !view.done && !readonly
-      ? h(
-          "button",
-          {
-            class: "grip",
-            type: "button",
-            "aria-label": t("task.drag", { title: view.summary }),
-            // Keyboard reordering survives a background re-render.
-            "data-focus": `grip-${item.href}`,
-          },
-          icon("grip"),
-        )
-      : h("span", { class: "grip-placeholder" }),
     checkCircle(ctx, item, view, readonly),
-    link([
-      h("span", { class: "title" }, view.summary === "" ? t("task.untitled") : view.summary),
-      metaLine(item, view, ctx.now, listName),
-    ]),
+    link(
+      [
+        h("span", { class: "title" }, view.summary === "" ? t("task.untitled") : view.summary),
+        metaLine(item, view, ctx.now, listName),
+      ],
+      movable,
+    ),
     starButton(ctx, item, view, readonly),
   );
 }
@@ -143,7 +136,6 @@ export class HakenList extends HTMLElement {
               makeSortable(ul, (href, index) =>
                 ctx.run("ui.moveFocus", () => ctx.app.moveInFocus(href, name, hrefs, index)),
               );
-              rowActions(ctx, ul);
               return h(
                 "section",
                 { class: "focus-part" },
@@ -163,7 +155,6 @@ export class HakenList extends HTMLElement {
       { class: "tasks", "aria-label": title },
       open.map((item) => taskRow(ctx, listId, item, shown.sortable, shown.smart !== null)),
     );
-    rowActions(ctx, openList);
     if (shown.sortable) {
       makeSortable(
         openList,

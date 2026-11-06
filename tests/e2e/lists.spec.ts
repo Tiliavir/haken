@@ -42,9 +42,8 @@ test("lists: reorder by keyboard, order and colour shared with the server", asyn
   await waitSynced(page);
   await expect.poll(() => listNames(page, [a, b])).toEqual([a, b]);
 
-  await page.getByRole("button", { name: `Move “${b}”` }).focus();
-  await page.keyboard.press("ArrowUp");
-  await page.keyboard.press("Enter");
+  await page.locator(".own-lists .list-row", { hasText: b }).focus();
+  await page.keyboard.press("Alt+ArrowUp");
   await expect.poll(() => listNames(page, [a, b])).toEqual([b, a]);
   await waitSynced(page);
   await expect

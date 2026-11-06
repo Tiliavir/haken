@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { addTask, guard, setupLocal, titles } from "./helpers.js";
 
 test("local account: add, step, complete, reorder by keyboard, survives reload", async ({
@@ -11,12 +11,14 @@ test("local account: add, step, complete, reorder by keyboard, survives reload",
   await addTask(page, "Third");
   expect(await titles(page)).toEqual(["Third", "Second", "First"]);
 
-  // Keyboard reorder: move "Third" down twice.
-  await page.getByRole("button", { name: "Move “Third”" }).focus();
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("Enter");
+  // Keyboard reorder: move "Third" down twice; focus stays on it.
+  const third = page.locator(".task-row .task-title", { hasText: "Third" });
+  await third.focus();
+  await page.keyboard.press("Alt+ArrowDown");
+  await expect.poll(() => titles(page)).toEqual(["Second", "Third", "First"]);
+  await page.keyboard.press("Alt+ArrowDown");
   await expect.poll(() => titles(page)).toEqual(["Second", "First", "Third"]);
+  await expect(third).toBeFocused();
 
   await page.locator(".task-row .title", { hasText: "First" }).click();
   await page.getByPlaceholder("Add item").fill("Sub");
@@ -39,9 +41,9 @@ test("pointer drag reorders", async ({ page }) => {
   await addTask(page, "A");
   await addTask(page, "B");
   await addTask(page, "C");
-  const grip = page.getByRole("button", { name: "Move “C”" });
+  const row = page.locator(".task-row .title", { hasText: "C" });
   const target = page.locator(".task-row", { hasText: "A" });
-  const from = await grip.boundingBox();
+  const from = await row.boundingBox();
   const to = await target.boundingBox();
   if (from === null || to === null) throw new Error("no boxes");
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
@@ -49,6 +51,41 @@ test("pointer drag reorders", async ({ page }) => {
   await page.mouse.move(from.x + 5, to.y + to.height - 2, { steps: 8 });
   await page.mouse.up();
   await expect.poll(() => titles(page)).toEqual(["B", "A", "C"]);
+  // Dropping is not a click: the task did not open.
+  await expect(page.getByLabel("Title")).toHaveCount(0);
+});
+
+/** A real touch gesture (Chromium input pipeline): down on `selector`, hold `holdMs`, move by `dy`, up. */
+async function touchDrag(page: Page, selector: string, holdMs: number, dy: number): Promise<void> {
+  const box = await page.locator(selector).boundingBox();
+  if (box === null) throw new Error("no box");
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type: "touchStart" | "touchMove" | "touchEnd", at: number | null) =>
+    cdp.send("Input.dispatchTouchEvent", {
+      type,
+      touchPoints: at === null ? [] : [{ x, y: at }],
+    });
+  await touch("touchStart", y);
+  await page.waitForTimeout(holdMs);
+  for (let i = 1; i <= 8; i++) await touch("touchMove", y + (dy * i) / 8);
+  await touch("touchEnd", null);
+  await cdp.detach();
+}
+
+test("touch: hold lifts the row, a quick swipe does not reorder", async ({ page }) => {
+  await setupLocal(page);
+  await addTask(page, "A");
+  await addTask(page, "B");
+  await addTask(page, "C");
+  const rowHeight = (await page.locator(".task-row").first().boundingBox())?.height ?? 0;
+  expect(await titles(page)).toEqual(["C", "B", "A"]);
+  const a = '.task-row:has(.title:text-is("A")) .title';
+  await touchDrag(page, a, 0, -2 * rowHeight);
+  await expect.poll(() => titles(page)).toEqual(["C", "B", "A"]);
+  await touchDrag(page, a, 400, -1.4 * rowHeight);
+  await expect.poll(() => titles(page)).toEqual(["C", "A", "B"]);
 });
 
 test("note and title save while typing, without a blur", async ({ page, context }) => {

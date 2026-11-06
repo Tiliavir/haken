@@ -60,23 +60,14 @@ function row(
         href,
         "aria-current": selected(ctx, id) ? "page" : undefined,
         "data-drop": id.kind === "smart" && id.id === "focus" ? "focus" : undefined,
+        // Keyboard reordering (Alt+↑/↓) keeps focus across the re-render.
+        "data-focus": sortable ? `list-${href}` : undefined,
+        "aria-keyshortcuts": sortable ? "Alt+ArrowUp Alt+ArrowDown" : undefined,
       },
       glyph,
       h("span", { class: "list-name" }, name),
       count > 0 ? h("span", { class: "count" }, String(count)) : null,
     ),
-    sortable
-      ? h(
-          "button",
-          {
-            class: "grip",
-            type: "button",
-            "aria-label": t("lists.drag", { name }),
-            "data-focus": `list-grip-${id.href}`,
-          },
-          icon("grip"),
-        )
-      : null,
   );
 }
 
@@ -162,7 +153,7 @@ export class HakenSidebar extends HTMLElement {
   }
 }
 
-/** The user's lists, in server order (`calendar-order`); reorder by the grip. Errorlogs stays last. */
+/** The user's lists, in server order (`calendar-order`); reorder by dragging the row. Errorlogs stays last. */
 function ownLists(ctx: Ctx): HTMLElement {
   const ul = h(
     "ul",
