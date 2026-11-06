@@ -1,7 +1,7 @@
 name: ci-image
 
 # Builds tools/ci.Dockerfile and pushes it as ghcr.io/<repo>-ci:<commit>.
-# Pin the digest from the job summary in check.yml (same branch is fine).
+# Pin the digest from the job summary in check.yml, with the commit as a comment.
 on:
   push:
     paths: [tools/ci.Dockerfile, .github/workflows/ci-image.yml]
