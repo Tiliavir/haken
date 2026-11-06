@@ -1,6 +1,6 @@
 # ADR-20261105: Prebuilt CI image
 
-Status: Accepted
+Status: Accepted; partly superseded by [ADR-20261106-ci-browser-per-run](ADR-20261106-ci-browser-per-run.md)
 
 Supersedes the CI image in [ADR-20261105-implementation-baseline](ADR-20261105-implementation-baseline.md) (*Build*).
 

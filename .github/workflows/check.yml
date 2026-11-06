@@ -11,9 +11,9 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    # tools/ci.Dockerfile, built by ci-image.yml from 69be283a60e9e353eeb92ea990fc7ae2de8fa9a2.
+    # tools/ci.Dockerfile, built by ci-image.yml from 78433319ee42ff89d417fc6bb7b6e0d0316eb584.
     container:
-      image: ghcr.io/tiliavir/haken-ci@sha256:cc673b9c924c0bf020921475d81787f82f686b1409044823a4eadd311909a9eb
+      image: ghcr.io/tiliavir/haken-ci@sha256:391a110109c5950a716b23b76b118118c24d88c16d9442d44bd28637edb29133
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
@@ -27,6 +27,15 @@ jobs:
       # The container runs as root, the checkout belongs to the runner user:
       # without this git refuses the repository and go build/list fail on VCS stamping.
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - id: playwright
+        run: >-
+          node -e 'const v = require("./package-lock.json").packages["node_modules/playwright-core"]?.version;
+          if (!v) throw new Error("playwright-core missing in package-lock.json");
+          console.log("version=" + v)' >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: /ms-playwright
+          key: playwright-${{ steps.playwright.outputs.version }}
       - run: tools/ci.sh
       - run: make coverage
       # Only where the secret exists (not on forks).

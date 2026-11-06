@@ -4,5 +4,7 @@
 set -eu
 
 npm ci --ignore-scripts
+# The browser of the locked Playwright version; check.yml caches it per version.
+npx --no-install playwright install --no-shell chromium
 make check
 (cd gateway && staticcheck ./...)
