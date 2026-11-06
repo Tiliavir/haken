@@ -50,15 +50,18 @@ async function main(): Promise<void> {
         data !== null &&
         (data as { type?: unknown }).type === "sw-error"
       ) {
-        const message = String((data as { message?: unknown }).message ?? "");
-        void app.reporter.report(new Error(`Service worker: ${message}`), "sw");
+        const message = (data as { message?: unknown }).message;
+        const text = typeof message === "string" ? message : `unexpected ${typeof message} message`;
+        void app.reporter.report(new Error(`Service worker: ${text}`), "sw");
       }
     });
     await navigator.serviceWorker.register(serviceWorkerUrl(), { type: "module", scope: "./" });
   }
 }
 
-main().catch((error: unknown) => {
+try {
+  await main();
+} catch (error: unknown) {
   // Before the app service exists there is no errorlogs list to write to.
   console.error("[haken] start failed", error);
   const root = document.querySelector("haken-app");
@@ -70,4 +73,4 @@ main().catch((error: unknown) => {
       h("p", { class: "lead" }, String(error instanceof Error ? error.message : error)),
     ),
   );
-});
+}

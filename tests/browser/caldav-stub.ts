@@ -50,7 +50,9 @@ const multistatus = (responses: string): Reply =>
     `<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:a="http://apple.com/ns/ical/">${responses}</d:multistatus>`,
   );
 const escapeXml = (s: string): string =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+const colorProp = (color: string): string =>
+  `<a:calendar-color>${escapeXml(color)}</a:calendar-color>`;
 const ok = (href: string, props: string): string =>
   `<d:response><d:href>${href}</d:href><d:propstat><d:prop>${props}</d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`;
 const parentOf = (href: string): string => href.slice(0, href.lastIndexOf("/") + 1);
@@ -115,7 +117,7 @@ export class CalDavStub {
   }
 
   token(href: string): string {
-    return `http://stub/sync/${this.list(href).version}`;
+    return `urn:x-stub:sync:${this.list(href).version}`;
   }
 
   count(request: string): number {
@@ -170,23 +172,28 @@ export class CalDavStub {
         body: '{"user":"u"}',
       };
     if (path === HOME && method === "PROPFIND") return this.collections();
-    const list = this.lists.get(path);
-    if (list !== undefined) {
-      if (method === "PROPFIND") return this.etagsOf(path, list);
-      if (method === "REPORT" && body.includes("sync-collection"))
-        return this.syncCollection(path, list, body);
-      if (method === "REPORT" && body.includes("calendar-multiget")) return this.multiget(body);
-    }
-    const parent = this.lists.get(parentOf(path));
-    if (parent !== undefined && !path.endsWith("/")) {
-      const member = parent.members.get(path);
-      if (method === "GET")
-        return member === undefined
-          ? { status: 404 }
-          : { status: 200, headers: { ETag: member.etag }, body: member.ics };
-    }
+    const reply = this.answerList(method, path, body) ?? this.answerMember(method, path);
+    if (reply !== null) return reply;
     this.unhandled.push(`${method} ${path}`);
     return { status: 501 };
+  }
+
+  private answerList(method: string, path: string, body: string): Reply | null {
+    const list = this.lists.get(path);
+    if (list === undefined) return null;
+    if (method === "PROPFIND") return this.etagsOf(path, list);
+    if (method !== "REPORT") return null;
+    if (body.includes("sync-collection")) return this.syncCollection(path, list, body);
+    if (body.includes("calendar-multiget")) return this.multiget(body);
+    return null;
+  }
+
+  private answerMember(method: string, path: string): Reply | null {
+    const parent = this.lists.get(parentOf(path));
+    if (parent === undefined || path.endsWith("/") || method !== "GET") return null;
+    const member = parent.members.get(path);
+    if (member === undefined) return { status: 404 };
+    return { status: 200, headers: { ETag: member.etag }, body: member.ics };
   }
 
   private collections(): Reply {
@@ -194,7 +201,7 @@ export class CalDavStub {
     for (const [href, list] of this.lists) {
       out += ok(
         href,
-        `<d:resourcetype><d:collection/><c:calendar/></d:resourcetype><d:displayname>${escapeXml(list.displayName)}</d:displayname>${list.color === null ? "" : `<a:calendar-color>${escapeXml(list.color)}</a:calendar-color>`}<d:sync-token>${this.token(href)}</d:sync-token>`,
+        `<d:resourcetype><d:collection/><c:calendar/></d:resourcetype><d:displayname>${escapeXml(list.displayName)}</d:displayname>${list.color === null ? "" : colorProp(list.color)}<d:sync-token>${this.token(href)}</d:sync-token>`,
       );
     }
     return multistatus(out);
@@ -208,8 +215,8 @@ export class CalDavStub {
 
   private syncCollection(href: string, list: Collection, body: string): Reply {
     const token = /<d:sync-token>([^<]*)</.exec(body)?.[1] ?? "";
-    const since = token === "" ? 0 : Number(token.slice("http://stub/sync/".length));
-    if (token !== "" && (this.invalidTokens || !(since <= list.version)))
+    const since = token === "" ? 0 : Number(token.slice("urn:x-stub:sync:".length));
+    if (token !== "" && (this.invalidTokens || !Number.isInteger(since) || since > list.version))
       return xml(403, '<d:error xmlns:d="DAV:"><d:valid-sync-token/></d:error>');
     let out = "";
     for (const [m, member] of list.members)

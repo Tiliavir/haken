@@ -60,7 +60,7 @@ function walk(dir) {
 }
 
 const files = walk(out)
-  .map((p) => relative(out, p).split("\\").join("/"))
+  .map((p) => relative(out, p).replaceAll("\\", "/"))
   .filter((p) => p !== "sw.js" && p !== "shell-manifest.json" && !p.endsWith(".d.ts"))
   .sort();
 const hash = createHash("sha256");

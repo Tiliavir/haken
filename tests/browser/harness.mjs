@@ -1,18 +1,20 @@
 // Page side of the browser unit tests: the built modules from dist/web and
 // a few helpers that act like the app (local edits with outbox entries).
+import { byCodeUnit } from "./src/domain/compare.js";
 import {
   applyEdit,
   createTask,
   parseResource,
   readTask,
   resourceGroups,
-} from "/src/domain/vtodo.js";
-import { AccountStore, StaleError } from "/src/store/account.js";
-import { request, transact } from "/src/store/idb.js";
-import { SCHEMA } from "/src/store/records.js";
-import { QUARANTINE, SyncRunner } from "/src/sync/runner.js";
+} from "./src/domain/vtodo.js";
+import { AccountStore } from "./src/store/account.js";
+import { SCHEMA } from "./src/store/records.js";
+import { QUARANTINE, SyncRunner } from "./src/sync/runner.js";
 
-export { request, SCHEMA, StaleError, transact };
+export { StaleError } from "./src/store/account.js";
+export { request, transact } from "./src/store/idb.js";
+export { SCHEMA };
 
 export const LIST = "/dav/u/l1/";
 export const store = await AccountStore.open("test");
@@ -86,5 +88,5 @@ export async function quarantined() {
   const out = [];
   for (const [key, value] of await store.allState())
     if (key.startsWith(QUARANTINE) && value !== null) out.push(key.slice(QUARANTINE.length));
-  return out.sort();
+  return out.sort(byCodeUnit);
 }

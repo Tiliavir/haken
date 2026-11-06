@@ -51,7 +51,7 @@ export function makeSortable(
     const grip = (event.target as Element | null)?.closest(".grip");
     if (!(grip instanceof HTMLElement) || event.button !== 0) return;
     const row = grip.closest<HTMLElement>("[data-sortable]");
-    if (row === null || row.parentElement !== container) return;
+    if (row?.parentElement !== container) return;
     event.preventDefault();
     startPointerDrag(container, row, grip, event, onMove, onDrop);
   });
@@ -59,7 +59,7 @@ export function makeSortable(
     const grip = (event.target as Element | null)?.closest(".grip");
     if (!(grip instanceof HTMLElement)) return;
     const row = grip.closest<HTMLElement>("[data-sortable]");
-    if (row === null || row.parentElement !== container) return;
+    if (row?.parentElement !== container) return;
     handleKey(container, row, grip, event, onMove);
   });
 }
@@ -137,6 +137,37 @@ interface KeyState {
 
 let keyState: KeyState | null = null;
 
+/** Ends the keyboard move of `row`: its index before the move, or null if it is not moving. */
+function endKeyDrag(row: HTMLElement, event: KeyboardEvent): number | null {
+  if (keyState?.row !== row) return null;
+  event.preventDefault();
+  const original = keyState.originalIndex;
+  keyState = null;
+  row.classList.remove("dragging");
+  return original;
+}
+
+/** Moves `row` one place up or down, starting a keyboard move if none is running. */
+function keyStep(
+  container: HTMLElement,
+  row: HTMLElement,
+  grip: HTMLElement,
+  up: boolean,
+  list: readonly HTMLElement[],
+): void {
+  const index = list.indexOf(row);
+  if (keyState?.row !== row) {
+    keyState = { row, originalIndex: index };
+    active = true;
+    row.classList.add("dragging");
+  }
+  const target = up ? index - 1 : index + 1;
+  if (target < 0 || target >= list.length) return;
+  const ref = up ? list[target] : list[target]?.nextElementSibling;
+  container.insertBefore(row, ref ?? null);
+  grip.focus();
+}
+
 function handleKey(
   container: HTMLElement,
   row: HTMLElement,
@@ -148,38 +179,22 @@ function handleKey(
   const index = list.indexOf(row);
   switch (event.key) {
     case "ArrowUp":
-    case "ArrowDown": {
+    case "ArrowDown":
       event.preventDefault();
-      if (keyState === null || keyState.row !== row) {
-        keyState = { row, originalIndex: index };
-        active = true;
-        row.classList.add("dragging");
-      }
-      const target = event.key === "ArrowUp" ? index - 1 : index + 1;
-      if (target < 0 || target >= list.length) return;
-      const ref = event.key === "ArrowUp" ? list[target] : list[target]?.nextElementSibling;
-      container.insertBefore(row, ref ?? null);
-      grip.focus();
+      keyStep(container, row, grip, event.key === "ArrowUp", list);
       return;
-    }
     case "Enter":
     case " ": {
-      if (keyState === null || keyState.row !== row) return;
-      event.preventDefault();
-      const original = keyState.originalIndex;
-      keyState = null;
-      row.classList.remove("dragging");
+      const original = endKeyDrag(row, event);
+      if (original === null) return;
       const href = row.dataset["href"];
       finish();
       if (index !== original && href !== undefined) onMove(href, index);
       return;
     }
     case "Escape": {
-      if (keyState === null || keyState.row !== row) return;
-      event.preventDefault();
-      const original = keyState.originalIndex;
-      keyState = null;
-      row.classList.remove("dragging");
+      const original = endKeyDrag(row, event);
+      if (original === null) return;
       const rest = rows(container).filter((r) => r !== row);
       container.insertBefore(row, rest[original] ?? null);
       grip.focus();

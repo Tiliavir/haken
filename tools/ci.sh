@@ -3,6 +3,6 @@
 # CI runs it on the checkout; `make check-container` runs it on a copy of HEAD.
 set -eu
 
-npm ci
+npm ci --ignore-scripts
 make check
 (cd gateway && staticcheck ./...)

@@ -12,7 +12,7 @@ import {
 import type { TaskView } from "../../domain/vtodo.js";
 import type { Ctx } from "../context.js";
 import { h } from "../dom.js";
-import { formatDate, type Key, t, tp } from "../i18n.js";
+import { formatDate, type Key, type PluralKey, t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
 import { dueDate, localDate } from "../views.js";
 
@@ -85,18 +85,19 @@ function endText(end: RecurrenceEnd): string | null {
 }
 
 /** "Weekly", "Every 2 weeks · Mon, Thu", "Monthly · on the second Tuesday · 3 times left". */
+const EVERY = {
+  DAILY: "repeat.everyDay",
+  WEEKLY: "repeat.everyWeek",
+  MONTHLY: "repeat.everyMonth",
+  YEARLY: "repeat.everyYear",
+} as const satisfies Record<Frequency, PluralKey>;
+
 export function describeRule(rule: Recurrence): string {
   const choice = choiceOf(rule);
   const every =
     choice !== "custom" && choice !== "never"
       ? choiceLabel(choice)
-      : rule.freq === "DAILY"
-        ? tp("repeat.everyDay", rule.interval)
-        : rule.freq === "WEEKLY"
-          ? tp("repeat.everyWeek", rule.interval)
-          : rule.freq === "MONTHLY"
-            ? tp("repeat.everyMonth", rule.interval)
-            : tp("repeat.everyYear", rule.interval);
+      : tp(EVERY[rule.freq], rule.interval);
   const parts = [every];
   if (choice === "custom" && rule.byDay.length > 0)
     parts.push(rule.byDay.map((d) => weekdayName(d)).join(", "));
@@ -302,6 +303,45 @@ function monthlyChoice(rule: Recurrence, due: string, save: (r: Recurrence) => v
   );
 }
 
+/** The input next to the end choice: the number of times, or the end date. */
+function endDetail(
+  rule: Recurrence,
+  due: string,
+  save: (r: Recurrence) => void,
+): HTMLElement | null {
+  const end = rule.end;
+  if (end.kind === "count")
+    return h("input", {
+      id: "repeat-count",
+      type: "number",
+      min: "1",
+      max: "999",
+      step: "1",
+      inputmode: "numeric",
+      class: "interval-input",
+      "aria-label": t("repeat.times"),
+      value: String(end.count),
+      onchange: (e: Event) => {
+        const n = Number((e.target as HTMLInputElement).value);
+        if (Number.isInteger(n) && n >= 1 && n <= 999)
+          save({ ...rule, end: { kind: "count", count: n } });
+      },
+    });
+  if (end.kind === "until")
+    return h("input", {
+      id: "repeat-until",
+      type: "date",
+      min: due,
+      "aria-label": t("repeat.endsOn"),
+      value: end.date,
+      onchange: (e: Event) => {
+        const v = (e.target as HTMLInputElement).value;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) save({ ...rule, end: { kind: "until", date: v } });
+      },
+    });
+  return null;
+}
+
 /** Ends: never, after N times (occurrences left), or on a date. */
 function endEditor(rule: Recurrence, due: string, save: (r: Recurrence) => void): HTMLElement {
   const end = rule.end;
@@ -320,37 +360,7 @@ function endEditor(rule: Recurrence, due: string, save: (r: Recurrence) => void)
     h("option", { value: "count", selected: end.kind === "count" }, t("repeat.endsAfter")),
     h("option", { value: "until", selected: end.kind === "until" }, t("repeat.endsOn")),
   );
-  const detail =
-    end.kind === "count"
-      ? h("input", {
-          id: "repeat-count",
-          type: "number",
-          min: "1",
-          max: "999",
-          step: "1",
-          inputmode: "numeric",
-          class: "interval-input",
-          "aria-label": t("repeat.times"),
-          value: String(end.count),
-          onchange: (e: Event) => {
-            const n = Number((e.target as HTMLInputElement).value);
-            if (Number.isInteger(n) && n >= 1 && n <= 999)
-              save({ ...rule, end: { kind: "count", count: n } });
-          },
-        })
-      : end.kind === "until"
-        ? h("input", {
-            id: "repeat-until",
-            type: "date",
-            min: due,
-            "aria-label": t("repeat.endsOn"),
-            value: end.date,
-            onchange: (e: Event) => {
-              const v = (e.target as HTMLInputElement).value;
-              if (/^\d{4}-\d{2}-\d{2}$/.test(v)) save({ ...rule, end: { kind: "until", date: v } });
-            },
-          })
-        : null;
+  const detail = endDetail(rule, due, save);
   return h(
     "div",
     { class: "repeat-custom" },

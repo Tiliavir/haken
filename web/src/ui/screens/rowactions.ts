@@ -65,7 +65,7 @@ export function rowActions(ctx: Ctx, container: HTMLElement): void {
 function showSheet(ctx: Ctx, href: string): void {
   const item = ctx.app.findItem(href);
   const view = item?.view ?? null;
-  if (item === null || view === null || view.parentUid !== null) return;
+  if (item === null || view?.parentUid !== null) return;
   const dialog = ctx.dialog;
   const close = (): void => dialog.close();
   const onFocus = view.focus !== null;

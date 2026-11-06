@@ -7,7 +7,7 @@ import { fill, h } from "../dom.js";
 import { autosave, submitField } from "../fields.js";
 import { formatDate, locale, t } from "../i18n.js";
 import { icon } from "../icons.js";
-import type { ListId } from "../route.js";
+import { type ListId, toHash } from "../route.js";
 import { dueDate, localDate } from "../views.js";
 import { repeatRow } from "./repeat.js";
 import { checkCircle, formatSize, starButton } from "./taskparts.js";
@@ -359,38 +359,39 @@ function labelsRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean):
   );
 }
 
+function attachmentName(ctx: Ctx, item: TaskItem, a: Attachment, name: string): HTMLElement {
+  if (a.kind === "binary")
+    return h(
+      "button",
+      {
+        type: "button",
+        class: "attachment-name",
+        onclick: () =>
+          ctx.run("ui.download", async () => {
+            const { blob, filename } = await ctx.app.attachmentBlob(item.href, a.index);
+            download(blob, filename);
+          }),
+      },
+      icon("download", "icon small"),
+      name,
+    );
+  // Only web links are clickable; any other scheme (javascript:, data:, file:) is shown as text.
+  if (!/^https?:\/\/[^\s]+$/i.test(a.uri))
+    return h("span", { class: "attachment-name" }, icon("link", "icon small"), name);
+  return h(
+    "a",
+    { class: "attachment-name", href: a.uri, rel: "noopener noreferrer", target: "_blank" },
+    icon("link", "icon small"),
+    name,
+  );
+}
+
 function attachmentItem(ctx: Ctx, item: TaskItem, a: Attachment, readonly: boolean): HTMLElement {
   const name = a.filename ?? (a.kind === "uri" ? a.uri : t("task.attachment"));
-  // Only web links are clickable; any other scheme (javascript:, data:, file:) is shown as text.
-  const web = a.kind === "uri" && /^https?:\/\/[^\s]+$/i.test(a.uri);
-  const open =
-    a.kind === "uri"
-      ? web
-        ? h(
-            "a",
-            { class: "attachment-name", href: a.uri, rel: "noopener noreferrer", target: "_blank" },
-            icon("link", "icon small"),
-            name,
-          )
-        : h("span", { class: "attachment-name" }, icon("link", "icon small"), name)
-      : h(
-          "button",
-          {
-            type: "button",
-            class: "attachment-name",
-            onclick: () =>
-              ctx.run("ui.download", async () => {
-                const { blob, filename } = await ctx.app.attachmentBlob(item.href, a.index);
-                download(blob, filename);
-              }),
-          },
-          icon("download", "icon small"),
-          name,
-        );
   return h(
     "li",
     { class: "attachment" },
-    open,
+    attachmentName(ctx, item, a, name),
     a.kind === "binary" ? h("span", { class: "size" }, formatSize(a.size, locale())) : null,
     readonly
       ? null
@@ -460,7 +461,7 @@ function attachmentsRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: bool
 export class HakenTask extends HTMLElement {
   render(ctx: Ctx, listId: ListId, href: string): void {
     const item = ctx.app.findItem(href);
-    const closeHref = `#/${listId.kind === "smart" ? `smart/${listId.id}` : `list/${encodeURIComponent(listId.href)}`}`;
+    const closeHref = toHash({ kind: "list", list: listId });
     const close = h(
       "a",
       { class: "icon-button close", href: closeHref, "aria-label": t("task.close") },
@@ -504,7 +505,11 @@ export class HakenTask extends HTMLElement {
     });
     title.value = view.summary;
     autosave(title, `${item.href} summary`, (raw) => {
-      const value = raw.replace(/\s*\n\s*/g, " ").trim();
+      const value = raw
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line !== "")
+        .join(" ");
       if (value === "") return;
       ctx.run("ui.editTitle", () => ctx.app.edit(item.href, { kind: "summary", value }));
     });

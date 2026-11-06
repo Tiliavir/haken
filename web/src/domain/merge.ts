@@ -9,6 +9,7 @@
  * merge without notes ([set merge](../../../docs/arc42/adr/ADR-20261104-set-merge.md)).
  */
 import ICAL from "../../vendor/ical.js/ical.js";
+import { byCodeUnit } from "./compare.js";
 import { HakenError } from "./errors.js";
 import {
   type Component,
@@ -68,49 +69,71 @@ export function merge(
   const groups = new Set<string>([...groupsOf(l.todo), ...groupsOf(s.todo)]);
   if (b !== null) for (const g of groupsOf(b.todo)) groups.add(g);
 
+  const sides: Sides = { b, l, s, serverTime, localEditTimes };
   const notes: ConflictNote[] = [];
   const localWins: string[] = [];
-  for (const group of [...groups].sort()) {
-    const lv = groupLines(l.todo, group);
-    const sv = groupLines(s.todo, group);
-    if (lv === sv) continue;
-    const bv = b === null ? null : groupLines(b.todo, group);
-    if (bv !== null && lv === bv) continue; // only the server changed it
-    if (bv !== null && sv === bv) {
-      replaceGroup(s.todo, group, lv); // only haken changed it
-      localWins.push(group);
-      continue;
-    }
-    if (SET_GROUPS.has(group)) {
-      if (mergeSet(group, b === null ? null : b.todo, l.todo, s.todo)) localWins.push(group);
-      continue;
-    }
-    const localTime = localEditTimes.get(group) ?? null;
-    const localNewer = localTime !== null && serverTime !== null && localTime > serverTime;
-    if (localNewer) {
-      notes.push({ group, lines: sv, lost: "server" });
-      replaceGroup(s.todo, group, lv);
-      localWins.push(group);
-    } else {
-      notes.push({ group, lines: lv, lost: "local" });
-    }
+  for (const group of [...groups].sort(byCodeUnit)) {
+    const result = mergeGroup(group, sides);
+    if (result.note !== null) notes.push(result.note);
+    if (result.localWins) localWins.push(group);
   }
 
   const merged: ParsedResource = s;
-  if (localWins.length > 0) {
-    const sequence = Math.max(sequenceOf(l), sequenceOf(s));
-    if (sequence > 0) merged.todo.updatePropertyWithValue("sequence", sequence);
-    const modified = Math.max(lView.lastModified ?? 0, serverTime ?? 0);
-    if (modified > 0) {
-      merged.todo.updatePropertyWithValue(
-        "last-modified",
-        ICAL.Time.fromJSDate(new Date(modified), true),
-      );
-    }
-  }
+  if (localWins.length > 0) stampMerged(merged, l, lView.lastModified, serverTime);
   const ics = localWins.length > 0 ? serialize(merged) : server;
   readTask(parseResource(ics));
   return { ics, notes, localWins };
+}
+
+interface Sides {
+  readonly b: ParsedResource | null;
+  readonly l: ParsedResource;
+  /** Modified in place: the merge result is built on the server version. */
+  readonly s: ParsedResource;
+  readonly serverTime: number | null;
+  readonly localEditTimes: ReadonlyMap<string, number>;
+}
+
+/** Merges one property group into the server version. */
+function mergeGroup(
+  group: string,
+  { b, l, s, serverTime, localEditTimes }: Sides,
+): { readonly note: ConflictNote | null; readonly localWins: boolean } {
+  const lv = groupLines(l.todo, group);
+  const sv = groupLines(s.todo, group);
+  const unchanged = { note: null, localWins: false };
+  if (lv === sv) return unchanged;
+  const bv = b === null ? null : groupLines(b.todo, group);
+  if (bv !== null && lv === bv) return unchanged; // only the server changed it
+  if (bv !== null && sv === bv) {
+    replaceGroup(s.todo, group, lv); // only haken changed it
+    return { note: null, localWins: true };
+  }
+  if (SET_GROUPS.has(group))
+    return { note: null, localWins: mergeSet(group, b === null ? null : b.todo, l.todo, s.todo) };
+  const localTime = localEditTimes.get(group) ?? null;
+  const localNewer = localTime !== null && serverTime !== null && localTime > serverTime;
+  if (!localNewer) return { note: { group, lines: lv, lost: "local" }, localWins: false };
+  replaceGroup(s.todo, group, lv);
+  return { note: { group, lines: sv, lost: "server" }, localWins: true };
+}
+
+/** `SEQUENCE` and `LAST-MODIFIED` of a merge that took local values: the newer of both sides. */
+function stampMerged(
+  merged: ParsedResource,
+  l: ParsedResource,
+  localModified: number | null,
+  serverTime: number | null,
+): void {
+  const sequence = Math.max(sequenceOf(l), sequenceOf(merged));
+  if (sequence > 0) merged.todo.updatePropertyWithValue("sequence", sequence);
+  const modified = Math.max(localModified ?? 0, serverTime ?? 0);
+  if (modified > 0) {
+    merged.todo.updatePropertyWithValue(
+      "last-modified",
+      ICAL.Time.fromJSDate(new Date(modified), true),
+    );
+  }
 }
 
 /**

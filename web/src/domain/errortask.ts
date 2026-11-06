@@ -24,7 +24,7 @@ export function fingerprint(name: string, message: string, stack: string): strin
   const top =
     stack
       .split("\n")
-      .find((l) => /^\s*at\s|@/.test(l))
+      .find((l) => /(?:^\s*at\s)|@/.test(l))
       ?.trim() ?? "";
   const input = `${name}\u0000${message}\u0000${top}`;
   let hash = 0xcbf29ce484222325n;

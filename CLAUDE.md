@@ -68,7 +68,7 @@ and Chrome (or `PLAYWRIGHT_CHANNEL=chromium` with Playwright's browser).
 
 | Command | Does |
 | --- | --- |
-| `npm ci` | Dev tools (TypeScript, Biome, vnu, Playwright) |
+| `npm ci --ignore-scripts` | Dev tools (TypeScript, Biome, vnu, Playwright) |
 | `make build` | `tsc` + assemble `dist/web` (`make build-demo`: GitHub Pages build) |
 | `make test-unit` | Unit and architecture tests (`node:test`) |
 | `make test-browser` | Store and sync modules in the browser against a CalDAV stub (Playwright, no servers) |

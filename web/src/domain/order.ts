@@ -2,12 +2,13 @@
  * Manual order (`X-APPLE-SORT-ORDER`, ascending). Only the moved task is
  * written; other tasks keep their values, so clients never fight over order.
  */
+import { byCodeUnit } from "./compare.js";
 import { HakenError } from "./errors.js";
 import type { TaskView } from "./vtodo.js";
 
 export function compareTasks(a: TaskView, b: TaskView): number {
   if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
-  return a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0;
+  return byCodeUnit(a.uid, b.uid);
 }
 
 /** Order for a new task placed before all others (new tasks go on top). */

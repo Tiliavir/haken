@@ -27,7 +27,12 @@ export type Frequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 export type Weekday = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";
 
 export const WEEKDAYS: readonly Weekday[] = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
-const FREQUENCIES: readonly Frequency[] = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"];
+const FREQUENCIES: ReadonlySet<string> = new Set<Frequency>([
+  "DAILY",
+  "WEEKLY",
+  "MONTHLY",
+  "YEARLY",
+]);
 const ALL_FREQUENCIES = new Set(["SECONDLY", "MINUTELY", "HOURLY", ...FREQUENCIES]);
 const MAX_INTERVAL = 999;
 
@@ -53,7 +58,7 @@ export interface Recurrence {
 }
 
 export const NEVER: RecurrenceEnd = { kind: "never" };
-const NTHS: readonly Nth[] = [1, 2, 3, 4, -1];
+const NTHS: ReadonlySet<number> = new Set<Nth>([1, 2, 3, 4, -1]);
 const MAX_COUNT = 999;
 
 export interface RecurrenceInfo {
@@ -73,7 +78,7 @@ function fail(message: string, value: string, prodid: string | null): never {
 
 /** Validates a recurrence in haken's own model. Throws `HakenError`. */
 export function checkRecurrence(rule: Recurrence): void {
-  if (!FREQUENCIES.includes(rule.freq))
+  if (!FREQUENCIES.has(rule.freq))
     throw new HakenError("domain", "Unsupported frequency", { value: rule.freq });
   if (!Number.isInteger(rule.interval) || rule.interval < 1 || rule.interval > MAX_INTERVAL) {
     throw new HakenError("domain", "Interval must be an integer 1-999", { value: rule.interval });
@@ -92,7 +97,7 @@ export function checkRecurrence(rule: Recurrence): void {
   if (rule.monthlyNth !== null) {
     if (
       rule.freq !== "MONTHLY" ||
-      !NTHS.includes(rule.monthlyNth.nth) ||
+      !NTHS.has(rule.monthlyNth.nth) ||
       !WEEKDAYS.includes(rule.monthlyNth.day)
     ) {
       throw new HakenError("domain", "Invalid monthly weekday", {
@@ -188,6 +193,12 @@ export function parseRule(text: string, prodid: string | null): Map<string, stri
       fail("Invalid RRULE part", text, prodid);
     parts.set(key, value);
   }
+  checkRule(parts, text, prodid);
+  return parts;
+}
+
+/** The values of the parts, as RFC 5545 3.3.10 allows them. */
+function checkRule(parts: ReadonlyMap<string, string>, text: string, prodid: string | null): void {
   const freq = parts.get("FREQ");
   if (freq === undefined || !ALL_FREQUENCIES.has(freq))
     fail("RRULE without valid FREQ", text, prodid);
@@ -205,7 +216,6 @@ export function parseRule(text: string, prodid: string | null): Map<string, stri
     const v = parts.get(key);
     if (v?.split(",").some((item) => !re.test(item))) fail(`Invalid ${key}`, text, prodid);
   }
-  return parts;
 }
 
 /**
@@ -234,39 +244,39 @@ export function readRecurrence(
       ["FREQ", "INTERVAL", "BYDAY", "COUNT", "UNTIL"].includes(k) ||
       (k === "WKST" && parts.get(k) === "MO"),
   );
-  if (
-    extra ||
-    anchor === null ||
-    !keysOk ||
-    !FREQUENCIES.includes(freq as Frequency) ||
-    interval > MAX_INTERVAL
-  ) {
+  if (extra || anchor === null || !keysOk || !FREQUENCIES.has(freq) || interval > MAX_INTERVAL) {
     return readOnly;
   }
-  let byDay: Weekday[] = [];
-  let monthlyNth: Recurrence["monthlyNth"] = null;
+  const byDays = editableDays(days, freq);
+  const end = editableEnd(parts, anchor.isDate);
+  if (byDays === null || end === null) return readOnly;
+  return { repeats: true, rule: { freq: freq as Frequency, interval, ...byDays, end } };
+}
+
+/** `BYDAY` as the editor shows it (weekdays of WEEKLY, or one nth weekday of MONTHLY), or null. */
+function editableDays(
+  days: readonly string[],
+  freq: string,
+): Pick<Recurrence, "byDay" | "monthlyNth"> | null {
   if (days.every((d) => WEEKDAYS.includes(d as Weekday))) {
-    if (days.length > 0 && freq !== "WEEKLY") return readOnly;
-    byDay = WEEKDAYS.filter((d) => days.includes(d));
-  } else {
-    const m = /^([+-]?\d)(MO|TU|WE|TH|FR|SA|SU)$/.exec(days[0] ?? "");
-    const nth = m === null ? Number.NaN : Number(m[1]);
-    if (freq !== "MONTHLY" || days.length !== 1 || m === null || !NTHS.includes(nth as Nth))
-      return readOnly;
-    monthlyNth = { nth: nth as Nth, day: m[2] as Weekday };
+    if (days.length > 0 && freq !== "WEEKLY") return null;
+    return { byDay: WEEKDAYS.filter((d) => days.includes(d)), monthlyNth: null };
   }
-  let end: RecurrenceEnd = NEVER;
+  const m = /^([+-]?\d)(MO|TU|WE|TH|FR|SA|SU)$/.exec(days[0] ?? "");
+  const nth = m === null ? Number.NaN : Number(m[1]);
+  if (freq !== "MONTHLY" || days.length !== 1 || m === null || !NTHS.has(nth)) return null;
+  return { byDay: [], monthlyNth: { nth: nth as Nth, day: m[2] as Weekday } };
+}
+
+/** `COUNT` or `UNTIL` as the editor shows it, or null. */
+function editableEnd(parts: ReadonlyMap<string, string>, isDate: boolean): RecurrenceEnd | null {
   const count = parts.get("COUNT");
+  if (count !== undefined)
+    return Number(count) > MAX_COUNT ? null : { kind: "count", count: Number(count) };
   const until = parts.get("UNTIL");
-  if (count !== undefined) {
-    if (Number(count) > MAX_COUNT) return readOnly;
-    end = { kind: "count", count: Number(count) };
-  } else if (until !== undefined) {
-    const date = untilDate(until, anchor.isDate);
-    if (date === null) return readOnly;
-    end = { kind: "until", date };
-  }
-  return { repeats: true, rule: { freq: freq as Frequency, interval, byDay, monthlyNth, end } };
+  if (until === undefined) return NEVER;
+  const date = untilDate(until, isDate);
+  return date === null ? null : { kind: "until", date };
 }
 
 /** The `RRULE` value; `isDate` says whether the series' `DTSTART`/`DUE` is a date (for `UNTIL`). */
@@ -356,61 +366,87 @@ function weekdayIndex(year: number, month: number, day: number): number {
  */
 export function nextOccurrence(rule: Recurrence, from: Time): Time {
   checkRecurrence(rule);
-  const at = (y: number, m: number, d: number): Time => {
-    const out = from.clone();
-    out.year = y;
-    out.month = m;
-    out.day = d;
-    return out;
-  };
-  const addDays = (n: number): Time => shifted(from, n * 86_400_000);
-  const { year, month, day } = from;
+  const next = nextOf(rule, from);
+  if (next === null)
+    throw new HakenError("domain", "No next occurrence", { value: ruleString(rule) });
+  return next;
+}
+
+function nextOf(rule: Recurrence, from: Time): Time | null {
   switch (rule.freq) {
     case "DAILY":
-      return addDays(rule.interval);
-    case "WEEKLY": {
-      if (rule.byDay.length === 0) return addDays(7 * rule.interval);
-      const wanted = rule.byDay.map((d) => WEEKDAYS.indexOf(d)).sort((a, b) => a - b);
-      const today = weekdayIndex(year, month, day);
-      const later = wanted.find((w) => w > today);
-      if (later !== undefined) return addDays(later - today);
-      // First wanted day in the week `interval` weeks after this one.
-      return addDays(7 * rule.interval - today + (wanted[0] as number));
-    }
+      return addDays(from, rule.interval);
+    case "WEEKLY":
+      return nextWeekly(rule, from);
     case "MONTHLY":
-      if (rule.monthlyNth !== null) {
-        const { nth, day: wd } = rule.monthlyNth;
-        const target = WEEKDAYS.indexOf(wd);
-        // Same month first: the due date need not be an occurrence itself.
-        for (let i = 0; i <= 1200; i++) {
-          const total = month - 1 + i * rule.interval;
-          const y = year + Math.floor(total / 12);
-          const m = (total % 12) + 1;
-          const first = ((target - weekdayIndex(y, m, 1) + 7) % 7) + 1;
-          const d =
-            nth === -1
-              ? first + 7 * Math.floor((daysInMonth(y, m) - first) / 7)
-              : first + 7 * (nth - 1);
-          if (d > daysInMonth(y, m)) continue;
-          if (y > year || m > month || d > day) return at(y, m, d);
-        }
-        break;
-      }
-      for (let i = 1; i <= 1200; i++) {
-        const total = month - 1 + i * rule.interval;
-        const y = year + Math.floor(total / 12);
-        const m = (total % 12) + 1;
-        if (day <= daysInMonth(y, m)) return at(y, m, day);
-      }
-      break;
+      return rule.monthlyNth === null
+        ? nextMonthly(rule.interval, from)
+        : nextMonthlyNth(rule.interval, rule.monthlyNth, from);
     case "YEARLY":
-      for (let i = 1; i <= 400; i++) {
-        const y = year + i * rule.interval;
-        if (day <= daysInMonth(y, month)) return at(y, month, day);
-      }
-      break;
+      return nextYearly(rule.interval, from);
   }
-  throw new HakenError("domain", "No next occurrence", { value: ruleString(rule) });
+}
+
+function addDays(from: Time, n: number): Time {
+  return shifted(from, n * 86_400_000);
+}
+
+function withDate(from: Time, y: number, m: number, d: number): Time {
+  const out = from.clone();
+  out.year = y;
+  out.month = m;
+  out.day = d;
+  return out;
+}
+
+/** Year and month `months` after the month of `from`. */
+function monthAfter(from: Time, months: number): { y: number; m: number } {
+  const total = from.month - 1 + months;
+  return { y: from.year + Math.floor(total / 12), m: (total % 12) + 1 };
+}
+
+function nextWeekly(rule: Recurrence, from: Time): Time {
+  if (rule.byDay.length === 0) return addDays(from, 7 * rule.interval);
+  const wanted = rule.byDay.map((d) => WEEKDAYS.indexOf(d)).sort((a, b) => a - b);
+  const today = weekdayIndex(from.year, from.month, from.day);
+  const later = wanted.find((w) => w > today);
+  if (later !== undefined) return addDays(from, later - today);
+  // First wanted day in the week `interval` weeks after this one.
+  return addDays(from, 7 * rule.interval - today + (wanted[0] as number));
+}
+
+function nextMonthlyNth(
+  interval: number,
+  { nth, day: weekday }: { readonly nth: Nth; readonly day: Weekday },
+  from: Time,
+): Time | null {
+  const target = WEEKDAYS.indexOf(weekday);
+  // Same month first: the due date need not be an occurrence itself.
+  for (let i = 0; i <= 1200; i++) {
+    const { y, m } = monthAfter(from, i * interval);
+    const first = ((target - weekdayIndex(y, m, 1) + 7) % 7) + 1;
+    const last = first + 7 * Math.floor((daysInMonth(y, m) - first) / 7);
+    const d = nth === -1 ? last : first + 7 * (nth - 1);
+    const after = y > from.year || m > from.month || d > from.day;
+    if (d <= daysInMonth(y, m) && after) return withDate(from, y, m, d);
+  }
+  return null;
+}
+
+function nextMonthly(interval: number, from: Time): Time | null {
+  for (let i = 1; i <= 1200; i++) {
+    const { y, m } = monthAfter(from, i * interval);
+    if (from.day <= daysInMonth(y, m)) return withDate(from, y, m, from.day);
+  }
+  return null;
+}
+
+function nextYearly(interval: number, from: Time): Time | null {
+  for (let i = 1; i <= 400; i++) {
+    const y = from.year + i * interval;
+    if (from.day <= daysInMonth(y, from.month)) return withDate(from, y, from.month, from.day);
+  }
+  return null;
 }
 
 /**
@@ -461,8 +497,7 @@ export function followDue(todo: Component, previous: Time | null): boolean {
   if (
     previous === null ||
     due === null ||
-    start === null ||
-    due.isDate !== start.isDate ||
+    due.isDate !== start?.isDate ||
     previous.isDate !== due.isDate
   ) {
     return false;

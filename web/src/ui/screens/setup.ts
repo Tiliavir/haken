@@ -43,6 +43,19 @@ function button(
   );
 }
 
+type LoginFailure = Exclude<Awaited<ReturnType<Ctx["app"]["signIn"]>>, { kind: "ok" }>;
+
+function signInError(result: LoginFailure): string {
+  switch (result.kind) {
+    case "invalid":
+      return t("setup.signin.invalid");
+    case "rate-limited":
+      return t("setup.signin.rateLimited", { seconds: result.retryAfterSeconds });
+    case "unreachable":
+      return t("setup.signin.unreachable");
+  }
+}
+
 export class HakenSetup extends HTMLElement {
   private introPage = 0;
   private busy = false;
@@ -84,43 +97,9 @@ export class HakenSetup extends HTMLElement {
         );
         return;
       }
-      case "intro": {
-        const pages = [
-          [t("setup.intro1.title"), t("setup.intro1.text")],
-          [t("setup.intro2.title"), t("setup.intro2.text")],
-          [t("setup.intro3.title"), t("setup.intro3.text")],
-        ] as const;
-        const page = pages[this.introPage] ?? pages[0];
-        const last = this.introPage >= pages.length - 1;
-        fill(
-          this,
-          screen(
-            page[0],
-            h("p", { class: "lead" }, page[1]),
-            h(
-              "p",
-              { class: "muted" },
-              t("setup.page", { page: this.introPage + 1, total: pages.length }),
-            ),
-            actions(
-              button(t("setup.skip"), () => go(afterIntro())),
-              button(
-                t("setup.next"),
-                () => {
-                  if (last) {
-                    go(afterIntro());
-                    return;
-                  }
-                  this.introPage += 1;
-                  this.render(ctx);
-                },
-                "primary",
-              ),
-            ),
-          ),
-        );
+      case "intro":
+        this.renderIntro(ctx, go, afterIntro);
         return;
-      }
       case "install-first":
         fill(
           this,
@@ -143,141 +122,190 @@ export class HakenSetup extends HTMLElement {
           ),
         );
         return;
-      case "mode": {
-        const single = modes.length === 1 ? modes[0] : undefined;
-        if (single !== undefined) {
-          chooseMode(single);
-          return;
-        }
-        fill(
-          this,
-          screen(
-            t("setup.mode.title"),
-            h(
-              "div",
-              { class: "choices" },
-              modes.map((m) =>
-                h(
-                  "button",
-                  { type: "button", class: "choice", onclick: () => chooseMode(m) },
-                  h("strong", {}, m === "server" ? t("setup.mode.server") : t("setup.mode.local")),
-                  h(
-                    "span",
-                    {},
-                    m === "server" ? t("setup.mode.serverText") : t("setup.mode.localText"),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
+      case "mode":
+        this.renderMode(modes, chooseMode);
         return;
-      }
       case "signin":
         this.renderSignIn(ctx, go, afterAccount);
         return;
-      case "local": {
-        const start = (withImport: boolean): void => {
-          if (this.busy) return;
-          this.busy = true;
-          ctx.run("ui.setup.local", async () => {
-            try {
-              if (ctx.snapshot.account === null) await ctx.app.createLocalAccount();
-              await ctx.app.setSetupStep(afterAccount());
-              if (withImport) chooseImport(ctx, ctx.dialog);
-            } finally {
-              this.busy = false;
-            }
-          });
-        };
-        fill(
-          this,
-          screen(
-            t("setup.local.title"),
-            h("p", { class: "lead" }, t("setup.local.text")),
-            h("p", { class: "warning" }, t("setup.localWarning")),
-            ctx.app.config.demo ? h("p", { class: "warning" }, t("setup.demo")) : null,
-            actions(
-              modes.length > 1 ? button(t("setup.back"), () => go("mode")) : null,
-              button(t("setup.local.import"), () => start(true)),
-              button(t("setup.local.empty"), () => start(false), "primary"),
-            ),
-          ),
-        );
+      case "local":
+        this.renderLocal(ctx, go, afterAccount);
         return;
-      }
-      case "install": {
-        const prompt = installPrompt();
-        if (prompt === null && standalone()) {
-          go("persist");
-          return;
-        }
-        fill(
-          this,
-          screen(
-            t("setup.install.title"),
-            h("p", { class: "lead" }, t("setup.install.text")),
-            prompt === null ? h("p", {}, t("setup.install.howto")) : null,
-            actions(
-              button(t("setup.later"), () => {
-                ctx.run("ui.setup.installLater", async () => {
-                  await ctx.app.setSetting("installOffered", true);
-                  await ctx.app.setSetupStep("persist");
-                });
-              }),
-              prompt === null
-                ? null
-                : button(
-                    t("setup.install.button"),
-                    () =>
-                      ctx.run("ui.setup.install", async () => {
-                        await prompt.prompt();
-                        await prompt.userChoice;
-                        consumeInstallPrompt();
-                        await ctx.app.setSetting("installOffered", true);
-                        await ctx.app.setSetupStep("persist");
-                      }),
-                    "primary",
-                  ),
-            ),
-          ),
-        );
+      case "install":
+        this.renderInstall(ctx, go);
         return;
-      }
-      case "persist": {
-        const done = (): void => ctx.run("ui.setup.finish", () => ctx.app.finishSetup());
-        fill(
-          this,
-          screen(
-            t("setup.persist.title"),
-            h("p", { class: "lead" }, t("setup.persist.text")),
-            this.persistDenied
-              ? h("p", { class: "warning", role: "status" }, t("setup.persist.denied"))
-              : null,
-            actions(
-              button(this.persistDenied ? t("setup.continue") : t("setup.later"), done),
-              this.persistDenied
-                ? null
-                : button(
-                    t("setup.persist.allow"),
-                    () =>
-                      ctx.run("ui.setup.persist", async () => {
-                        const granted = await navigator.storage.persist();
-                        if (granted) {
-                          await ctx.app.finishSetup();
-                          return;
-                        }
-                        this.persistDenied = true;
-                        ctx.rerender();
-                      }),
-                    "primary",
-                  ),
-            ),
-          ),
-        );
+      case "persist":
+        this.renderPersist(ctx);
         return;
-      }
     }
+  }
+
+  private renderIntro(ctx: Ctx, go: (s: SetupStep) => void, afterIntro: () => SetupStep): void {
+    const pages = [
+      [t("setup.intro1.title"), t("setup.intro1.text")],
+      [t("setup.intro2.title"), t("setup.intro2.text")],
+      [t("setup.intro3.title"), t("setup.intro3.text")],
+    ] as const;
+    const page = pages[this.introPage] ?? pages[0];
+    const last = this.introPage >= pages.length - 1;
+    fill(
+      this,
+      screen(
+        page[0],
+        h("p", { class: "lead" }, page[1]),
+        h(
+          "p",
+          { class: "muted" },
+          t("setup.page", { page: this.introPage + 1, total: pages.length }),
+        ),
+        actions(
+          button(t("setup.skip"), () => go(afterIntro())),
+          button(
+            t("setup.next"),
+            () => {
+              if (last) {
+                go(afterIntro());
+                return;
+              }
+              this.introPage += 1;
+              this.render(ctx);
+            },
+            "primary",
+          ),
+        ),
+      ),
+    );
+  }
+
+  private renderMode(modes: readonly Mode[], chooseMode: (m: Mode) => void): void {
+    const single = modes.length === 1 ? modes[0] : undefined;
+    if (single !== undefined) {
+      chooseMode(single);
+      return;
+    }
+    fill(
+      this,
+      screen(
+        t("setup.mode.title"),
+        h(
+          "div",
+          { class: "choices" },
+          modes.map((m) =>
+            h(
+              "button",
+              { type: "button", class: "choice", onclick: () => chooseMode(m) },
+              h("strong", {}, m === "server" ? t("setup.mode.server") : t("setup.mode.local")),
+              h(
+                "span",
+                {},
+                m === "server" ? t("setup.mode.serverText") : t("setup.mode.localText"),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  private renderLocal(ctx: Ctx, go: (s: SetupStep) => void, afterAccount: () => SetupStep): void {
+    const start = (withImport: boolean): void => {
+      if (this.busy) return;
+      this.busy = true;
+      ctx.run("ui.setup.local", async () => {
+        try {
+          if (ctx.snapshot.account === null) await ctx.app.createLocalAccount();
+          await ctx.app.setSetupStep(afterAccount());
+          if (withImport) chooseImport(ctx, ctx.dialog);
+        } finally {
+          this.busy = false;
+        }
+      });
+    };
+    fill(
+      this,
+      screen(
+        t("setup.local.title"),
+        h("p", { class: "lead" }, t("setup.local.text")),
+        h("p", { class: "warning" }, t("setup.localWarning")),
+        ctx.app.config.demo ? h("p", { class: "warning" }, t("setup.demo")) : null,
+        actions(
+          ctx.app.config.accounts.length > 1 ? button(t("setup.back"), () => go("mode")) : null,
+          button(t("setup.local.import"), () => start(true)),
+          button(t("setup.local.empty"), () => start(false), "primary"),
+        ),
+      ),
+    );
+  }
+
+  private renderInstall(ctx: Ctx, go: (s: SetupStep) => void): void {
+    const prompt = installPrompt();
+    if (prompt === null && standalone()) {
+      go("persist");
+      return;
+    }
+    fill(
+      this,
+      screen(
+        t("setup.install.title"),
+        h("p", { class: "lead" }, t("setup.install.text")),
+        prompt === null ? h("p", {}, t("setup.install.howto")) : null,
+        actions(
+          button(t("setup.later"), () => {
+            ctx.run("ui.setup.installLater", async () => {
+              await ctx.app.setSetting("installOffered", true);
+              await ctx.app.setSetupStep("persist");
+            });
+          }),
+          prompt === null
+            ? null
+            : button(
+                t("setup.install.button"),
+                () =>
+                  ctx.run("ui.setup.install", async () => {
+                    await prompt.prompt();
+                    await prompt.userChoice;
+                    consumeInstallPrompt();
+                    await ctx.app.setSetting("installOffered", true);
+                    await ctx.app.setSetupStep("persist");
+                  }),
+                "primary",
+              ),
+        ),
+      ),
+    );
+  }
+
+  private renderPersist(ctx: Ctx): void {
+    const done = (): void => ctx.run("ui.setup.finish", () => ctx.app.finishSetup());
+    fill(
+      this,
+      screen(
+        t("setup.persist.title"),
+        h("p", { class: "lead" }, t("setup.persist.text")),
+        this.persistDenied
+          ? h("p", { class: "warning", role: "status" }, t("setup.persist.denied"))
+          : null,
+        actions(
+          button(this.persistDenied ? t("setup.continue") : t("setup.later"), done),
+          this.persistDenied
+            ? null
+            : button(
+                t("setup.persist.allow"),
+                () =>
+                  ctx.run("ui.setup.persist", async () => {
+                    const granted = await navigator.storage.persist();
+                    if (granted) {
+                      await ctx.app.finishSetup();
+                      return;
+                    }
+                    this.persistDenied = true;
+                    ctx.rerender();
+                  }),
+                "primary",
+              ),
+        ),
+      ),
+    );
   }
 
   private renderSignIn(ctx: Ctx, go: (s: SetupStep) => void, afterAccount: () => SetupStep): void {
@@ -317,23 +345,12 @@ export class HakenSetup extends HTMLElement {
             try {
               const result = await ctx.app.signIn(user.value.trim(), password.value);
               password.value = "";
-              switch (result.kind) {
-                case "ok":
-                  await ctx.app.setSetupStep(afterAccount());
-                  return;
-                case "invalid":
-                  this.message = t("setup.signin.invalid");
-                  break;
-                case "rate-limited":
-                  this.message = t("setup.signin.rateLimited", {
-                    seconds: result.retryAfterSeconds,
-                  });
-                  break;
-                case "unreachable":
-                  this.message = t("setup.signin.unreachable");
-                  this.unreachable = true;
-                  break;
+              if (result.kind === "ok") {
+                await ctx.app.setSetupStep(afterAccount());
+                return;
               }
+              this.message = signInError(result);
+              this.unreachable = result.kind === "unreachable";
             } finally {
               this.busy = false;
               ctx.rerender();
@@ -401,12 +418,7 @@ export function reauthDialog(ctx: Ctx, dialog: HTMLDialogElement): void {
               return;
             }
             error.hidden = false;
-            error.textContent =
-              result.kind === "invalid"
-                ? t("setup.signin.invalid")
-                : result.kind === "rate-limited"
-                  ? t("setup.signin.rateLimited", { seconds: result.retryAfterSeconds })
-                  : t("setup.signin.unreachable");
+            error.textContent = signInError(result);
           });
         },
       },

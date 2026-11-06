@@ -6,7 +6,7 @@ import { fill, h } from "../dom.js";
 import { submitField } from "../fields.js";
 import { t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
-import type { ListId } from "../route.js";
+import { type ListId, toHash } from "../route.js";
 import { defaultList, focusParts, localDate, show } from "../views.js";
 import { rowActions } from "./rowactions.js";
 import { smartName } from "./sidebar.js";
@@ -25,7 +25,7 @@ function taskRow(
       "a",
       {
         class: "task-title",
-        href: `#/${listId.kind === "smart" ? `smart/${listId.id}` : `list/${encodeURIComponent(listId.href)}`}/task/${encodeURIComponent(item.href)}`,
+        href: toHash({ kind: "task", list: listId, task: item.href }),
       },
       ...children,
     );
@@ -81,7 +81,7 @@ export class HakenList extends HTMLElement {
     }
     const title = shown.smart !== null ? smartName(shown.smart) : (shown.title ?? "");
     const target = shown.list ?? defaultList(ctx.snapshot);
-    const open = shown.tasks.filter((x) => x.view === null || !x.view.done);
+    const open = shown.tasks.filter((x) => !x.view?.done);
     const done = shown.tasks.filter((x) => x.view?.done === true);
 
     // A smart list is a view: say which list the new task goes to.

@@ -133,8 +133,8 @@ let sheet: CSSStyleSheet | null = null;
 
 export function applyTheme(appearance: Appearance, accentHex: string | null): void {
   const root = document.documentElement;
-  if (appearance === "system") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", appearance);
+  if (appearance === "system") delete root.dataset["theme"];
+  else root.dataset["theme"] = appearance;
   const accent = deriveAccent(accentHex ?? DEFAULT_ACCENT);
   if (sheet === null) {
     sheet = new CSSStyleSheet();

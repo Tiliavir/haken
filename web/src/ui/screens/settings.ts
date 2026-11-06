@@ -53,9 +53,10 @@ export function importDialog(
             h(
               "ul",
               {},
-              problems.map((p) =>
-                h("li", {}, `${p.uid ?? `#${p.index + 1}`}: ${p.property} – ${p.message}`),
-              ),
+              problems.map((p) => {
+                const where = p.uid ?? `#${p.index + 1}`;
+                return h("li", {}, `${where}: ${p.property} – ${p.message}`);
+              }),
             ),
           )
         : null,
@@ -260,68 +261,75 @@ function logoutFlow(ctx: Ctx, dialog: HTMLDialogElement): void {
   });
 }
 
+const THEME_LABELS = {
+  system: "theme.system",
+  light: "theme.light",
+  dark: "theme.dark",
+} as const satisfies Record<Theme, string>;
+
+function accountCard(ctx: Ctx): HTMLElement | null {
+  const account = ctx.snapshot.account;
+  if (account === null) return null;
+  const server =
+    account.type === "server"
+      ? [
+          h("dt", {}, t("settings.serverLabel")),
+          h("dd", {}, location.origin),
+          h("dt", {}, t("settings.user")),
+          h("dd", {}, account.user ?? ""),
+        ]
+      : [];
+  return card(
+    t("settings.account"),
+    h(
+      "dl",
+      { class: "facts" },
+      h("dt", {}, t("settings.storage")),
+      h("dd", {}, account.type === "local" ? t("settings.local") : t("settings.server")),
+      server,
+    ),
+    h(
+      "button",
+      { type: "button", class: "button", onclick: () => logoutFlow(ctx, ctx.dialog) },
+      t("settings.logout"),
+    ),
+  );
+}
+
+function syncCard(ctx: Ctx): HTMLElement | null {
+  const s = ctx.snapshot;
+  if (s.account?.type === "local")
+    return card(t("settings.sync"), h("p", { class: "warning" }, t("sync.localWarning")));
+  if (s.account?.type !== "server") return null;
+  const time =
+    s.lastSync === null
+      ? t("settings.never")
+      : formatDate(s.lastSync, { dateStyle: "medium", timeStyle: "short" });
+  return card(
+    t("settings.sync"),
+    h("p", {}, statusText(s.status)),
+    h("p", { class: "muted" }, t("settings.lastSync", { time })),
+    h("p", { class: "muted" }, tp("settings.pending", s.pending)),
+    h(
+      "button",
+      {
+        type: "button",
+        class: "button",
+        onclick: () => ctx.run("ui.syncNow", () => ctx.app.syncNow()),
+      },
+      t("settings.syncNow"),
+    ),
+  );
+}
+
 export class HakenSettings extends HTMLElement {
   render(ctx: Ctx): void {
     const s = ctx.snapshot;
     const account = s.account;
     const dialog = ctx.dialog;
     const themeOptions: readonly Theme[] = ["system", "light", "dark"];
-    const themeLabel = (v: Theme): string =>
-      v === "system" ? t("theme.system") : v === "light" ? t("theme.light") : t("theme.dark");
     const accent = s.settings.accent ?? DEFAULT_ACCENT;
     const hex = h("output", { class: "hex" }, accent.toUpperCase());
-
-    const accountCard =
-      account === null
-        ? null
-        : card(
-            t("settings.account"),
-            h(
-              "dl",
-              { class: "facts" },
-              h("dt", {}, t("settings.storage")),
-              h("dd", {}, account.type === "local" ? t("settings.local") : t("settings.server")),
-              account.type === "server" ? h("dt", {}, t("settings.serverLabel")) : null,
-              account.type === "server" ? h("dd", {}, location.origin) : null,
-              account.type === "server" ? h("dt", {}, t("settings.user")) : null,
-              account.type === "server" ? h("dd", {}, account.user ?? "") : null,
-            ),
-            h(
-              "button",
-              { type: "button", class: "button", onclick: () => logoutFlow(ctx, dialog) },
-              t("settings.logout"),
-            ),
-          );
-
-    const syncCard =
-      account?.type === "server"
-        ? card(
-            t("settings.sync"),
-            h("p", {}, statusText(s.status)),
-            h(
-              "p",
-              { class: "muted" },
-              t("settings.lastSync", {
-                time:
-                  s.lastSync === null
-                    ? t("settings.never")
-                    : formatDate(s.lastSync, { dateStyle: "medium", timeStyle: "short" }),
-              }),
-            ),
-            h("p", { class: "muted" }, tp("settings.pending", s.pending)),
-            h(
-              "button",
-              {
-                type: "button",
-                class: "button",
-                onclick: () => ctx.run("ui.syncNow", () => ctx.app.syncNow()),
-              },
-              t("settings.syncNow"),
-            ),
-          )
-        : account?.type === "local"
-          ? card(t("settings.sync"), h("p", { class: "warning" }, t("sync.localWarning")))
-          : null;
 
     const appearance = card(
       t("settings.appearance"),
@@ -340,7 +348,7 @@ export class HakenSettings extends HTMLElement {
               checked: s.settings.theme === v,
               onchange: () => ctx.run("ui.theme", () => ctx.app.setSetting("theme", v)),
             }),
-            h("span", {}, themeLabel(v)),
+            h("span", {}, t(THEME_LABELS[v])),
           ),
         ),
       ),
@@ -432,8 +440,8 @@ export class HakenSettings extends HTMLElement {
         h("a", { class: "back", href: "#/" }, icon("back"), h("span", {}, t("lists.title"))),
         h("h1", { class: "page-title" }, t("settings.title")),
       ),
-      accountCard,
-      syncCard,
+      accountCard(ctx),
+      syncCard(ctx),
       appearance,
       data,
       h("p", { class: "muted version" }, t("settings.version", { version: APP_VERSION })),

@@ -6,7 +6,11 @@ set -eu
 
 cd "$(dirname "$0")/../web/icons"
 
-png() { rsvg-convert --width "$2" --height "$2" --output "$3" "$1"; }
+# png SOURCE SIZE OUTPUT
+png() {
+  src=$1 size=$2 out=$3
+  rsvg-convert --width "$size" --height "$size" --output "$out" "$src"
+}
 
 png icon.svg 192 icon-192.png
 png icon.svg 512 icon-512.png

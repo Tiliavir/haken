@@ -32,6 +32,9 @@ export class StaleError extends HakenError {
   override readonly name: string = "StaleError";
 }
 
+/** Value of a `state` entry. */
+export type StateValue = string | number | null;
+
 export interface Changes {
   readonly putLists?: readonly ListRecord[];
   readonly deleteLists?: readonly string[];
@@ -43,7 +46,7 @@ export interface Changes {
   readonly deleteOps?: readonly number[];
   readonly addConflicts?: readonly ConflictInput[];
   readonly deleteConflicts?: readonly number[];
-  readonly putState?: Readonly<Record<string, string | number | null>>;
+  readonly putState?: Readonly<Record<string, StateValue>>;
   /** Each task's `ics` must still be this (`null`: must not exist), else `StaleError`. */
   readonly expect?: readonly { readonly href: string; readonly ics: string | null }[];
   /** These outbox ids must still exist, else `StaleError`. */
@@ -125,7 +128,7 @@ export class AccountStore {
     return row === undefined ? null : toBase(row);
   }
 
-  async state(key: string): Promise<string | number | null> {
+  async state(key: string): Promise<StateValue> {
     const row = (await transact(this.db, ["state"], "readonly", (tx) =>
       request(tx.objectStore("state").get(key)),
     )) as { value?: unknown } | undefined;
@@ -140,11 +143,11 @@ export class AccountStore {
     return v;
   }
 
-  async allState(): Promise<Map<string, string | number | null>> {
+  async allState(): Promise<Map<string, StateValue>> {
     const rows = (await transact(this.db, ["state"], "readonly", (tx) =>
       request(tx.objectStore("state").getAll()),
     )) as unknown[];
-    const out = new Map<string, string | number | null>();
+    const out = new Map<string, StateValue>();
     for (const row of rows) {
       const { key, value } = (row ?? {}) as { key?: unknown; value?: unknown };
       if (
@@ -164,46 +167,57 @@ export class AccountStore {
     for (const t of changes.putTasks ?? []) toTask(t);
     for (const b of changes.putBase ?? []) toBase(b);
     await transact(this.db, STORES, "readwrite", async (tx) => {
-      const tasks = tx.objectStore("tasks");
-      for (const e of changes.expect ?? []) {
-        const row: unknown = await request(tasks.get(e.href));
-        const current = row === undefined ? null : toTask(row).ics;
-        if (current !== e.ics)
-          throw new StaleError("store", "Task changed during the operation", { href: e.href });
-      }
-      const outbox = tx.objectStore("outbox");
-      for (const id of changes.expectOps ?? []) {
-        if ((await request(outbox.get(id))) === undefined) {
-          throw new StaleError("store", "Outbox entry vanished during the operation", { id });
-        }
-      }
-      const lists = tx.objectStore("lists");
-      for (const l of changes.putLists ?? []) await request(lists.put(l));
-      for (const href of changes.deleteLists ?? []) await request(lists.delete(href));
-      for (const t of changes.putTasks ?? []) await request(tasks.put(t));
-      for (const href of changes.deleteTasks ?? []) await request(tasks.delete(href));
-      const base = tx.objectStore("base");
-      for (const b of changes.putBase ?? []) await request(base.put(b));
-      for (const href of changes.deleteBase ?? []) await request(base.delete(href));
-      for (const id of changes.deleteOps ?? []) await request(outbox.delete(id));
-      for (const op of changes.addOps ?? []) {
-        await request(
-          outbox.add({
-            schema: SCHEMA,
-            kind: op.kind,
-            href: op.href,
-            groups: [...op.groups],
-            editedAt: op.editedAt,
-          }),
-        );
-      }
-      const conflicts = tx.objectStore("conflicts");
-      for (const id of changes.deleteConflicts ?? []) await request(conflicts.delete(id));
-      for (const c of changes.addConflicts ?? [])
-        await request(conflicts.add({ schema: SCHEMA, ...c }));
-      const state = tx.objectStore("state");
-      for (const [key, value] of Object.entries(changes.putState ?? {}))
-        await request(state.put({ key, value }));
+      await checkExpectations(tx, changes);
+      await applyChanges(tx, changes);
     });
   }
+}
+
+/** Throws `StaleError` if a task or outbox entry the changes rely on changed meanwhile. */
+async function checkExpectations(tx: IDBTransaction, changes: Changes): Promise<void> {
+  const tasks = tx.objectStore("tasks");
+  for (const e of changes.expect ?? []) {
+    const row: unknown = await request(tasks.get(e.href));
+    const current = row === undefined ? null : toTask(row).ics;
+    if (current !== e.ics)
+      throw new StaleError("store", "Task changed during the operation", { href: e.href });
+  }
+  const outbox = tx.objectStore("outbox");
+  for (const id of changes.expectOps ?? []) {
+    if ((await request(outbox.get(id))) === undefined) {
+      throw new StaleError("store", "Outbox entry vanished during the operation", { id });
+    }
+  }
+}
+
+async function applyChanges(tx: IDBTransaction, changes: Changes): Promise<void> {
+  const tasks = tx.objectStore("tasks");
+  const outbox = tx.objectStore("outbox");
+  const lists = tx.objectStore("lists");
+  for (const l of changes.putLists ?? []) await request(lists.put(l));
+  for (const href of changes.deleteLists ?? []) await request(lists.delete(href));
+  for (const t of changes.putTasks ?? []) await request(tasks.put(t));
+  for (const href of changes.deleteTasks ?? []) await request(tasks.delete(href));
+  const base = tx.objectStore("base");
+  for (const b of changes.putBase ?? []) await request(base.put(b));
+  for (const href of changes.deleteBase ?? []) await request(base.delete(href));
+  for (const id of changes.deleteOps ?? []) await request(outbox.delete(id));
+  for (const op of changes.addOps ?? []) {
+    await request(
+      outbox.add({
+        schema: SCHEMA,
+        kind: op.kind,
+        href: op.href,
+        groups: [...op.groups],
+        editedAt: op.editedAt,
+      }),
+    );
+  }
+  const conflicts = tx.objectStore("conflicts");
+  for (const id of changes.deleteConflicts ?? []) await request(conflicts.delete(id));
+  for (const c of changes.addConflicts ?? [])
+    await request(conflicts.add({ schema: SCHEMA, ...c }));
+  const state = tx.objectStore("state");
+  for (const [key, value] of Object.entries(changes.putState ?? {}))
+    await request(state.put({ key, value }));
 }
