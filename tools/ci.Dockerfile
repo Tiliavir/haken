@@ -3,8 +3,8 @@
 # .github/workflows/ci-image.yml; check.yml pins it by digest. Update both together.
 # Runs as root on purpose (Sonar hotspot reviewed as safe): GitHub container jobs need root
 # to write the runner-owned workspace; the image runs only throwaway CI jobs, never deployed.
-# mcr.microsoft.com/playwright:v1.63.0-noble (same version as @playwright/test)
-FROM mcr.microsoft.com/playwright@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+# mcr.microsoft.com/playwright:v1.64.1-noble (same version as @playwright/test)
+FROM mcr.microsoft.com/playwright@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
 
 # Go 1.22 from Ubuntu only bootstraps the pinned toolchain: GOTOOLCHAIN downloads it and
 # verifies it against the Go checksum database. A fixed GOPATH keeps it independent of HOME.
