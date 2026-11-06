@@ -4,10 +4,20 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
-## [Unreleased]
+## [0.1.0] - 2026-11-06
+
+First release: an installable, offline-first to-do app that keeps its tasks
+as standard `VTODO`s on your own CalDAV server.
 
 ### Added
 
-- First version: lists, manual order, checklists, labels, attachments, due dates,
-  repeating tasks, Focus, smart lists, offline sync with conflict merge,
-  browser-only mode, `.ics` export and import, six languages, themes.
+- Lists with manual drag-and-drop order.
+- Tasks with checklists, labels, attachments and due dates.
+- Repeating tasks.
+- Focus view and smart lists.
+- Offline use; sync with the CalDAV server when it is reachable, with automatic
+  conflict merge.
+- Browser-only mode, no server needed.
+- `.ics` export and import.
+- Six languages and themes.
+- Container image `ghcr.io/tiliavir/haken` (gateway and app).
