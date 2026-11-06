@@ -13,7 +13,7 @@ ENV GOTOOLCHAIN=go1.24.7 GOPATH=/go PATH=/go/bin:$PATH
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openjdk-17-jre-headless python3-pip make golang-go ca-certificates git \
  && rm -rf /var/lib/apt/lists/* \
- && pip install --no-cache-dir --break-system-packages radicale==3.9.0 \
+ && pip install --no-cache-dir --break-system-packages --only-binary :all: radicale==3.9.0 \
  && go version \
  && go install honnef.co/go/tools/cmd/staticcheck@2025.1.1 \
  && rm -rf /root/.cache
