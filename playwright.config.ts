@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 // E2E against the real gateway and a real Radicale (tools/dev-run.sh).
-// Locally the installed Chrome is used; CI runs the official Playwright image.
+// Locally the installed Chrome is used; CI uses Playwright's Chromium (tools/ci.sh).
 // E2E_PORT moves the gateway (Radicale: E2E_PORT + 10), for parallel local runs.
 // Radicale accepts bodies up to 1 MB, so tests/e2e/data.spec.ts can provoke a 413.
 const port = Number(process.env["E2E_PORT"] ?? "8181");
