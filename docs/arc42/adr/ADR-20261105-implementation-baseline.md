@@ -1,6 +1,6 @@
 # ADR-20261105: Implementation decisions of the first version
 
-Status: Accepted
+Status: Accepted; partly superseded by [ADR-20261105-ci-image](ADR-20261105-ci-image.md)
 
 Decisions taken while implementing the accepted ADRs, reviewed one by one. Details live in the code named in brackets.
 

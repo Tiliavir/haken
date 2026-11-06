@@ -10,6 +10,9 @@ permissions:
 
 jobs:
   check:
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/check.yml
     secrets: inherit
 

@@ -1,0 +1,26 @@
+name: ci-image
+
+# Builds tools/ci.Dockerfile and pushes it as ghcr.io/<repo>-ci:<commit>.
+# Pin the digest from the job summary in check.yml, with the commit as a comment.
+on:
+  push:
+    paths: [tools/ci.Dockerfile, .github/workflows/ci-image.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: |
+          image="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')-ci:$GITHUB_SHA"
+          docker build -f tools/ci.Dockerfile -t "$image" tools
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$image"
+          echo "\`$(docker inspect --format '{{index .RepoDigests 0}}' "$image")\`" >> "$GITHUB_STEP_SUMMARY"
