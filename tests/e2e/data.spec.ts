@@ -174,8 +174,10 @@ test("a list deleted here while another client edits one of its tasks keeps that
     .locator(".own-lists .list-item", { hasText: name })
     .getAttribute("data-href");
   await context.setOffline(true);
-  await page.getByRole("button", { name: "Delete list" }).click();
-  await page.locator("dialog").getByRole("button", { name: "Delete" }).click();
+  await page.getByRole("button", { name: "Edit list" }).click();
+  await page.locator("dialog").getByRole("button", { name: "Delete list" }).click();
+  await page.locator("dialog").getByRole("textbox").fill(name);
+  await page.locator("dialog").getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.locator(".own-lists .list-item", { hasText: name })).toHaveCount(0);
 
   // Another client changes the task on the server.

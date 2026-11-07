@@ -4,6 +4,12 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
+## [Unreleased]
+
+### Changed
+
+- Renaming and deleting a list moved into one *Edit list* dialog; deleting a list needs its name typed in.
+
 ## [0.3.0] - 2026-11-07
 
 Faster entry: paste a whole list at once.

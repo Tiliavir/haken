@@ -166,3 +166,33 @@ test("pasting several lines adds one task or step per line, in order", async ({ 
   await expect.poll(() => stepTitles(page)).toEqual(["Sub", "One", "Two", "Three"]);
   expect(problems).toEqual([]);
 });
+
+test("list: rename and delete in the edit dialog; delete needs the name typed in", async ({
+  page,
+}) => {
+  const problems = guard(page);
+  await setupLocal(page);
+  await page.getByPlaceholder("New list").fill("Errands");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "Errands" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delete list" })).toHaveCount(0);
+
+  const dialog = page.locator("dialog");
+  await page.getByRole("button", { name: "Edit list" }).click();
+  await dialog.getByRole("textbox", { name: "Name" }).fill("Shopping");
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("heading", { name: "Shopping" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit list" }).click();
+  await dialog.getByRole("button", { name: "Delete list" }).click();
+  const confirm = dialog.getByRole("textbox");
+  const remove = dialog.getByRole("button", { name: "Delete", exact: true });
+  await expect(confirm).toBeFocused();
+  await expect(remove).toBeDisabled();
+  await confirm.fill("Shop");
+  await expect(remove).toBeDisabled();
+  await confirm.fill("Shopping");
+  await remove.click();
+  await expect(page.locator(".own-lists .list-item", { hasText: "Shopping" })).toHaveCount(0);
+  expect(problems).toEqual([]);
+});
