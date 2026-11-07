@@ -54,3 +54,16 @@ export function fill(el: Element, ...children: readonly (Child | readonly Child[
   el.replaceChildren();
   append(el, children);
 }
+
+/**
+ * Focus keys (`data-focus`, see `<haken-app>`) to try once the row holding
+ * `key` is removed: the next row, the previous row, then `fallback`.
+ */
+export function afterRemoval(key: string, fallback: string): string[] {
+  const row = document.querySelector(`[data-focus="${CSS.escape(key)}"]`)?.closest("li");
+  const keyOf = (li: Element | null | undefined): string | undefined =>
+    li?.querySelector<HTMLElement>("[data-focus]")?.dataset["focus"];
+  return [keyOf(row?.nextElementSibling), keyOf(row?.previousElementSibling), fallback].filter(
+    (k): k is string => k !== undefined,
+  );
+}

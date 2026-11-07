@@ -57,6 +57,7 @@
   "lists.title": "Elenchi",
   "lists.new": "Nuovo elenco",
   "lists.newPlaceholder": "Nuovo elenco",
+  "move.moved": "{title} spostato in posizione {position} di {total}",
   "logout.title": "Esci",
   "logout.ok": "Esci",
   "logout.synced": "Tutte le modifiche sono sul server. Uscendo, le attività vengono rimosse da questo browser.",

@@ -3,7 +3,7 @@ import { ATTACHMENT_LIMIT, type TaskItem } from "../../app/service.js";
 import { HakenError } from "../../domain/errors.js";
 import type { Attachment, Due, TaskView } from "../../domain/vtodo.js";
 import type { Ctx } from "../context.js";
-import { fill, h } from "../dom.js";
+import { afterRemoval, fill, h } from "../dom.js";
 import { autosave, pasteLines, submitField } from "../fields.js";
 import { formatDate, locale, t } from "../i18n.js";
 import { icon } from "../icons.js";
@@ -584,10 +584,12 @@ export class HakenTask extends HTMLElement {
                 type: "button",
                 class: "button danger",
                 onclick: () => {
+                  // Focus moves to the next task, else the previous one, else the add field.
+                  const focus = afterRemoval(`task-${item.href}`, "@task");
                   deleteDialog.close();
                   ctx.run("ui.deleteTask", async () => {
                     await ctx.app.deleteTask(item.href);
-                    ctx.navigate({ kind: "list", list: listId });
+                    ctx.navigate({ kind: "list", list: listId }, focus);
                   });
                 },
               },

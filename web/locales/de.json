@@ -57,6 +57,7 @@
   "lists.title": "Listen",
   "lists.new": "Neue Liste",
   "lists.newPlaceholder": "Neue Liste",
+  "move.moved": "{title} an Position {position} von {total} verschoben",
   "logout.title": "Abmelden",
   "logout.ok": "Abmelden",
   "logout.synced": "Alle Änderungen sind auf dem Server. Beim Abmelden werden die Aufgaben aus diesem Browser entfernt.",
