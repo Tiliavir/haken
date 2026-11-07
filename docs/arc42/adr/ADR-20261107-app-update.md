@@ -1,6 +1,6 @@
 # ADR-20261107: Offer updates, show what's new
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 

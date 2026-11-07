@@ -31,4 +31,4 @@ Status: `Proposed` → `Accepted` | `Rejected` | `Superseded by …`.
 | [ADR-20261106-ci-browser-per-run](adr/ADR-20261106-ci-browser-per-run.md) | CI installs the locked Playwright browser per run (cached); the image has none | Proposed |
 | [ADR-20261106-release-from-main](adr/ADR-20261106-release-from-main.md) | A merge to `main` with an untagged `package.json` version releases it; CI creates the tag | Proposed |
 | [ADR-20261106-row-drag](adr/ADR-20261106-row-drag.md) | Drag the whole row (touch: hold); Alt+↑/↓; no long-press row actions | Proposed |
-| [ADR-20261107-app-update](adr/ADR-20261107-app-update.md) | A new version is offered with *Reload*, never forced; *What's new* from `CHANGELOG.md` once after an update | Proposed |
+| [ADR-20261107-app-update](adr/ADR-20261107-app-update.md) | A new version is offered with *Reload*, never forced; *What's new* from `CHANGELOG.md` once after an update | Accepted |
