@@ -11,13 +11,12 @@ FROM mcr.microsoft.com/playwright@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7
 # verifies it against the Go checksum database. A fixed GOPATH keeps it independent of HOME.
 ENV GOTOOLCHAIN=go1.24.7 GOPATH=/go PATH=/go/bin:$PATH
 
+# /ms-playwright: the base image's browsers belong to its Playwright version, not to
+# package-lock.json.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openjdk-17-jre-headless python3-pip make golang-go ca-certificates git \
  && rm -rf /var/lib/apt/lists/* \
  && pip install --no-cache-dir --break-system-packages --only-binary :all: radicale==3.9.0 \
  && go version \
  && go install honnef.co/go/tools/cmd/staticcheck@2025.1.1 \
- && rm -rf /root/.cache
-
-# Its browsers belong to the base image's Playwright version, not to package-lock.json.
-RUN rm -rf /ms-playwright/*
+ && rm -rf /root/.cache /ms-playwright/*
