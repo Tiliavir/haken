@@ -11,9 +11,9 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    # tools/ci.Dockerfile, built by ci-image.yml from 78433319ee42ff89d417fc6bb7b6e0d0316eb584.
+    # tools/ci.Dockerfile, built by ci-image.yml from 14334047c6f009ce3ccb4eb128cea2efce55fba1.
     container:
-      image: ghcr.io/tiliavir/haken-ci@sha256:391a110109c5950a716b23b76b118118c24d88c16d9442d44bd28637edb29133
+      image: ghcr.io/tiliavir/haken-ci@sha256:dd6d292261f2de581347c21e032e84ed59ecb043ff2c28a544c67a01ae9f9802
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
