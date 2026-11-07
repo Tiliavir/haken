@@ -6,6 +6,10 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 
 ## [Unreleased]
 
+### Fixed
+
+- Signing in works in Firefox (it was refused as a cross-site request).
+
 ## [0.5.0] - 2026-11-07
 
 Pick tasks for *Focus* from one dialog.

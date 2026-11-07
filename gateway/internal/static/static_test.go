@@ -23,6 +23,9 @@ func TestServesWithHeaders(t *testing.T) {
 		if rec.Header().Get("Content-Security-Policy") != CSP {
 			t.Errorf("%s: CSP missing", path)
 		}
+		if got := rec.Header().Get("Referrer-Policy"); got != "same-origin" {
+			t.Errorf("%s: Referrer-Policy %q", path, got)
+		}
 	}
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/manifest.webmanifest", nil))

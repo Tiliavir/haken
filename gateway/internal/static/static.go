@@ -19,7 +19,9 @@ const CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 's
 func SecurityHeaders(h http.Header) {
 	h.Set("Content-Security-Policy", CSP)
 	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Referrer-Policy", "no-referrer")
+	// same-origin, not no-referrer: with no-referrer, Firefox sends `Origin: null` on the
+	// app's same-origin POSTs (Fetch standard), and the gateway's origin check refuses them.
+	h.Set("Referrer-Policy", "same-origin")
 	h.Set("Cross-Origin-Opener-Policy", "same-origin")
 	h.Set("Cross-Origin-Resource-Policy", "same-origin")
 	h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
