@@ -55,8 +55,11 @@ test("pointer drag reorders", async ({ page }) => {
   await expect(page.getByLabel("Title")).toHaveCount(0);
 });
 
-/** A real touch gesture (Chromium input pipeline): down on `selector`, hold `holdMs`, move by `dy`, up. */
-async function touchDrag(page: Page, selector: string, holdMs: number, dy: number): Promise<void> {
+/**
+ * A real touch gesture (Chromium input pipeline): down on `selector`, move by
+ * `dy`, up. With `hold`, it moves only once the row is lifted (`.dragging`).
+ */
+async function touchDrag(page: Page, selector: string, hold: boolean, dy: number): Promise<void> {
   const box = await page.locator(selector).boundingBox();
   if (box === null) throw new Error("no box");
   const x = box.x + box.width / 2;
@@ -68,7 +71,7 @@ async function touchDrag(page: Page, selector: string, holdMs: number, dy: numbe
       touchPoints: at === null ? [] : [{ x, y: at }],
     });
   await touch("touchStart", y);
-  await page.waitForTimeout(holdMs);
+  if (hold) await expect(page.locator(".task-row.dragging")).toBeVisible();
   for (let i = 1; i <= 8; i++) await touch("touchMove", y + (dy * i) / 8);
   await touch("touchEnd", null);
   await cdp.detach();
@@ -82,9 +85,9 @@ test("touch: hold lifts the row, a quick swipe does not reorder", async ({ page 
   const rowHeight = (await page.locator(".task-row").first().boundingBox())?.height ?? 0;
   expect(await titles(page)).toEqual(["C", "B", "A"]);
   const a = '.task-row:has(.title:text-is("A")) .title';
-  await touchDrag(page, a, 0, -2 * rowHeight);
+  await touchDrag(page, a, false, -2 * rowHeight);
   await expect.poll(() => titles(page)).toEqual(["C", "B", "A"]);
-  await touchDrag(page, a, 400, -1.4 * rowHeight);
+  await touchDrag(page, a, true, -1.4 * rowHeight);
   await expect.poll(() => titles(page)).toEqual(["C", "A", "B"]);
 });
 
