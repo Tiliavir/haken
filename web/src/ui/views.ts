@@ -1,6 +1,7 @@
 /** Smart lists: views over the user's lists, never stored on the server (chapter 8). */
 import type { ListItem, Snapshot, TaskItem } from "../app/service.js";
 import { byCodeUnit } from "../domain/compare.js";
+import { HakenError } from "../domain/errors.js";
 import { compareFocus, type FocusPart } from "../domain/focus.js";
 import type { Due } from "../domain/vtodo.js";
 import type { ListId, SmartId } from "./route.js";
@@ -13,6 +14,32 @@ export function localDate(instant: number): string {
 
 export function dueDate(due: Due): string {
   return due.kind === "date" ? due.date : localDate(due.instant);
+}
+
+/** Device-local time of day `HH:MM` of a due date-time; `""` for a date. */
+export function dueClock(due: Due): string {
+  if (due.kind === "date") return "";
+  const d = new Date(due.instant);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/**
+ * The due value for a date (`YYYY-MM-DD`) and a device-local time (`HH:MM`,
+ * `""`: none), as the date and time inputs give them. Throws on anything else.
+ */
+export function dueAt(date: string, time: string): Due {
+  const [y, mo, d] = date.split("-").map(Number) as [number, number, number];
+  const valid =
+    /^\d{4}-\d{2}-\d{2}$/.test(date) && localDate(new Date(y, mo - 1, d, 12).getTime()) === date;
+  if (!valid) throw new HakenError("ui", "Invalid due date", { date });
+  if (time === "") return { kind: "date", date };
+  const m = /^(\d{2}):(\d{2})$/.exec(time);
+  if (m === null || Number(m[1]) > 23 || Number(m[2]) > 59)
+    throw new HakenError("ui", "Invalid due time", { time });
+  return {
+    kind: "date-time",
+    instant: new Date(y, mo - 1, d, Number(m[1]), Number(m[2])).getTime(),
+  };
 }
 
 function open(item: TaskItem): boolean {

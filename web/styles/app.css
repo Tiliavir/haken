@@ -157,7 +157,14 @@ a {
 }
 
 /* Zero specificity: a component class (.add-input, .label-input, …) overrides it. */
-:where(input[type="text"], input[type="password"], input[type="date"], select, textarea) {
+:where(
+  input[type="text"],
+  input[type="password"],
+  input[type="date"],
+  input[type="time"],
+  select,
+  textarea
+) {
   min-height: 2.75rem;
   padding: 0.625rem 0.75rem;
   border: 1px solid var(--border);
@@ -813,7 +820,7 @@ haken-task {
 }
 
 /*
- * Value controls (List, Due date, Repeat, Every, Ends) share one column:
+ * Value controls (List, Due date, Time, Repeat, Every, Ends) share one column:
  * same width, right-aligned, so their edges line up across rows.
  */
 .row-control {

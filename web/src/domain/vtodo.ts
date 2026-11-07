@@ -10,8 +10,8 @@ import { byCodeUnit } from "./compare.js";
 import { HakenError, InvalidInputError, unreachable } from "./errors.js";
 import {
   advance,
-  dueTime,
   followDue,
+  previousDue,
   type Recurrence,
   readRecurrence,
   sameRecurrence,
@@ -541,6 +541,22 @@ function isoUtc(date: Date): InstanceType<typeof ICAL.Time> {
   return ICAL.Time.fromJSDate(new Date(Math.floor(date.getTime() / 1000) * 1000), true);
 }
 
+/** A floating date-time with the device-local wall-clock time of `instant`, to the minute. */
+function floating(instant: number): InstanceType<typeof ICAL.Time> {
+  if (!Number.isSafeInteger(instant))
+    throw new HakenError("domain", "Invalid due time", { value: instant });
+  const d = new Date(instant);
+  return ICAL.Time.fromData({
+    year: d.getFullYear(),
+    month: d.getMonth() + 1,
+    day: d.getDate(),
+    hour: d.getHours(),
+    minute: d.getMinutes(),
+    second: 0,
+    isDate: false,
+  });
+}
+
 function setText(todo: Component, name: string, value: string): boolean {
   const current = todo.getFirstPropertyValue(name);
   if (value === "") {
@@ -660,7 +676,7 @@ function editDone(todo: Component, view: TaskView, edit: EditOf<"done">, now: Da
 }
 
 function editDue(todo: Component, view: TaskView, edit: EditOf<"due">): string[] {
-  const previous = dueTime(todo);
+  const previous = previousDue(todo);
   if (!setDue(todo, view.due, edit.value)) return [];
   if (view.recurrence === null) return ["DUE"];
   if (edit.value === null) {
@@ -668,7 +684,7 @@ function editDue(todo: Component, view: TaskView, edit: EditOf<"due">): string[]
     writeRecurrence(todo, null);
     return ["DUE", "RRULE"];
   }
-  return followDue(todo, previous) ? ["DUE", "DTSTART"] : ["DUE"];
+  return ["DUE", ...followDue(todo, previous, view.recurrence)];
 }
 
 function editFocus(todo: Component, view: TaskView, edit: EditOf<"focus">): string[] {
@@ -778,7 +794,7 @@ function setDue(todo: Component, current: Due | null, next: Due | null): boolean
     prop.setValue(ICAL.Time.fromDateString(next.date));
   } else {
     prop.resetType("date-time");
-    prop.setValue(isoUtc(new Date(next.instant)));
+    prop.setValue(floating(next.instant));
   }
   todo.addProperty(prop);
   return true;

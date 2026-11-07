@@ -9,6 +9,7 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 ### Added
 
 - When a new version is ready, a bar offers *Reload*; after an update, *What's new* shows the changes once.
+- A due date can have a time of day; the task row shows it.
 
 ### Changed
 
