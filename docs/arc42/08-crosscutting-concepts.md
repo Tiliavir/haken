@@ -12,7 +12,7 @@ This chapter is the binding reference. The [sketches](sketches/README.md) illust
 - System font stack (`system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`). No web fonts.
 - Icons are own inline stroke SVGs: `viewBox="0 0 24 24"`, stroke 1.75, round caps and joins, `currentColor`. No emoji.
 - Touch targets are at least 44 × 44 px. On touch screens (`pointer: coarse`) every size is one step larger (see Design tokens). Text contrast is at least 4.5:1 in both schemes.
-- Semantic HTML: real `<button>`, `<a href>`, `<input>` + `<label>`, `<select>`, `<fieldset>`. Icon-only buttons carry `aria-label`; decorative SVGs carry `aria-hidden="true"`.
+- Semantic HTML: real `<button>`, `<a href>`, `<input>` + `<label>`, `<select>`, `<fieldset>`. Icon-only buttons carry `aria-label`; decorative SVGs carry `aria-hidden="true"`. `<select>` has `appearance: none` and one chevron (`styles/select-arrow.svg`, `#8A8F97`, ≥ 3:1 in both schemes), so the arrow sits the same on every platform.
 - All copy comes from message keys ([i18n](adr/ADR-20261103-i18n-json-messages.md)). The German strings in the sketches are examples.
 
 ### Screens

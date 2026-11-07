@@ -11,6 +11,11 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 - Larger text and spacing on touch screens.
 - Drag a task or list by the whole row (touch: hold first); rows slide aside to show where it lands. Alt+↑/↓ moves the focused row.
 
+### Fixed
+
+- Drop-down arrows sit at the same place on every platform.
+- Weekdays of a custom repeat stay on one line; the *Attach file* button and the label field line up with their icons; theme label and settings buttons align with the other content.
+
 ### Removed
 
 - Long-press and right-click actions on task rows; *Add to Focus* and *Move to list* stay on the task screen.
