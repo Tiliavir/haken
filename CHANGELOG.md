@@ -9,6 +9,7 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 ### Changed
 
 - Larger text and spacing on touch screens.
+- Settings section titles in sentence case.
 - Drag a task or list by the whole row (touch: hold first); rows slide aside to show where it lands. Alt+↑/↓ moves the focused row.
 
 ### Fixed

@@ -70,7 +70,7 @@ Colours are written as `light-dark(<light>, <dark>)` ([Theming](adr/ADR-20261103
 
 | Scale | Values |
 | --- | --- |
-| Type (px / weight, ×1.125 on touch screens) | 30/700 page title · 22–24/700 task title · 16 task rows · 15 body and controls · 13 meta and labels · 12 chips and footnotes |
+| Type (px / weight, ×1.125 on touch screens) | 30/700 page title · 22–24/700 task title · 16 task rows · 15 body, controls and card titles (600, sentence case; no all caps) · 13 meta and labels · 12 chips and footnotes |
 | Radius (px) | 8 sidebar rows and icon buttons · 12 inputs and buttons · 14 cards and groups · 999 chips · 50 % check circles |
 | Spacing | Sizes are `rem` (base 16 px; 18 px with `pointer: coarse`), borders and shadows `px`; 4 px grid; screen gutter 16–20 px; row height ≥ 44 px (task rows ≈ 56 px, list rows 52 px) |
 | Elevation | Only the dragged row: `0 10px 28px` at 16 % (light) / 50 % (dark) |
