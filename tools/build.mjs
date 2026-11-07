@@ -39,6 +39,52 @@ writeFileSync(errorsPath, errorsJs.replace("__HAKEN_VERSION__", appVersion));
 const copy = (from, to = from, filter = () => true) =>
   cpSync(join(root, "web", from), join(out, to), { recursive: true, filter: (src) => filter(src) });
 
+// The released versions of CHANGELOG.md as changelog.json, for the in-app "What's new".
+// Inline Markdown (emphasis, code, links) becomes plain text; the app renders text only.
+function plain(text) {
+  return text
+    .replaceAll(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replaceAll(/[*`]/g, "")
+    .trim();
+}
+
+function parseChangelog(markdown) {
+  const entries = [];
+  let entry = null;
+  let section = null;
+  for (const line of markdown.split("\n")) {
+    const release = /^## \[(\d+\.\d+\.\d+)\] - (\d{4}-\d{2}-\d{2})$/.exec(line);
+    if (release !== null) {
+      entry = { version: release[1], date: release[2], summary: "", sections: [] };
+      section = null;
+      entries.push(entry);
+    } else if (line.startsWith("## ")) {
+      entry = null; // [Unreleased] and anything else: not shipped.
+    } else if (entry === null || line.trim() === "") {
+      // outside a release, or a blank line
+    } else if (line.startsWith("### ")) {
+      section = { title: plain(line.slice(4)), items: [] };
+      entry.sections.push(section);
+    } else if (line.startsWith("- ") && section !== null) {
+      section.items.push(plain(line.slice(2)));
+    } else if (line.startsWith("  ") && section !== null && section.items.length > 0) {
+      section.items[section.items.length - 1] += ` ${plain(line)}`;
+    } else if (section === null) {
+      entry.summary = plain(`${entry.summary} ${line}`);
+    } else {
+      throw new Error(`CHANGELOG.md: unexpected line in ${entry.version}: ${line}`);
+    }
+  }
+  if (!entries.some((e) => e.version === appVersion))
+    throw new Error(`CHANGELOG.md has no section for ${appVersion}`);
+  return entries;
+}
+
+writeFileSync(
+  join(out, "changelog.json"),
+  `${JSON.stringify(parseChangelog(readFileSync(join(root, "CHANGELOG.md"), "utf8")), null, 2)}\n`,
+);
+
 copy("index.html");
 copy("manifest.webmanifest");
 copy("styles");

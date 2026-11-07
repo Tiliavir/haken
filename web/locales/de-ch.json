@@ -259,5 +259,10 @@
   "repeat.nth4": "vierten",
   "repeat.nthLast": "letzten",
   "notice.storageFull": "Der Speicher auf diesem Gerät ist zu {percent} % belegt. Entferne Anhänge oder erledigte Aufgaben, damit neue Änderungen gespeichert werden können.",
-  "task.taskTooLarge": "Mit dieser Datei wäre die Aufgabe grösser als 32 MB. Entferne zuerst einen Anhang."
+  "task.taskTooLarge": "Mit dieser Datei wäre die Aufgabe grösser als 32 MB. Entferne zuerst einen Anhang.",
+  "update.ready": "Eine neue Version von Haken ist bereit.",
+  "update.reload": "Neu laden",
+  "whatsNew.title": "Neuigkeiten",
+  "whatsNew.version": "Version {version}",
+  "whatsNew.close": "OK"
 }

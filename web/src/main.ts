@@ -19,6 +19,14 @@ async function main(): Promise<void> {
   defineElements();
   const root = document.querySelector<HakenApp>("haken-app");
   if (root === null) throw new Error("haken-app element missing");
+  // Before any await, so no update is missed: a controller change on a page
+  // that already had one is an update (the first install has none).
+  if ("serviceWorker" in navigator) {
+    const controlled = navigator.serviceWorker.controller !== null;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (controlled) root.updateReady();
+    });
+  }
   const app = await AppService.start(basePath());
   if (app === null) {
     await initI18n(null);

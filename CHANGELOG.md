@@ -6,6 +6,10 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 
 ## [Unreleased]
 
+### Added
+
+- When a new version is ready, a bar offers *Reload*; after an update, *What's new* shows the changes once.
+
 ### Changed
 
 - Renaming and deleting a list moved into one *Edit list* dialog; deleting a list needs its name typed in.

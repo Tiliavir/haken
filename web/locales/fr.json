@@ -259,5 +259,10 @@
   "repeat.nth4": "quatrième",
   "repeat.nthLast": "dernier",
   "notice.storageFull": "Le stockage de cet appareil est plein à {percent} %. Supprimez des pièces jointes ou des tâches terminées pour pouvoir enregistrer de nouvelles modifications.",
-  "task.taskTooLarge": "Avec ce fichier, la tâche dépasserait 32 Mo. Supprimez d’abord une pièce jointe."
+  "task.taskTooLarge": "Avec ce fichier, la tâche dépasserait 32 Mo. Supprimez d’abord une pièce jointe.",
+  "update.ready": "Une nouvelle version de Haken est prête.",
+  "update.reload": "Recharger",
+  "whatsNew.title": "Nouveautés",
+  "whatsNew.version": "Version {version}",
+  "whatsNew.close": "OK"
 }

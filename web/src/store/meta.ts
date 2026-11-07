@@ -21,6 +21,8 @@ export interface Settings {
   readonly errorDay: string;
   readonly errorCount: number;
   readonly errorRecursions: number;
+  /** App version whose *What's new* was shown; `null` = not yet remembered. */
+  readonly seenVersion: string | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -33,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   errorDay: "",
   errorCount: 0,
   errorRecursions: 0,
+  seenVersion: null,
 };
 
 type Key = keyof Settings;
@@ -50,6 +53,8 @@ const VALIDATORS: { readonly [K in Key]: (v: unknown) => v is Settings[K] } = {
   errorDay: (v): v is string => typeof v === "string",
   errorCount: (v): v is number => typeof v === "number" && Number.isInteger(v) && v >= 0,
   errorRecursions: (v): v is number => typeof v === "number" && Number.isInteger(v) && v >= 0,
+  seenVersion: (v): v is string | null =>
+    v === null || (typeof v === "string" && /^\d+\.\d+\.\d+$/.test(v)),
 };
 
 export class MetaStore {

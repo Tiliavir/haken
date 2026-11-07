@@ -30,7 +30,7 @@ Message files live in `web/locales/` ([i18n](adr/ADR-20261103-i18n-json-messages
 
 | Path | Content |
 | --- | --- |
-| `tools/build.mjs` | Assembles `dist/web` from `tsc` output and static files; writes the service worker's precache list |
+| `tools/build.mjs` | Assembles `dist/web` from `tsc` output and static files; writes the service worker's precache list and `changelog.json` (released sections of `CHANGELOG.md`) |
 | `tools/dev-run.sh` | Radicale (pip) + gateway for development and E2E |
 | `tests/unit/` | `node:test` (domain, i18n, theme, architecture rules) |
 | `tests/e2e/` | Playwright against gateway + Radicale |
