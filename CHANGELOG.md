@@ -6,6 +6,10 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-07
+
+Pick tasks for *Focus* from one dialog.
+
 ### Added
 
 - *Quick add* in *Focus*: pick tasks to put on Focus from one dialog, due soon and important ones first.
