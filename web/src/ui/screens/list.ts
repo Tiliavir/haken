@@ -209,15 +209,15 @@ export class HakenList extends HTMLElement {
 
 function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
   const dialog = ctx.dialog;
-  const renameInput = h("input", {
-    type: "text",
-    name: "name",
-    value: name,
-    maxlength: "200",
-    required: true,
-    autocomplete: "off",
-  });
-  const rename = (): void => {
+  const edit = (): void => {
+    const nameInput = h("input", {
+      type: "text",
+      name: "name",
+      value: name,
+      maxlength: "200",
+      required: true,
+      autocomplete: "off",
+    });
     fill(
       dialog,
       h(
@@ -225,12 +225,13 @@ function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
         {
           method: "dialog",
           onsubmit: () => {
-            const value = renameInput.value.trim();
-            if (value !== "") ctx.run("ui.renameList", () => ctx.app.renameList(href, value));
+            const value = nameInput.value.trim();
+            if (value !== "" && value !== name)
+              ctx.run("ui.renameList", () => ctx.app.renameList(href, value));
           },
         },
-        h("h2", {}, t("list.rename")),
-        h("label", {}, t("list.name"), renameInput),
+        h("h2", {}, t("list.edit")),
+        h("label", {}, t("list.name"), nameInput),
         h(
           "div",
           { class: "actions" },
@@ -241,38 +242,10 @@ function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
           ),
           h("button", { type: "submit", class: "button primary" }, t("common.save")),
         ),
-      ),
-    );
-    dialog.showModal();
-  };
-  const remove = (): void => {
-    const count = ctx.snapshot.lists.find((l) => l.href === href)?.tasks.length ?? 0;
-    fill(
-      dialog,
-      h(
-        "form",
-        { method: "dialog" },
-        h("h2", {}, t("list.delete")),
-        h("p", {}, tp("list.deleteConfirm", count, { name })),
         h(
-          "div",
-          { class: "actions" },
-          h("button", { type: "submit", class: "button", autofocus: true }, t("common.cancel")),
-          h(
-            "button",
-            {
-              type: "button",
-              class: "button danger",
-              onclick: () => {
-                dialog.close();
-                ctx.run("ui.deleteList", async () => {
-                  await ctx.app.deleteList(href);
-                  ctx.navigate({ kind: "lists" });
-                });
-              },
-            },
-            t("common.delete"),
-          ),
+          "button",
+          { type: "button", class: "button danger", onclick: () => remove(ctx, href, name) },
+          t("list.delete"),
         ),
       ),
     );
@@ -283,13 +256,51 @@ function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
     { class: "list-actions" },
     h(
       "button",
-      { class: "icon-button", type: "button", "aria-label": t("list.rename"), onclick: rename },
+      { class: "icon-button", type: "button", "aria-label": t("list.edit"), onclick: edit },
       icon("edit"),
     ),
+  );
+}
+
+/** Deleting a list needs its name typed in; only then is the delete button enabled. */
+function remove(ctx: Ctx, href: string, name: string): void {
+  const dialog = ctx.dialog;
+  const count = ctx.snapshot.lists.find((l) => l.href === href)?.tasks.length ?? 0;
+  const confirmInput = h("input", { type: "text", name: "confirm", autocomplete: "off" });
+  const confirm = h(
+    "button",
+    {
+      type: "button",
+      class: "button danger",
+      disabled: true,
+      onclick: () => {
+        dialog.close();
+        ctx.run("ui.deleteList", async () => {
+          await ctx.app.deleteList(href);
+          ctx.navigate({ kind: "lists" });
+        });
+      },
+    },
+    t("common.delete"),
+  );
+  confirmInput.addEventListener("input", () => {
+    confirm.disabled = confirmInput.value.trim() !== name;
+  });
+  fill(
+    dialog,
     h(
-      "button",
-      { class: "icon-button", type: "button", "aria-label": t("list.delete"), onclick: remove },
-      icon("trash"),
+      "form",
+      { method: "dialog" },
+      h("h2", {}, t("list.delete")),
+      h("p", { class: "warning" }, tp("list.deleteConfirm", count, { name })),
+      h("label", {}, t("list.deletePrompt", { name }), confirmInput),
+      h(
+        "div",
+        { class: "actions" },
+        h("button", { type: "submit", class: "button primary" }, t("common.cancel")),
+        confirm,
+      ),
     ),
   );
+  confirmInput.focus();
 }
