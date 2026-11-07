@@ -9,7 +9,7 @@ import {
   readTask,
   type TaskView,
 } from "../../web/src/domain/vtodo.js";
-import { focusTasks } from "../../web/src/ui/views.js";
+import { focusTasks, quickAddGroups } from "../../web/src/ui/views.js";
 
 const NOW = new Date("2026-11-04T10:00:00");
 const base = createTask(
@@ -112,4 +112,34 @@ test("Focus: overdue and due first, then pinned tasks (newest first), never rese
       "done-today",
     ],
   );
+});
+
+test("Quick add: due soon, then important, then by list; nothing already in Focus", () => {
+  const date = (d: string) => ({ kind: "date" as const, date: d });
+  const tasks = [
+    item("plain", {}),
+    item("starred", { important: true }),
+    item("due-in-7", { due: date("2026-11-11") }),
+    item("due-in-8", { due: date("2026-11-12") }),
+    item("due-tomorrow-starred", { due: date("2026-11-05"), important: true }),
+    item("due-today", { due: date("2026-11-04") }),
+    item("on-focus", { focus: "2026-11-01" }),
+    item("done", { done: true }),
+  ];
+  const groups = quickAddGroups(snapshot(tasks), NOW.getTime(), "");
+  assert.deepEqual(
+    groups.map((g) => [g.kind, g.list, g.tasks.map((t) => t.view?.uid)]),
+    [
+      ["dueSoon", null, ["due-tomorrow-starred", "due-in-7"]],
+      ["important", null, ["starred"]],
+      ["list", "L", ["plain", "due-in-8"]],
+    ],
+  );
+  assert.deepEqual(
+    quickAddGroups(snapshot(tasks), NOW.getTime(), "  STAR ").map((g) =>
+      g.tasks.map((t) => t.view?.uid),
+    ),
+    [["due-tomorrow-starred"], ["starred"]],
+  );
+  assert.deepEqual(quickAddGroups(snapshot([]), NOW.getTime(), ""), []);
 });

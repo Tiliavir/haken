@@ -10,6 +10,7 @@ import { icon } from "../icons.js";
 import { type ListId, toHash } from "../route.js";
 import { defaultList, focusParts, localDate, show } from "../views.js";
 import { backLink } from "./back.js";
+import { quickAddDialog } from "./quickadd.js";
 import { smartName } from "./sidebar.js";
 import { checkCircle, metaLine, starButton } from "./taskparts.js";
 
@@ -178,6 +179,17 @@ export class HakenList extends HTMLElement {
       h("p", { class: "subtitle" }, tp("list.open", shown.openCount)),
       shown.list !== null && !shown.list.errorlogs
         ? listMenu(ctx, shown.list.href, shown.list.name)
+        : null,
+      shown.smart === "focus"
+        ? h(
+            "div",
+            { class: "list-actions" },
+            h(
+              "button",
+              { class: "button", type: "button", onclick: () => quickAddDialog(ctx) },
+              t("focus.quickAdd"),
+            ),
+          )
         : null,
     );
 

@@ -88,6 +88,62 @@ export function focusParts(snapshot: Snapshot, now: number): FocusParts {
   return { due, picked, completed };
 }
 
+/** One group of *Quick add*: `list` is the list's name for the list groups, else `null`. */
+export interface QuickAddGroup {
+  readonly kind: "dueSoon" | "important" | "list";
+  readonly list: string | null;
+  readonly tasks: readonly TaskItem[];
+}
+
+const DUE_SOON_DAYS = 7;
+
+function dueKey(due: Due): number {
+  if (due.kind === "date-time") return due.instant;
+  const [y, m, d] = due.date.split("-").map(Number) as [number, number, number];
+  return new Date(y, m - 1, d).getTime();
+}
+
+/**
+ * *Quick add* in *Focus*: the open tasks not yet in Focus, each once, in the
+ * first group it matches: due in the next 7 days (by due date), important,
+ * then by list (list order, task order). `query` filters by title, ignoring case.
+ */
+export function quickAddGroups(snapshot: Snapshot, now: number, query: string): QuickAddGroup[] {
+  const today = localDate(now);
+  const d = new Date(now);
+  const limit = localDate(
+    new Date(d.getFullYear(), d.getMonth(), d.getDate() + DUE_SOON_DAYS).getTime(),
+  );
+  const needle = query.trim().toLocaleLowerCase();
+  const lists = snapshot.lists.filter((l) => !l.errorlogs);
+  const candidate = (t: TaskItem): boolean =>
+    t.view !== null &&
+    !t.view.done &&
+    t.view.focus === null &&
+    !dueNow(t, today) &&
+    t.view.summary.toLocaleLowerCase().includes(needle);
+  const soon = (t: TaskItem): boolean =>
+    t.view !== null && t.view.due !== null && dueDate(t.view.due) <= limit;
+  const key = (t: TaskItem): number => (t.view?.due ? dueKey(t.view.due) : 0);
+  const all = lists.flatMap((l) => l.tasks.filter(candidate));
+  const dueSoon = all.filter(soon).sort((a, b) => {
+    const k = key(a) - key(b);
+    return k === 0 ? byCodeUnit(a.href, b.href) : k;
+  });
+  const important = all.filter((t) => !soon(t) && t.view?.important === true);
+  const rest = (t: TaskItem): boolean => !soon(t) && t.view?.important !== true;
+  const groups: QuickAddGroup[] = [
+    { kind: "dueSoon", list: null, tasks: dueSoon },
+    { kind: "important", list: null, tasks: important },
+    ...lists.map((l) => ({
+      kind: "list" as const,
+      list: l.name,
+      tasks: l.tasks.filter((t) => candidate(t) && rest(t)),
+    })),
+  ];
+  return groups.filter((g) => g.tasks.length > 0);
+}
+
 export function focusTasks(snapshot: Snapshot, now: number): TaskItem[] {
   const p = focusParts(snapshot, now);
   return [...p.due, ...p.picked, ...p.completed];

@@ -89,6 +89,7 @@ Colours are written as `light-dark(<light>, <dark>)` ([Theming](adr/ADR-20261103
 - An important task shows a filled star in the accent colour.
 - Due dates in the meta line, with the time if set (*Tomorrow, 09:30*): overdue in `--danger` with *Overdue*; due today bold with an accent exclamation mark; on Focus a sun marker.
 - A task row can be dragged onto *Focus* in the sidebar; the entry is outlined while the task is over it. The task screen has *Add to Focus* / *Remove from Focus*.
+- *Focus* has *Quick add* in its header: a dialog with a filter field and the open tasks not in Focus, grouped *Due soon* (7 days), *Important*, then per list; *+* adds a task and keeps the dialog open ([Quick add](adr/ADR-20261107-focus-quick-add.md)).
 
 ### Setup and transient screens
 
