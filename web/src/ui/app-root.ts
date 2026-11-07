@@ -11,6 +11,7 @@ import { isDragging, onDragEnd } from "./dnd/sortable.js";
 import { fill, h } from "./dom.js";
 import { flushAll } from "./fields.js";
 import { t } from "./i18n.js";
+import { liveRegion } from "./live.js";
 import { type ListId, parseHash, type Route, toHash } from "./route.js";
 import { HakenList } from "./screens/list.js";
 import { HakenSettings } from "./screens/settings.js";
@@ -102,11 +103,14 @@ export class HakenApp extends HTMLElement {
   private readonly reauth = h("dialog", { class: "dialog" });
   private readonly dialog = h("dialog", { class: "dialog" });
   private pending = false;
+  /** Where focus goes on the first render of `hash` (after a delete). */
+  private focusNext: { readonly hash: string; readonly keys: readonly string[] } | null = null;
   private updateWaiting = false;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   attach(app: AppService): void {
     this.app = app;
+    this.after(liveRegion());
     app.addEventListener("change", () => this.schedule());
     app.addEventListener("notice", (e) => this.onNotice((e as CustomEvent<Notice>).detail));
     app.addEventListener("advanced", (e) => this.onAdvanced((e as CustomEvent<string>).detail));
@@ -202,8 +206,12 @@ export class HakenApp extends HTMLElement {
       snapshot: app.snapshot,
       route,
       now: Date.now(),
-      navigate: (r) => {
-        location.hash = toHash(r);
+      navigate: (r, focus) => {
+        const hash = toHash(r);
+        this.focusNext = focus === undefined ? null : { hash, keys: focus };
+        // The same hash fires no hashchange: render here, so the focus is placed now.
+        if (location.hash === hash) this.schedule();
+        else location.hash = hash;
       },
       run: (operation, fn) => {
         fn().catch((error: unknown) => {
@@ -230,7 +238,7 @@ export class HakenApp extends HTMLElement {
     if (!account?.ready) {
       this.setup.render(this.ctx(app, route));
       fill(this, this.setup, this.toast, this.update, this.dialog);
-      this.restoreFocus(focus);
+      this.placeFocus(focus);
       return;
     }
     // Desktop shows a list next to the sidebar; start with the first one.
@@ -266,6 +274,22 @@ export class HakenApp extends HTMLElement {
       this.reauth,
       this.dialog,
     );
+    this.placeFocus(focus);
+  }
+
+  /** A focus requested by `navigate` wins, on its route; otherwise focus stays where it was. */
+  private placeFocus(focus: Focus | null): void {
+    const next = this.focusNext;
+    if (next !== null && toHash(parseHash(location.hash)) === next.hash) {
+      this.focusNext = null;
+      const target = next.keys
+        .map((k) => this.focusTarget(k))
+        .find((el): el is HTMLElement => el instanceof HTMLElement && el.checkVisibility());
+      if (target !== undefined) {
+        target.focus();
+        return;
+      }
+    }
     this.restoreFocus(focus);
   }
 

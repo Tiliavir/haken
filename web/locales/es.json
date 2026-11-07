@@ -57,6 +57,7 @@
   "lists.title": "Listas",
   "lists.new": "Nueva lista",
   "lists.newPlaceholder": "Nueva lista",
+  "move.moved": "{title} movido a la posición {position} de {total}",
   "logout.title": "Cerrar sesión",
   "logout.ok": "Cerrar sesión",
   "logout.synced": "Todos los cambios están en el servidor. Al cerrar sesión se quitan las tareas de este navegador.",

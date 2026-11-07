@@ -52,6 +52,7 @@ function row(
       class: "list-item",
       "data-sortable": sortable ? "" : undefined,
       "data-href": id.kind === "list" ? id.href : undefined,
+      "data-label": sortable ? name : undefined,
     },
     h(
       "a",
@@ -60,8 +61,8 @@ function row(
         href,
         "aria-current": selected(ctx, id) ? "page" : undefined,
         "data-drop": id.kind === "smart" && id.id === "focus" ? "focus" : undefined,
-        // Keyboard reordering (Alt+↑/↓) keeps focus across the re-render.
-        "data-focus": sortable ? `list-${href}` : undefined,
+        // Focus survives a re-render (Alt+↑/↓) and can move here after a delete.
+        "data-focus": `list-${href}`,
         "aria-keyshortcuts": sortable ? "Alt+ArrowUp Alt+ArrowDown" : undefined,
       },
       glyph,

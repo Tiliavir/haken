@@ -12,7 +12,7 @@ This chapter is the binding reference. The [sketches](sketches/README.md) illust
 - System font stack (`system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`). No web fonts.
 - Icons are own inline stroke SVGs: `viewBox="0 0 24 24"`, stroke 1.75, round caps and joins, `currentColor`. No emoji.
 - Touch targets are at least 44 × 44 px. On touch screens (`pointer: coarse`) every size is one step larger (see Design tokens). Text contrast is at least 4.5:1 in both schemes.
-- Semantic HTML: real `<button>`, `<a href>`, `<input>` + `<label>`, `<select>`, `<fieldset>`. Icon-only buttons carry `aria-label`; decorative SVGs carry `aria-hidden="true"`. `<select>` has `appearance: none` and one chevron (`styles/select-arrow.svg`, `#8A8F97`, ≥ 3:1 in both schemes), so the arrow sits the same on every platform.
+- Semantic HTML: real `<button>`, `<a href>`, `<input>` + `<label>`, `<select>`, `<fieldset>`. Icon-only buttons carry `aria-label`; decorative SVGs carry `aria-hidden="true"`. Every control has an accessible name (E2E checks Chrome's accessibility tree on every screen). `<select>` has `appearance: none` and one chevron (`styles/select-arrow.svg`, `#8A8F97`, ≥ 3:1 in both schemes), so the arrow sits the same on every platform.
 - All copy comes from message keys ([i18n](adr/ADR-20261103-i18n-json-messages.md)). The German strings in the sketches are examples.
 
 ### Screens
@@ -39,6 +39,7 @@ Smart lists are views and are never stored on the server. Their names are transl
 - The settings screen scrolls; nothing else needs to scroll horizontally.
 - Avoid breakpoint code; layouts adapt through `flex-wrap` and intrinsic sizes. Exceptions: mobile shows one pane at a time by a single CSS media query at 720 px (no layout code in JS); `pointer: coarse` scales the root font size.
 - All modals use one `<dialog>` owned by `<haken-app>`; a re-render never closes it. Text in the focused field survives a re-render.
+- After deleting a task or list, focus moves to the next row, else the previous one, else the add field (*Add a task* / *New list*).
 - **Updates** ([app update](adr/ADR-20261107-app-update.md)): a new version shows a bar *A new version of Haken is ready.* with *Reload* above the bottom edge until reloaded. After an update, *What's new* opens once: per version a heading, the summary and the changelog sections (English text); only the entries scroll.
 
 ### Drag and drop
@@ -46,6 +47,7 @@ Smart lists are views and are never stored on the server. Their names are transl
 - The whole row is the handle ([row drag](adr/ADR-20261106-row-drag.md)); controls in it (circle, star) keep their own action. Touch: hold 300 ms without moving, then drag; a swipe scrolls. Mouse and pen: drag starts after 5 px; a click opens. Own Pointer Events code, see [Frontend](adr/ADR-20261103-vanilla-typescript-frontend.md).
 - While dragging, the row lifts as a card (shadow, scale 1.02, −1° rotation) and follows the pointer; the rows between its slot and the drop position slide aside (CSS transition, 160 ms; none with `prefers-reduced-motion`) to open a gap where it lands.
 - Keyboard: Alt+↑ / Alt+↓ on the focused row moves it one place (`aria-keyshortcuts`).
+- Every move, by pointer or keyboard, is announced in one polite live region outside the re-rendered tree: *‹title› moved to position n of m*.
 - Completed tasks cannot be reordered. Persistence follows the [data mapping](adr/ADR-20261103-vtodo-mapping.md). In *Focus* each part (due, picked) is reordered within itself ([Focus](adr/ADR-20261104-focus.md)).
 - *Add to/Remove from Focus* and *Move to list* are on the task screen.
 

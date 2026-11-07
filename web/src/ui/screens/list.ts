@@ -3,7 +3,7 @@ import type { TaskItem } from "../../app/service.js";
 import { HakenError } from "../../domain/errors.js";
 import type { Ctx } from "../context.js";
 import { makeSortable } from "../dnd/sortable.js";
-import { fill, h } from "../dom.js";
+import { afterRemoval, fill, h } from "../dom.js";
 import { pasteLines, submitField } from "../fields.js";
 import { t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
@@ -47,22 +47,18 @@ function taskRow(
     ? (ctx.snapshot.lists.find((l) => l.href === item.list)?.name ?? null)
     : null;
   const movable = sortable && !view.done && !readonly;
+  const title = view.summary === "" ? t("task.untitled") : view.summary;
   return h(
     "li",
     {
       class: view.done ? "task-row done" : "task-row",
       "data-href": item.href,
       "data-sortable": movable ? "" : undefined,
+      "data-label": title,
       "aria-current": selected ? "true" : undefined,
     },
     checkCircle(ctx, item, view, readonly),
-    link(
-      [
-        h("span", { class: "title" }, view.summary === "" ? t("task.untitled") : view.summary),
-        metaLine(item, view, ctx.now, listName),
-      ],
-      movable,
-    ),
+    link([h("span", { class: "title" }, title), metaLine(item, view, ctx.now, listName)], movable),
     starButton(ctx, item, view, readonly),
   );
 }
@@ -274,10 +270,13 @@ function remove(ctx: Ctx, href: string, name: string): void {
       class: "button danger",
       disabled: true,
       onclick: () => {
+        // Focus moves to the next list, else the previous one, else the new-list field.
+        const row = `list-${toHash({ kind: "list", list: { kind: "list", href } })}`;
+        const focus = afterRemoval(row, "@list");
         dialog.close();
         ctx.run("ui.deleteList", async () => {
           await ctx.app.deleteList(href);
-          ctx.navigate({ kind: "lists" });
+          ctx.navigate({ kind: "lists" }, focus);
         });
       },
     },

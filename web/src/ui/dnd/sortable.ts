@@ -6,7 +6,11 @@
  * `style.transform`.
  *
  * Keyboard: Alt+↑ / Alt+↓ on the focused row moves it one place.
+ * Every move is announced in the live region; rows carry `data-label`.
  */
+import { HakenError } from "../../domain/errors.js";
+import { t } from "../i18n.js";
+import { announce } from "../live.js";
 
 export type MoveHandler = (href: string, index: number) => void;
 
@@ -57,6 +61,13 @@ function rowOf(container: HTMLElement, target: EventTarget | null): HTMLElement 
   return row?.parentElement === container ? row : null;
 }
 
+/** "‹title› moved to position 2 of 5", once the move is handed on. */
+function announceMove(row: HTMLElement, index: number, total: number): void {
+  const title = row.dataset["label"];
+  if (title === undefined) throw new HakenError("ui", "Sortable row without data-label");
+  announce(t("move.moved", { title, position: index + 1, total }));
+}
+
 /** Swallows the click that follows a drag, so dropping never opens the row. */
 function swallowClick(row: HTMLElement): void {
   const stop = (e: Event): void => {
@@ -101,7 +112,9 @@ export function makeSortable(
     const index = list.indexOf(row) + (event.key === "ArrowUp" ? -1 : 1);
     const href = row.dataset["href"];
     // The re-render shows the stored order; the next press counts from there.
-    if (index >= 0 && index < list.length && href !== undefined) onMove(href, index);
+    if (index < 0 || index >= list.length || href === undefined) return;
+    onMove(href, index);
+    announceMove(row, index, list.length);
   });
 }
 
@@ -205,7 +218,10 @@ function startDrag(
     row.style.transform = "";
     finish();
     if (up && dropped !== undefined && onDrop !== undefined) onDrop(href, dropped);
-    else if (reorder) onMove(href, index);
+    else if (reorder) {
+      onMove(href, index);
+      announceMove(row, index, others.length + 1);
+    }
   };
   row.addEventListener("pointermove", move);
   row.addEventListener("pointerup", end);

@@ -57,6 +57,7 @@
   "lists.title": "Listes",
   "lists.new": "Nouvelle liste",
   "lists.newPlaceholder": "Nouvelle liste",
+  "move.moved": "{title} déplacé en position {position} sur {total}",
   "logout.title": "Se déconnecter",
   "logout.ok": "Se déconnecter",
   "logout.synced": "Toutes les modifications sont sur le serveur. La déconnexion retire les tâches de ce navigateur.",

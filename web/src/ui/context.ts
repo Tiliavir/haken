@@ -8,7 +8,11 @@ export interface Ctx {
   readonly snapshot: Snapshot;
   readonly route: Route;
   readonly now: number;
-  readonly navigate: (route: Route) => void;
+  /**
+   * Goes to `route`. With `focus`, the first render of it focuses the first
+   * visible element of these keys (`data-focus`, `#id`, `@name`).
+   */
+  readonly navigate: (route: Route, focus?: readonly string[]) => void;
   /** Runs a command; an unexpected error becomes an error task and a short notice. */
   readonly run: (operation: string, fn: () => Promise<unknown>) => void;
   readonly notify: (text: string) => void;

@@ -4,16 +4,20 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
-## [Unreleased]
+## [0.4.0] - 2026-11-07
+
+Due times, a calmer update and better keyboard and screen reader support.
 
 ### Added
 
 - When a new version is ready, a bar offers *Reload*; after an update, *What's new* shows the changes once.
 - A due date can have a time of day; the task row shows it.
+- Screen readers announce where a dragged or Alt+↑/↓-moved task or list landed.
 
 ### Changed
 
 - Renaming and deleting a list moved into one *Edit list* dialog; deleting a list needs its name typed in.
+- After deleting a task or a list, focus moves to the next one (else the previous one, else the add field).
 
 ## [0.3.0] - 2026-11-07
 
