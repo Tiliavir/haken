@@ -37,9 +37,8 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      for (const key of await caches.keys()) {
-        if (key.startsWith("haken-shell-") && key !== CACHE) await caches.delete(key);
-      }
+      const old = (await caches.keys()).filter((k) => k.startsWith("haken-shell-") && k !== CACHE);
+      await Promise.all(old.map((k) => caches.delete(k)));
       await self.clients.claim();
     })(),
   );

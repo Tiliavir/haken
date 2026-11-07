@@ -72,8 +72,8 @@ export class ErrorReporter {
         report,
         fingerprint(report.name, report.message, report.stack),
       );
-    } catch (failure) {
-      console.error(`[haken] could not write error task to ${ERRORLOGS}`, failure);
+    } catch (error_) {
+      console.error(`[haken] could not write error task to ${ERRORLOGS}`, error_);
       await this.sink
         .countRecursion()
         .catch((e: unknown) => console.error("[haken] recursion counter", e));

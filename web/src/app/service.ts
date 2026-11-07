@@ -350,7 +350,11 @@ export class AppService extends EventTarget implements ErrorSink {
   /** Signs in and prepares the account (lists, initial pull). */
   async signIn(user: string, password: string): Promise<api.Login> {
     const result = await api.login(user, password);
-    if (result.kind !== "ok") return result;
+    if (result.kind === "ok") await this.prepareServerAccount(user);
+    return result;
+  }
+
+  private async prepareServerAccount(user: string): Promise<void> {
     const origin = location.origin;
     const key = `${origin}|${user}`;
     const id = `server-${hex(key)}`;
@@ -373,7 +377,6 @@ export class AppService extends EventTarget implements ErrorSink {
         await this.createList(DEFAULT_LIST);
     }
     await this.syncNow();
-    return result;
   }
 
   /** New session for the active server account after the old one expired (*Sign in to sync*). */
@@ -550,8 +553,10 @@ export class AppService extends EventTarget implements ErrorSink {
     rest.splice(Math.max(0, Math.min(targetIndex, rest.length)), 0, href);
     const putLists: ListRecord[] = [];
     const addOps: OutboxInput[] = [];
+    const lists = new Map((await this.requireStore().lists()).map((l) => [l.href, l]));
     for (const [i, h] of rest.entries()) {
-      const list = await this.listRecord(h);
+      const list = lists.get(h);
+      if (list === undefined) throw new HakenError("app", "Unknown list", { path: h });
       if (list.order === i + 1) continue;
       putLists.push({ ...list, order: i + 1 });
       if (this.isServer && list.state === "synced")
@@ -795,13 +800,18 @@ export class AppService extends EventTarget implements ErrorSink {
     const putTasks: TaskRecord[] = [];
     const expect: { href: string; ics: string }[] = [];
     const addOps: { kind: "put"; href: string; groups: string[]; editedAt: number }[] = [];
-    for (const move of moves) {
-      const target = siblings.find((s) => s.view?.uid === move.uid);
-      if (target === undefined)
-        throw new HakenError("app", "Reorder target missing", { uid: move.uid });
-      const record = await store.task(target.href);
-      if (record === null)
-        throw new HakenError("app", "Reorder record missing", { path: target.href });
+    const pairs = await Promise.all(
+      moves.map(async (move) => {
+        const target = siblings.find((s) => s.view?.uid === move.uid);
+        if (target === undefined)
+          throw new HakenError("app", "Reorder target missing", { uid: move.uid });
+        const record = await store.task(target.href);
+        if (record === null)
+          throw new HakenError("app", "Reorder record missing", { path: target.href });
+        return { move, record };
+      }),
+    );
+    for (const { move, record } of pairs) {
       const result = applyEdit(record.ics, { kind: "sortOrder", value: move.sortOrder }, now);
       if (result.groups.length === 0) continue;
       putTasks.push({ ...record, ics: result.ics });
@@ -854,10 +864,16 @@ export class AppService extends EventTarget implements ErrorSink {
       expect: [],
       addOps: [],
     };
-    for (const move of moves) {
-      const target = siblings.find((s) => s.view?.uid === move.uid);
-      const record = target === undefined ? null : await store.task(target.href);
-      if (record === null) throw new HakenError("app", "Reorder record missing", { uid: move.uid });
+    const pairs = await Promise.all(
+      moves.map(async (move) => {
+        const target = siblings.find((s) => s.view?.uid === move.uid);
+        const record = target === undefined ? null : await store.task(target.href);
+        if (record === null)
+          throw new HakenError("app", "Reorder record missing", { uid: move.uid });
+        return { move, record };
+      }),
+    );
+    for (const { move, record } of pairs) {
       const result = applyEdit(record.ics, { kind: "focusOrder", value: move.sortOrder }, now);
       if (result.groups.length === 0) continue;
       changes.putTasks.push({ ...record, ics: result.ics });
@@ -906,15 +922,17 @@ export class AppService extends EventTarget implements ErrorSink {
     const conflicts = (await store.conflicts()).filter((c) =>
       [record, ...steps].some((r) => r.href === c.href),
     );
-    let newHref = href;
-    for (const r of [record, ...steps]) {
+    const movedHref = (old: string) => `${targetList}${old.slice(old.lastIndexOf("/") + 1)}`;
+    const newHref = movedHref(href);
+    const all = [record, ...steps];
+    const existing = await Promise.all(all.map((r) => store.task(movedHref(r.href))));
+    const taken = all.find((_, i) => existing[i] !== null);
+    if (taken !== undefined)
+      throw new HakenError("app", "Target resource exists", { path: movedHref(taken.href) });
+    for (const r of all) {
       const ics =
         r === record ? applyEdit(r.ics, { kind: "sortOrder", value: top }, now).ics : r.ics;
-      const name = r.href.slice(r.href.lastIndexOf("/") + 1);
-      const moved = `${targetList}${name}`;
-      if (r === record) newHref = moved;
-      if ((await store.task(moved)) !== null)
-        throw new HakenError("app", "Target resource exists", { path: moved });
+      const moved = movedHref(r.href);
       putTasks.push({ ...r, href: moved, list: targetList, ics, etag: null, deleted: false });
       expect.push({ href: moved, ics: null }, { href: r.href, ics: r.ics });
       if (this.isServer) {
@@ -926,7 +944,6 @@ export class AppService extends EventTarget implements ErrorSink {
       }
     }
     // Conflict notes stay with the task: they move to its new path.
-    const movedHref = (old: string) => `${targetList}${old.slice(old.lastIndexOf("/") + 1)}`;
     await this.changed({
       putTasks,
       addOps,

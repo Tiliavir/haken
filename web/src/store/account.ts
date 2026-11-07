@@ -176,48 +176,60 @@ export class AccountStore {
 /** Throws `StaleError` if a task or outbox entry the changes rely on changed meanwhile. */
 async function checkExpectations(tx: IDBTransaction, changes: Changes): Promise<void> {
   const tasks = tx.objectStore("tasks");
-  for (const e of changes.expect ?? []) {
-    const row: unknown = await request(tasks.get(e.href));
+  const outbox = tx.objectStore("outbox");
+  const expect = changes.expect ?? [];
+  const expectOps = changes.expectOps ?? [];
+  const [rows, ops] = await Promise.all([
+    Promise.all(expect.map((e) => request(tasks.get(e.href)))),
+    Promise.all(expectOps.map((id) => request(outbox.get(id)))),
+  ]);
+  for (const [i, e] of expect.entries()) {
+    const row: unknown = rows[i];
     const current = row === undefined ? null : toTask(row).ics;
     if (current !== e.ics)
       throw new StaleError("store", "Task changed during the operation", { href: e.href });
   }
-  const outbox = tx.objectStore("outbox");
-  for (const id of changes.expectOps ?? []) {
-    if ((await request(outbox.get(id))) === undefined) {
+  for (const [i, id] of expectOps.entries()) {
+    if (ops[i] === undefined)
       throw new StaleError("store", "Outbox entry vanished during the operation", { id });
-    }
   }
 }
 
+/**
+ * Issues all requests at once: IndexedDB runs requests of a transaction in
+ * the order they were placed, and a failed request aborts the transaction.
+ */
 async function applyChanges(tx: IDBTransaction, changes: Changes): Promise<void> {
   const tasks = tx.objectStore("tasks");
   const outbox = tx.objectStore("outbox");
   const lists = tx.objectStore("lists");
-  for (const l of changes.putLists ?? []) await request(lists.put(l));
-  for (const href of changes.deleteLists ?? []) await request(lists.delete(href));
-  for (const t of changes.putTasks ?? []) await request(tasks.put(t));
-  for (const href of changes.deleteTasks ?? []) await request(tasks.delete(href));
   const base = tx.objectStore("base");
-  for (const b of changes.putBase ?? []) await request(base.put(b));
-  for (const href of changes.deleteBase ?? []) await request(base.delete(href));
-  for (const id of changes.deleteOps ?? []) await request(outbox.delete(id));
-  for (const op of changes.addOps ?? []) {
-    await request(
-      outbox.add({
-        schema: SCHEMA,
-        kind: op.kind,
-        href: op.href,
-        groups: [...op.groups],
-        editedAt: op.editedAt,
-      }),
-    );
-  }
   const conflicts = tx.objectStore("conflicts");
-  for (const id of changes.deleteConflicts ?? []) await request(conflicts.delete(id));
-  for (const c of changes.addConflicts ?? [])
-    await request(conflicts.add({ schema: SCHEMA, ...c }));
   const state = tx.objectStore("state");
-  for (const [key, value] of Object.entries(changes.putState ?? {}))
-    await request(state.put({ key, value }));
+  const requests: Promise<unknown>[] = [
+    ...(changes.putLists ?? []).map((l) => request(lists.put(l))),
+    ...(changes.deleteLists ?? []).map((href) => request(lists.delete(href))),
+    ...(changes.putTasks ?? []).map((t) => request(tasks.put(t))),
+    ...(changes.deleteTasks ?? []).map((href) => request(tasks.delete(href))),
+    ...(changes.putBase ?? []).map((b) => request(base.put(b))),
+    ...(changes.deleteBase ?? []).map((href) => request(base.delete(href))),
+    ...(changes.deleteOps ?? []).map((id) => request(outbox.delete(id))),
+    ...(changes.addOps ?? []).map((op) =>
+      request(
+        outbox.add({
+          schema: SCHEMA,
+          kind: op.kind,
+          href: op.href,
+          groups: [...op.groups],
+          editedAt: op.editedAt,
+        }),
+      ),
+    ),
+    ...(changes.deleteConflicts ?? []).map((id) => request(conflicts.delete(id))),
+    ...(changes.addConflicts ?? []).map((c) => request(conflicts.add({ schema: SCHEMA, ...c }))),
+    ...Object.entries(changes.putState ?? {}).map(([key, value]) =>
+      request(state.put({ key, value })),
+    ),
+  ];
+  await Promise.all(requests);
 }
