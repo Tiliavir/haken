@@ -41,11 +41,10 @@ test("move a task with its checklist to another list; the server has it once, in
   await expect(page.locator(".step-title")).toHaveValue("Packed item");
   await waitSynced(page);
 
-  await page
-    .locator("haken-list .task-row .title", { hasText: "Travelling task" })
-    .click({ button: "right" });
-  await page.getByRole("button", { name: "Other", exact: true }).click();
+  await page.getByLabel("List", { exact: true }).selectOption({ label: "Other" });
   await expect(page.locator(".toast")).toHaveText("Moved to Other.");
+  await page.getByRole("link", { name: /^Haken/ }).click();
+  await expect(page.getByRole("heading", { name: "Haken", exact: true })).toBeVisible();
   await expect(page.locator("haken-list .task-row", { hasText: "Travelling task" })).toHaveCount(0);
   await waitSynced(page);
 

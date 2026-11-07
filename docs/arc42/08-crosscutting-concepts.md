@@ -11,16 +11,16 @@ This chapter is the binding reference. The [sketches](sketches/README.md) illust
 - One accent colour; everything else is neutral. Red (`--danger`) is the one exception, and only for "needs attention": overdue dates, errors, destructive actions ([Focus](adr/ADR-20261104-focus.md)).
 - System font stack (`system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`). No web fonts.
 - Icons are own inline stroke SVGs: `viewBox="0 0 24 24"`, stroke 1.75, round caps and joins, `currentColor`. No emoji.
-- Touch targets are at least 44 × 44 px. Text contrast is at least 4.5:1 in both schemes.
-- Semantic HTML: real `<button>`, `<a href>`, `<input>` + `<label>`, `<select>`, `<fieldset>`. Icon-only buttons carry `aria-label`; decorative SVGs carry `aria-hidden="true"`.
+- Touch targets are at least 44 × 44 px. On touch screens (`pointer: coarse`) every size is one step larger (see Design tokens). Text contrast is at least 4.5:1 in both schemes.
+- Semantic HTML: real `<button>`, `<a href>`, `<input>` + `<label>`, `<select>`, `<fieldset>`. Icon-only buttons carry `aria-label`; decorative SVGs carry `aria-hidden="true"`. `<select>` has `appearance: none` and one chevron (`styles/select-arrow.svg`, `#8A8F97`, ≥ 3:1 in both schemes), so the arrow sits the same on every platform.
 - All copy comes from message keys ([i18n](adr/ADR-20261103-i18n-json-messages.md)). The German strings in the sketches are examples.
 
 ### Screens
 
 | Screen | Content |
 | --- | --- |
-| Lists | Smart lists *Focus* (due today or overdue first, then the tasks put on Focus; no daily reset), *Important*, *Planned* and *All*, each with a count; a divider; the user's lists with counts, their icon in the list's `calendar-color`, in `calendar-order` (then by name; *errorlogs* last), reordered by a grip on the right (drag or keyboard; writes `calendar-order` 1…n); *New list* pinned at the bottom (mobile). The header shows the logo, the sync status (dot + text) and the settings entry. |
-| List | Title and number of open tasks. Each task row has a drag handle, a complete circle, the title, one meta line (checklist `x/y`, due date, repeat icon + rule, attachment icon, label chips) and a star. Completed tasks are collapsed under *Completed · n*. The add-task field sits at the bottom on mobile (thumb reach) and at the top on desktop (Enter adds). In a smart list it reads *Add to ‹list›* and adds to the first user list; *Planned* and *Focus* use the day of submitting. |
+| Lists | Smart lists *Focus* (due today or overdue first, then the tasks put on Focus; no daily reset), *Important*, *Planned* and *All*, each with a count; a divider; the user's lists with counts, their icon in the list's `calendar-color`, in `calendar-order` (then by name; *errorlogs* last), reordered by dragging the row (see Drag and drop; writes `calendar-order` 1…n); *New list* pinned at the bottom (mobile). The header shows the logo, the sync status (dot + text) and the settings entry. |
+| List | Title and number of open tasks. Each task row has a complete circle, the title, one meta line (checklist `x/y`, due date, repeat icon + rule, attachment icon, label chips) and a star. Completed tasks are collapsed under *Completed · n*. The add-task field sits at the bottom on mobile (thumb reach) and at the top on desktop (Enter adds). In a smart list it reads *Add to ‹list›* and adds to the first user list; *Planned* and *Focus* use the day of submitting. |
 | Task | Complete circle, title, star. Conflict notes, if any (see States). *Checklist* (child tasks) with *Add item*. One grouped block for due date, repeat (*Never* … *Custom*; custom: every N + unit, weekday chips for weeks, day or ordinal weekday for months; *Ends* never / after N times / on date), labels (chips + *Label*) and attachments (file name, size, *Attach file*). Completing a repeating task moves it to its next due date and shows a notice with that date ([recurrence](adr/ADR-20261104-recurrence.md)). A note field (description). Footer with the creation date and delete. |
 | Settings | Account (read-only): *This browser only*, or *Radicale server* with the server (the origin the app was loaded from) and the user name; *Log out*. Changing the storage mode or the user means logging out and running setup again ([Auth](adr/ADR-20261103-authentication.md)). Sync card: status, last sync, pending changes, *Sync now*. Appearance: theme *System/Light/Dark*, accent colour (`<input type="color">` + hex + *Default*), language (*System language*, then the native names from `locales/index.json`). Data: *Export (.ics)*, *Import*. App version. |
 
@@ -34,19 +34,19 @@ Smart lists are views and are never stored on the server. Their names are transl
 
 ### Layout
 
-- **Mobile:** one screen at a time; the header holds back navigation, which is labelled with the parent's name.
+- **Mobile:** one screen at a time. Back is a chevron before the title, in the slot the logo takes on the lists screen, so every title sits on the same line; its accessible name is *Back to* + the parent's name.
 - **Desktop:** three panes: sidebar (lists, 260 px), list (fluid, content max 760 px) and task detail (≥ 340 px, closable). The panes use `flex-wrap`, so they stack on narrow windows without breakpoint code. The selected list and selected task are highlighted with `--selected` / `--surface-2`.
 - The settings screen scrolls; nothing else needs to scroll horizontally.
-- Avoid breakpoint code; layouts adapt through `flex-wrap` and intrinsic sizes. The one exception: mobile shows one pane at a time by a single CSS media query at 720 px (no layout code in JS).
+- Avoid breakpoint code; layouts adapt through `flex-wrap` and intrinsic sizes. Exceptions: mobile shows one pane at a time by a single CSS media query at 720 px (no layout code in JS); `pointer: coarse` scales the root font size.
 - All modals use one `<dialog>` owned by `<haken-app>`; a re-render never closes it. Text in the focused field survives a re-render.
 
 ### Drag and drop
 
-- Every open task shows a faint grip handle. Dragging starts only from the handle, so scrolling and tapping a row never reorder by accident (own Pointer Events code, see [Frontend](adr/ADR-20261103-vanilla-typescript-frontend.md)).
-- While dragging, the task lifts as a card (shadow, −1° rotation, accent-coloured grip), and an accent line with a ring marks the drop position.
-- Keyboard alternative: focus the handle, move with ↑ and ↓, drop with Enter or Space, cancel with Esc.
+- The whole row is the handle ([row drag](adr/ADR-20261106-row-drag.md)); controls in it (circle, star) keep their own action. Touch: hold 300 ms without moving, then drag; a swipe scrolls. Mouse and pen: drag starts after 5 px; a click opens. Own Pointer Events code, see [Frontend](adr/ADR-20261103-vanilla-typescript-frontend.md).
+- While dragging, the row lifts as a card (shadow, scale 1.02, −1° rotation) and follows the pointer; the rows between its slot and the drop position slide aside (CSS transition, 160 ms; none with `prefers-reduced-motion`) to open a gap where it lands.
+- Keyboard: Alt+↑ / Alt+↓ on the focused row moves it one place (`aria-keyshortcuts`).
 - Completed tasks cannot be reordered. Persistence follows the [data mapping](adr/ADR-20261103-vtodo-mapping.md). In *Focus* each part (due, picked) is reordered within itself ([Focus](adr/ADR-20261104-focus.md)).
-- Long-press (touch) or right-click on a task row opens its actions: *Add to/Remove from Focus*, *Move to list*. The task screen offers the same actions for keyboard users.
+- *Add to/Remove from Focus* and *Move to list* are on the task screen.
 
 ### Design tokens
 
@@ -64,17 +64,16 @@ Colours are written as `light-dark(<light>, <dark>)` ([Theming](adr/ADR-20261103
 | `--text-2` | Secondary text, chip text | `#3D4249` | `#C9CDD2` |
 | `--text-muted` | Meta, labels, counts | `#5E636B` | `#A4AAB2` |
 | `--control` | Unchecked circles, inactive star | `#8A8F97` | `#7C838C` |
-| `--grip` | Drag handle | `#9AA0A8` | `#6B727B` |
 | `--accent` | Links, completed state, primary button, focus | user, default `#1F4D45` | derived, default `#618F86` |
 | `--on-accent` | Text on accent fills | derived (default `#FFFFFF`) | derived (default `#000000`) |
 | `--danger` | Overdue dates, destructive buttons | `#A1262B` | `#F08A8E` |
 
 | Scale | Values |
 | --- | --- |
-| Type (px / weight) | 30/700 page title · 22–24/700 task title · 16 task rows · 15 body and controls · 13 meta and labels · 12 chips and footnotes |
+| Type (px / weight, ×1.125 on touch screens) | 30/700 page title · 22–24/700 task title · 16 task rows · 15 body, controls and card titles (600, sentence case; no all caps) · 13 meta and labels · 12 chips and footnotes |
 | Radius (px) | 8 sidebar rows and icon buttons · 12 inputs and buttons · 14 cards and groups · 999 chips · 50 % check circles |
-| Spacing | 4 px grid; screen gutter 16–20 px; row height ≥ 44 px (task rows ≈ 56 px, list rows 52 px) |
-| Elevation | Only the dragged task: `0 10px 28px` at 16 % (light) / 50 % (dark) |
+| Spacing | Sizes are `rem` (base 16 px; 18 px with `pointer: coarse`), borders and shadows `px`; 4 px grid; screen gutter 16–20 px; row height ≥ 44 px (task rows ≈ 56 px, list rows 52 px) |
+| Elevation | Only the dragged row: `0 10px 28px` at 16 % (light) / 50 % (dark) |
 
 ### States
 
@@ -86,7 +85,7 @@ Colours are written as `light-dark(<light>, <dark>)` ([Theming](adr/ADR-20261103
 - A completed task or checklist item shows a filled accent circle with an `--on-accent` check, and its text is struck through and muted.
 - An important task shows a filled star in the accent colour.
 - Due dates in the meta line: overdue in `--danger` with *Overdue*; due today bold with an accent exclamation mark; on Focus a sun marker.
-- A task row can be dragged by its grip onto *Focus* in the sidebar; the entry is outlined while the task is over it. The task screen has *Add to Focus* / *Remove from Focus*.
+- A task row can be dragged onto *Focus* in the sidebar; the entry is outlined while the task is over it. The task screen has *Add to Focus* / *Remove from Focus*.
 
 ### Setup and transient screens
 

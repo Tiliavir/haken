@@ -13,6 +13,9 @@ async function phone(browser: Browser): Promise<Page> {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,
+    // A touch screen: the coarse-pointer sizes apply.
+    hasTouch: true,
+    isMobile: true,
     locale: "en-US",
     colorScheme: "light",
   });

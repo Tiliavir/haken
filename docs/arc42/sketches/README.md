@@ -23,7 +23,7 @@ Desktop, three panes:
 ![Desktop](desktop.png)
 
 Known differences to chapter 8: the settings sketches still show the old
-storage selector instead of the read-only account block with *Log out*.
+storage selector instead of the read-only account block with *Log out*; the list sketches show grips (rows are dragged as a whole now) and the desktop text size.
 
 ## App screens
 

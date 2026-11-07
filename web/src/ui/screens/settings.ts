@@ -8,6 +8,7 @@ import { fill, h } from "../dom.js";
 import { formatDate, locales, t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
 import { DEFAULT_ACCENT } from "../theme.js";
+import { backLink } from "./back.js";
 import { download } from "./task.js";
 
 function card(title: string, ...children: (Node | null)[]): HTMLElement {
@@ -437,7 +438,7 @@ export class HakenSettings extends HTMLElement {
       h(
         "header",
         { class: "list-header" },
-        h("a", { class: "back", href: "#/" }, icon("back"), h("span", {}, t("lists.title"))),
+        backLink("#/", t("lists.title")),
         h("h1", { class: "page-title" }, t("settings.title")),
       ),
       accountCard(ctx),

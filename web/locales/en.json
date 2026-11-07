@@ -180,7 +180,6 @@
   "task.uncomplete": "Mark as not completed",
   "task.star": "Mark as important",
   "task.unstar": "Remove importance",
-  "task.drag": "Move “{title}”",
   "task.steps": "{done}/{total}",
   "task.stepsTitle": "Checklist",
   "task.stepTitle": "Checklist item",
@@ -259,6 +258,5 @@
   "repeat.nth4": "fourth",
   "repeat.nthLast": "last",
   "notice.storageFull": "Storage on this device is {percent} % full. Remove attachments or completed tasks so new changes can be saved.",
-  "lists.drag": "Move “{name}”",
   "task.taskTooLarge": "With this file the task would be larger than 32 MB. Remove an attachment first."
 }

@@ -92,9 +92,9 @@ test("Focus: overdue (red) and due (!) on top, then tasks put on Focus; they sta
 test("drag a task onto Focus in the sidebar; it syncs as X-HAKEN-FOCUS", async ({ page }) => {
   await setupServer(page);
   await addTask(page, "Drag me to Focus");
-  const grip = page.getByRole("button", { name: "Move “Drag me to Focus”" });
+  const row = page.locator("haken-list .task-row .title", { hasText: "Drag me to Focus" });
   const target = page.getByRole("link", { name: /^Focus/ });
-  const from = await grip.boundingBox();
+  const from = await row.boundingBox();
   const to = await target.boundingBox();
   if (from === null || to === null) throw new Error("no boxes");
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
@@ -143,11 +143,10 @@ test("Focus: each part has its own manual order, kept after reload", async ({ pa
   await setupLocal(page);
   for (const title of ["One", "Two", "Three"]) {
     await addTask(page, title);
-    await page
-      .locator("haken-list .task-row .title", { hasText: title })
-      .click({ button: "right" });
+    await page.locator("haken-list .task-row .title", { hasText: title }).click();
+    await expect(page.getByLabel("Title")).toHaveValue(title);
     await page.getByRole("button", { name: "Add to Focus" }).click();
-    await expect(page.locator(".toast")).toHaveText("Added to Focus.");
+    await expect(page.getByRole("button", { name: "Remove from Focus" })).toBeVisible();
   }
   await page.getByRole("link", { name: /^Focus/ }).click();
   // Same day added: tie by UID, so read the order the app shows first.
@@ -155,15 +154,12 @@ test("Focus: each part has its own manual order, kept after reload", async ({ pa
   const before = await focusTitles(page);
   expect([...before].sort()).toEqual(["One", "Three", "Two"]);
   const last = before[2] as string;
-  await page.getByRole("button", { name: `Move “${last}”` }).focus();
-  await page.keyboard.press("ArrowUp");
-  await page.keyboard.press("ArrowUp");
-  // The row moves in the DOM at once; the commit re-renders the list afterwards.
-  await page.locator("haken-list .focus-part ul").evaluate((el) => {
-    el.dataset["before"] = "1";
-  });
-  await page.keyboard.press("Enter");
-  await expect(page.locator("haken-list .focus-part ul[data-before]")).toHaveCount(0);
+  const link = page.locator("haken-list .task-title", { hasText: last });
+  await link.focus();
+  await page.keyboard.press("Alt+ArrowUp");
+  await expect.poll(() => focusTitles(page)).toEqual([before[0], last, before[1]]);
+  await expect(link).toBeFocused();
+  await page.keyboard.press("Alt+ArrowUp");
   const expected = [last, before[0], before[1]];
   await expect.poll(() => focusTitles(page)).toEqual(expected);
   await page.reload();

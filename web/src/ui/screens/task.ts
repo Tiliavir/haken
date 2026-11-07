@@ -9,6 +9,7 @@ import { formatDate, locale, t } from "../i18n.js";
 import { icon } from "../icons.js";
 import { type ListId, toHash } from "../route.js";
 import { dueDate, localDate } from "../views.js";
+import { backLink } from "./back.js";
 import { repeatRow } from "./repeat.js";
 import { checkCircle, formatSize, starButton } from "./taskparts.js";
 
@@ -488,7 +489,7 @@ export class HakenTask extends HTMLElement {
     const view = item.view;
     const readonly = view.repeats && view.recurrence === null;
     const listName = ctx.snapshot.lists.find((l) => l.href === item.list)?.name ?? "";
-    const back = h("a", { class: "back", href: closeHref }, icon("back"), h("span", {}, listName));
+    const back = backLink(closeHref, listName);
     const title = h("textarea", {
       class: view.done ? "task-heading-input done" : "task-heading-input",
       rows: "1",
@@ -561,10 +562,11 @@ export class HakenTask extends HTMLElement {
 
     fill(
       this,
-      h("header", { class: "detail-header" }, back, close),
+      h("header", { class: "detail-header" }, close),
       h(
         "div",
         { class: "task-head" },
+        back,
         checkCircle(ctx, item, view, readonly),
         title,
         starButton(ctx, item, view, readonly),
