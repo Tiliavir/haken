@@ -8,6 +8,7 @@ import { t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
 import { type ListId, toHash } from "../route.js";
 import { defaultList, focusParts, localDate, show } from "../views.js";
+import { backLink } from "./back.js";
 import { smartName } from "./sidebar.js";
 import { checkCircle, metaLine, starButton } from "./taskparts.js";
 
@@ -169,12 +170,7 @@ export class HakenList extends HTMLElement {
       );
     }
 
-    const back = h(
-      "a",
-      { class: "back", href: "#/", "aria-label": t("nav.backTo", { name: t("lists.title") }) },
-      icon("back"),
-      h("span", {}, t("lists.title")),
-    );
+    const back = backLink("#/", t("lists.title"));
 
     const header = h(
       "header",

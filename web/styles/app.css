@@ -296,10 +296,6 @@ label {
   haken-list > .tasks {
     flex: 1 0 auto;
   }
-
-  .detail-header .close {
-    display: none;
-  }
 }
 
 /* ------------------------------------------------------------ sidebar */
@@ -438,23 +434,26 @@ haken-task {
   display: block;
 }
 
+/* Row 1: [back] title [actions]; row 2: subtitle under the title. */
 .list-header {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
   padding-top: 0.75rem;
 }
 
-.list-header .back {
-  grid-column: 1 / -1;
-}
-
+/*
+ * Back sits before the title, in the slot the logo takes on the lists
+ * screen: the 44 px target is pulled left so the chevron lines up with the
+ * gutter and the title starts where the app name does.
+ */
 .back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  min-height: 2.75rem;
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-inline: -0.75rem 0.375rem;
   color: var(--accent);
-  text-decoration: none;
 }
 
 @media (min-width: 721px) {
@@ -470,16 +469,21 @@ haken-task {
   overflow-wrap: anywhere;
 }
 
+.list-header .page-title {
+  grid-column: 2;
+  margin: 0;
+}
+
 .subtitle {
-  grid-column: 1;
+  grid-column: 2;
   margin: 2px 0 0.75rem;
   color: var(--text-muted);
   font-size: 0.8125rem;
 }
 
 .list-actions {
-  grid-row: 2 / 4;
-  grid-column: 2;
+  grid-row: 1;
+  grid-column: 3;
   display: flex;
   align-items: center;
 }
@@ -710,9 +714,14 @@ haken-task {
 
 .detail-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   padding-top: 0.75rem;
+}
+
+/* The check circle has its own 44 px target: no extra gap after back. */
+.task-head .back {
+  margin-inline-end: -0.5rem;
 }
 
 .task-head {
@@ -720,6 +729,17 @@ haken-task {
   align-items: flex-start;
   gap: 0.25rem;
   margin: 0.5rem 0 0.75rem;
+}
+
+/* Mobile: back is in .task-head and there is nothing to close; the head takes the header's place. */
+@media (max-width: 720px) {
+  .detail-header {
+    display: none;
+  }
+
+  .task-head {
+    margin-top: 0.75rem;
+  }
 }
 
 .task-heading {

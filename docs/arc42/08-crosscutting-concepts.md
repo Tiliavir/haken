@@ -34,7 +34,7 @@ Smart lists are views and are never stored on the server. Their names are transl
 
 ### Layout
 
-- **Mobile:** one screen at a time; the header holds back navigation, which is labelled with the parent's name.
+- **Mobile:** one screen at a time. Back is a chevron before the title, in the slot the logo takes on the lists screen, so every title sits on the same line; its accessible name is *Back to* + the parent's name.
 - **Desktop:** three panes: sidebar (lists, 260 px), list (fluid, content max 760 px) and task detail (≥ 340 px, closable). The panes use `flex-wrap`, so they stack on narrow windows without breakpoint code. The selected list and selected task are highlighted with `--selected` / `--surface-2`.
 - The settings screen scrolls; nothing else needs to scroll horizontally.
 - Avoid breakpoint code; layouts adapt through `flex-wrap` and intrinsic sizes. Exceptions: mobile shows one pane at a time by a single CSS media query at 720 px (no layout code in JS); `pointer: coarse` scales the root font size.
