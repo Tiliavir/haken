@@ -6,6 +6,10 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-08
+
+Sign-in works in Firefox.
+
 ### Fixed
 
 - Signing in works in Firefox (it was refused as a cross-site request).
