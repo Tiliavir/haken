@@ -59,25 +59,78 @@ export function autosave(
 const busy = new Set<string>();
 
 /**
- * Submits an add field: `commit` gets the trimmed text; the field (found by
- * `name`, it may have been re-rendered) is cleared only after `commit`
- * succeeded and only if it still holds the submitted text. A failed commit
- * leaves the text in place. A second submit while one is running is ignored.
+ * Runs `commit` for the add field `input` and clears the field (found by
+ * name, it may have been re-rendered) only after `commit` succeeded and only
+ * if it still holds `raw`. A failed commit leaves the text in place. A second
+ * commit while one is running is ignored.
  */
-export async function submitField(
+async function commitField(
   input: HTMLInputElement,
-  commit: (value: string) => Promise<unknown>,
+  raw: string,
+  commit: () => Promise<unknown>,
 ): Promise<void> {
   const name = input.name;
-  const raw = input.value;
-  const value = raw.trim();
-  if (value === "" || busy.has(name)) return;
+  if (busy.has(name)) return;
   busy.add(name);
   try {
-    await commit(value);
+    await commit();
     const current = document.querySelector<HTMLInputElement>(`input[name="${CSS.escape(name)}"]`);
     if (current !== null && current.value === raw) current.value = "";
   } finally {
     busy.delete(name);
   }
+}
+
+/** Submits an add field: `commit` gets the trimmed text (see `commitField`). */
+export async function submitField(
+  input: HTMLInputElement,
+  commit: (value: string) => Promise<unknown>,
+): Promise<void> {
+  const raw = input.value;
+  const value = raw.trim();
+  if (value === "") return;
+  await commitField(input, raw, () => commit(value));
+}
+
+/**
+ * The lines of `text` pasted over `start`–`end` of `value`, trimmed, empty
+ * ones dropped; `null` when that is not more than one line (a normal paste).
+ */
+export function pastedLines(
+  value: string,
+  start: number,
+  end: number,
+  text: string,
+): string[] | null {
+  const combined = value.slice(0, start) + text + value.slice(end);
+  const lines = combined
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  return lines.length > 1 ? lines : null;
+}
+
+/**
+ * Pasting several lines into the add field `input` adds one item per line:
+ * the paste is combined with the field's text, `commit` gets the lines (see
+ * `pastedLines`, `commitField`). Any other paste stays a normal paste.
+ */
+export function pasteLines(
+  input: HTMLInputElement,
+  commit: (values: string[]) => Promise<unknown>,
+  run: (work: () => Promise<void>) => void,
+): void {
+  input.addEventListener("paste", (e: ClipboardEvent) => {
+    const text = e.clipboardData?.getData("text/plain") ?? "";
+    const raw = input.value;
+    const lines = pastedLines(
+      raw,
+      input.selectionStart ?? raw.length,
+      input.selectionEnd ?? raw.length,
+      text,
+    );
+    if (lines === null) return;
+    e.preventDefault();
+    run(() => commitField(input, raw, () => commit(lines)));
+  });
 }

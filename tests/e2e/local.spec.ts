@@ -118,3 +118,51 @@ test("warns when the device storage is nearly full", async ({ page }) => {
   await page.reload();
   await expect(page.locator(".toast")).toContainText("90 % full");
 });
+
+/**
+ * Fires the paste event of Ctrl+V with `text` on `field`; true if the app took
+ * the paste over (a synthetic event inserts nothing by itself).
+ */
+function stepTitles(page: Page): Promise<string[]> {
+  return page
+    .locator(".step-title")
+    .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
+}
+
+function paste(field: ReturnType<Page["getByPlaceholder"]>, text: string): Promise<boolean> {
+  return field.evaluate((el, value) => {
+    const data = new DataTransfer();
+    data.setData("text/plain", value);
+    return !el.dispatchEvent(
+      new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
+    );
+  }, text);
+}
+
+test("pasting several lines adds one task or step per line, in order", async ({ page }) => {
+  const problems = guard(page);
+  await setupLocal(page);
+  await addTask(page, "Existing");
+
+  const field = page.getByPlaceholder("Add a task");
+  await field.fill("Buy ");
+  expect(await paste(field, "milk\r\n\r\n  eggs  \nbread\n")).toBe(true);
+  await expect.poll(() => titles(page)).toEqual(["Buy milk", "eggs", "bread", "Existing"]);
+  await expect(field).toHaveValue("");
+
+  // A single line stays a normal paste.
+  expect(await paste(field, "Just one\n")).toBe(false);
+
+  await page.locator(".task-row .title", { hasText: "Existing" }).click();
+  const step = page.getByPlaceholder("Add item");
+  await step.fill("Sub");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => stepTitles(page)).toEqual(["Sub"]);
+  expect(await paste(step, "One\nTwo\nThree")).toBe(true);
+  await expect.poll(() => stepTitles(page)).toEqual(["Sub", "One", "Two", "Three"]);
+  await expect(step).toHaveValue("");
+
+  await page.reload();
+  await expect.poll(() => stepTitles(page)).toEqual(["Sub", "One", "Two", "Three"]);
+  expect(problems).toEqual([]);
+});

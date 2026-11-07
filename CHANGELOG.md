@@ -4,6 +4,12 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
+## [Unreleased]
+
+### Added
+
+- Pasting several lines into the add-task or *Add item* field adds one task or item per line.
+
 ## [0.2.0] - 2026-11-07
 
 Better on the phone: larger controls, drag by the whole row, a calmer layout.

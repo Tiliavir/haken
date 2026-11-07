@@ -104,6 +104,14 @@ export interface Snapshot {
 
 export type AddResult = { readonly kind: "ok"; readonly href: string };
 
+export interface AddOptions {
+  readonly important?: boolean;
+  readonly due?: Due | null;
+  readonly parentHref?: string;
+  /** Put the new tasks on *Focus* (`YYYY-MM-DD`). */
+  readonly focus?: string | null;
+}
+
 export type AttachResult =
   | { readonly kind: "ok" }
   /** The file is over `ATTACHMENT_LIMIT`. */
@@ -599,83 +607,83 @@ export class AppService extends EventTarget implements ErrorSink {
 
   // ------------------------------------------------------------ tasks
 
-  addTask(
+  /**
+   * Adds one task per summary in one transaction, in the given order: the
+   * first ends up on top of the open tasks, steps are appended in order.
+   */
+  addTasks(
     listHref: string,
-    summary: string,
-    options: {
-      readonly important?: boolean;
-      readonly due?: Due | null;
-      readonly parentHref?: string;
-      /** Put the new task on *Focus* (`YYYY-MM-DD`). */
-      readonly focus?: string | null;
-    } = {},
-  ): Promise<AddResult> {
-    return this.exclusive(() => this.addTaskNow(listHref, summary, options));
+    summaries: readonly string[],
+    options: AddOptions = {},
+  ): Promise<AddResult[]> {
+    return this.exclusive(() => this.addTasksNow(listHref, summaries, options));
   }
 
-  private async addTaskNow(
+  private async addTasksNow(
     listHref: string,
-    summary: string,
-    options: {
-      readonly important?: boolean;
-      readonly due?: Due | null;
-      readonly parentHref?: string;
-      /** Put the new task on *Focus* (`YYYY-MM-DD`). */
-      readonly focus?: string | null;
-    } = {},
-  ): Promise<AddResult> {
-    const trimmed = summary.trim();
-    if (trimmed === "") throw new HakenError("app", "Empty task title");
+    summaries: readonly string[],
+    options: AddOptions,
+  ): Promise<AddResult[]> {
+    if (summaries.length === 0) throw new HakenError("app", "No task title");
+    const titles = summaries.map((s) => s.trim());
+    if (titles.includes("")) throw new HakenError("app", "Empty task title");
     const list = this.current.lists.find((l) => l.href === listHref);
     if (list === undefined) throw new HakenError("app", "Unknown list", { path: listHref });
-    const uid = crypto.randomUUID();
     const now = new Date();
+    const fallback = appleSeconds(now);
     let parentUid: string | null = null;
-    let sortOrder: number;
+    let orderOf: (index: number) => number;
     if (options.parentHref !== undefined) {
       const parent = list.tasks.find((t) => t.href === options.parentHref);
       if (parent === undefined || parent.view === null) {
         throw new HakenError("app", "Unknown parent task", { path: options.parentHref });
       }
       parentUid = parent.view.uid;
-      sortOrder = orderAtEnd(viewsOf(parent.steps), appleSeconds(now));
+      const first = orderAtEnd(viewsOf(parent.steps), fallback);
+      orderOf = (index) => first + index;
     } else {
-      sortOrder = orderOnTop(
-        viewsOf(list.tasks.filter((t) => t.view !== null && !t.view.done)),
-        appleSeconds(now),
-      );
+      const open = viewsOf(list.tasks.filter((t) => t.view !== null && !t.view.done));
+      const last = orderOnTop(open, fallback);
+      orderOf = (index) => last - (titles.length - 1 - index);
     }
-    const ics = createTask(
-      {
+    const records: TaskRecord[] = titles.map((summary, index) => {
+      const uid = crypto.randomUUID();
+      const ics = createTask(
+        {
+          uid,
+          summary,
+          sortOrder: orderOf(index),
+          parentUid,
+          important: options.important ?? false,
+          due: options.due ?? null,
+          focus: options.focus ?? null,
+        },
+        now,
+      );
+      return {
+        schema: SCHEMA,
+        href: `${listHref}${uid}.ics`,
+        list: listHref,
         uid,
-        summary: trimmed,
-        sortOrder,
-        parentUid,
-        important: options.important ?? false,
-        due: options.due ?? null,
-        focus: options.focus ?? null,
-      },
-      now,
-    );
-    const href = `${listHref}${uid}.ics`;
-    const record: TaskRecord = {
-      schema: SCHEMA,
-      href,
-      list: listHref,
-      uid,
-      ics,
-      etag: null,
-      deleted: false,
-      invalid: null,
-    };
-    await this.changed({
-      putTasks: [record],
-      addOps: this.isServer
-        ? [{ kind: "put", href, groups: resourceGroups(ics), editedAt: now.getTime() }]
-        : [],
-      expect: [{ href, ics: null }],
+        ics,
+        etag: null,
+        deleted: false,
+        invalid: null,
+      };
     });
-    return { kind: "ok", href };
+    await this.changed({
+      putTasks: records,
+      addOps: this.isServer
+        ? records.map((r) => ({
+            kind: "put" as const,
+            href: r.href,
+            groups: resourceGroups(r.ics),
+            editedAt: now.getTime(),
+          }))
+        : [],
+      expect: records.map((r) => ({ href: r.href, ics: null })),
+    });
+    return records.map((r) => ({ kind: "ok", href: r.href }));
   }
 
   edit(href: string, edit: TaskEdit): Promise<void> {
