@@ -3,10 +3,13 @@
  * re-rendering. Every snapshot change renders the visible panes again;
  * nothing updates itself implicitly.
  */
+import { type ChangelogEntry, loadChangelog, unseen } from "../app/changelog.js";
+import { APP_VERSION } from "../app/errors.js";
 import type { AppService, Notice } from "../app/service.js";
 import type { Ctx } from "./context.js";
 import { isDragging, onDragEnd } from "./dnd/sortable.js";
 import { fill, h } from "./dom.js";
+import { flushAll } from "./fields.js";
 import { t } from "./i18n.js";
 import { type ListId, parseHash, type Route, toHash } from "./route.js";
 import { HakenList } from "./screens/list.js";
@@ -45,6 +48,48 @@ function focusKey(el: HTMLElement, name: string | null): string | null {
   return name === null ? null : `@${name}`;
 }
 
+/** *What's new*: summary and changes of each version, newest first (CHANGELOG.md, English). */
+function changelogDialog(dialog: HTMLDialogElement, entries: readonly ChangelogEntry[]): void {
+  fill(
+    dialog,
+    h(
+      "form",
+      { method: "dialog", class: "changelog" },
+      h("h2", {}, t("whatsNew.title")),
+      h(
+        "div",
+        { class: "changelog-entries" },
+        entries.map((e) =>
+          h(
+            "section",
+            {},
+            h("h3", {}, t("whatsNew.version", { version: e.version })),
+            e.summary === "" ? null : h("p", { lang: "en" }, e.summary),
+            e.sections.flatMap((s) => [
+              h("h4", { lang: "en" }, s.title),
+              h(
+                "ul",
+                { lang: "en" },
+                s.items.map((i) => h("li", {}, i)),
+              ),
+            ]),
+          ),
+        ),
+      ),
+      h(
+        "div",
+        { class: "actions" },
+        h(
+          "button",
+          { type: "submit", class: "button primary", autofocus: true },
+          t("whatsNew.close"),
+        ),
+      ),
+    ),
+  );
+  dialog.showModal();
+}
+
 export class HakenApp extends HTMLElement {
   private app: AppService | null = null;
   private readonly sidebar = new HakenSidebar();
@@ -53,9 +98,11 @@ export class HakenApp extends HTMLElement {
   private readonly settings = new HakenSettings();
   private readonly setup = new HakenSetup();
   private readonly toast = h("div", { class: "toast", role: "status", "aria-live": "polite" });
+  private readonly update = h("div", { class: "update-bar", role: "status", hidden: true });
   private readonly reauth = h("dialog", { class: "dialog" });
   private readonly dialog = h("dialog", { class: "dialog" });
   private pending = false;
+  private updateWaiting = false;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   attach(app: AppService): void {
@@ -75,6 +122,56 @@ export class HakenApp extends HTMLElement {
     });
     this.storageCheck();
     this.schedule();
+    this.whatsNew(app).catch((error: unknown) => app.reporter.report(error, "Show what's new"));
+  }
+
+  /**
+   * A new version took over this page (service worker). The page keeps
+   * running the old code until it is loaded again; offer that, never force it.
+   * May come before the app (and its messages) is ready: the bar is drawn by
+   * the next render.
+   */
+  updateReady(): void {
+    this.updateWaiting = true;
+    if (this.app !== null) this.schedule();
+  }
+
+  private renderUpdate(): void {
+    if (!this.updateWaiting || !this.update.hidden) return;
+    fill(
+      this.update,
+      h("span", {}, t("update.ready")),
+      h(
+        "button",
+        {
+          type: "button",
+          class: "button primary",
+          onclick: () => {
+            flushAll();
+            location.reload();
+          },
+        },
+        t("update.reload"),
+      ),
+    );
+    this.update.hidden = false;
+  }
+
+  /**
+   * After an update, shows the changelog of the versions not seen yet, once.
+   * A first start only remembers the version: there is nothing new to it.
+   */
+  private async whatsNew(app: AppService): Promise<void> {
+    const seen = app.snapshot.settings.seenVersion;
+    if (seen === APP_VERSION) return;
+    if (app.snapshot.account?.ready !== true) {
+      await app.setSetting("seenVersion", APP_VERSION);
+      return;
+    }
+    const entries = unseen(await loadChangelog(), seen, APP_VERSION);
+    await app.setSetting("seenVersion", APP_VERSION);
+    if (this.dialog.open) return;
+    changelogDialog(this.dialog, entries);
   }
 
   private storageCheck(): void {
@@ -126,12 +223,13 @@ export class HakenApp extends HTMLElement {
     if (app === null) return;
     const snapshot = app.snapshot;
     applyTheme(snapshot.settings.theme, snapshot.settings.accent);
+    this.renderUpdate();
     const focus = this.captureFocus();
     let route = parseHash(location.hash);
     const account = snapshot.account;
     if (!account?.ready) {
       this.setup.render(this.ctx(app, route));
-      fill(this, this.setup, this.toast, this.dialog);
+      fill(this, this.setup, this.toast, this.update, this.dialog);
       this.restoreFocus(focus);
       return;
     }
@@ -164,6 +262,7 @@ export class HakenApp extends HTMLElement {
       this,
       h("div", { class: "shell", "data-view": view }, panes),
       this.toast,
+      this.update,
       this.reauth,
       this.dialog,
     );

@@ -39,6 +39,7 @@ Smart lists are views and are never stored on the server. Their names are transl
 - The settings screen scrolls; nothing else needs to scroll horizontally.
 - Avoid breakpoint code; layouts adapt through `flex-wrap` and intrinsic sizes. Exceptions: mobile shows one pane at a time by a single CSS media query at 720 px (no layout code in JS); `pointer: coarse` scales the root font size.
 - All modals use one `<dialog>` owned by `<haken-app>`; a re-render never closes it. Text in the focused field survives a re-render.
+- **Updates** ([app update](adr/ADR-20261107-app-update.md)): a new version shows a bar *A new version of Haken is ready.* with *Reload* above the bottom edge until reloaded. After an update, *What's new* opens once: per version a heading, the summary and the changelog sections (English text); only the entries scroll.
 
 ### Drag and drop
 

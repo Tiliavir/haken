@@ -259,5 +259,10 @@
   "repeat.nth4": "fourth",
   "repeat.nthLast": "last",
   "notice.storageFull": "Storage on this device is {percent} % full. Remove attachments or completed tasks so new changes can be saved.",
-  "task.taskTooLarge": "With this file the task would be larger than 32 MB. Remove an attachment first."
+  "task.taskTooLarge": "With this file the task would be larger than 32 MB. Remove an attachment first.",
+  "update.ready": "A new version of Haken is ready.",
+  "update.reload": "Reload",
+  "whatsNew.title": "What's new",
+  "whatsNew.version": "Version {version}",
+  "whatsNew.close": "OK"
 }

@@ -29,7 +29,7 @@
 
 Files: [`deploy/Dockerfile`](../../deploy/Dockerfile), [`deploy/compose.yml`](../../deploy/compose.yml), [`deploy/radicale.config.example`](../../deploy/radicale.config.example). Gateway environment: `HAKEN_RADICALE_URL` (required), `HAKEN_LISTEN` (default `:8080`), `HAKEN_SESSION_IDLE` (default `168h`).
 
-Updates: pull new images, `docker compose up -d`. The PWA's service worker picks up the new app shell on the next start.
+Updates: pull new images, `docker compose up -d`. An open app installs the new app shell in the background and offers *Reload*; otherwise the next start after that uses it ([app update](adr/ADR-20261107-app-update.md)).
 
 `/dav` accepts only the app's session cookie; Basic auth there is refused with `401`. Other CalDAV clients use Radicale's host name ([gateway security](adr/ADR-20261105-gateway-security.md)).
 
