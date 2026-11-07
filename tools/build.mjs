@@ -40,12 +40,12 @@ const copy = (from, to = from, filter = () => true) =>
   cpSync(join(root, "web", from), join(out, to), { recursive: true, filter: (src) => filter(src) });
 
 // The released versions of CHANGELOG.md as changelog.json, for the in-app "What's new".
-// Inline Markdown (emphasis, code, links) becomes plain text; the app renders text only.
+// Emphasis and code become plain text; the app renders text only. Links have no
+// plain-text form here, so a release section must not contain one.
 function plain(text) {
-  return text
-    .replaceAll(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replaceAll(/[*`]/g, "")
-    .trim();
+  if (text.includes("]("))
+    throw new Error(`CHANGELOG.md: links are not supported in a release: ${text}`);
+  return text.replaceAll(/[*`]/g, "").trim();
 }
 
 function parseChangelog(markdown) {

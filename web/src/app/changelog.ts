@@ -55,7 +55,7 @@ function toEntry(v: unknown, index: number): ChangelogEntry {
 /** Validates the parsed `changelog.json`; anything unexpected throws. */
 export function parseChangelog(value: unknown): ChangelogEntry[] {
   if (!Array.isArray(value)) throw invalid("root");
-  return value.map(toEntry);
+  return value.map((entry, index) => toEntry(entry, index));
 }
 
 /** Orders `x.y.z` versions numerically. */
