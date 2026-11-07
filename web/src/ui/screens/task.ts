@@ -1,14 +1,14 @@
 /** Task detail (chapter 8, Screens: Task; States: conflict notes). */
 import { ATTACHMENT_LIMIT, type TaskItem } from "../../app/service.js";
 import { HakenError } from "../../domain/errors.js";
-import type { Attachment, TaskView } from "../../domain/vtodo.js";
+import type { Attachment, Due, TaskView } from "../../domain/vtodo.js";
 import type { Ctx } from "../context.js";
 import { fill, h } from "../dom.js";
 import { autosave, pasteLines, submitField } from "../fields.js";
 import { formatDate, locale, t } from "../i18n.js";
 import { icon } from "../icons.js";
 import { type ListId, toHash } from "../route.js";
-import { dueDate, localDate } from "../views.js";
+import { dueAt, dueClock, dueDate, localDate } from "../views.js";
 import { backLink } from "./back.js";
 import { repeatRow } from "./repeat.js";
 import { checkCircle, formatSize, starButton } from "./taskparts.js";
@@ -256,7 +256,6 @@ function focusRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
 }
 
 function dueRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean): HTMLElement {
-  const value = view.due === null ? "" : dueDate(view.due);
   const id = "due-input";
   return h(
     "div",
@@ -270,34 +269,67 @@ function dueRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean): HT
       h("input", {
         id,
         type: "date",
-        value,
+        value: view.due === null ? "" : dueDate(view.due),
         disabled: readonly,
         onchange: (e: Event) => {
           const v = (e.target as HTMLInputElement).value;
+          // A new date keeps the time of day.
+          const time = view.due === null ? "" : dueClock(view.due);
           ctx.run("ui.editDue", () =>
-            ctx.app.edit(item.href, {
-              kind: "due",
-              value: v === "" ? null : { kind: "date", date: v },
-            }),
+            ctx.app.edit(item.href, { kind: "due", value: v === "" ? null : dueAt(v, time) }),
           );
         },
       }),
       view.due !== null && !readonly
-        ? h(
-            "button",
-            {
-              type: "button",
-              class: "icon-button",
-              "aria-label": t("task.removeDue"),
-              onclick: () =>
-                ctx.run("ui.removeDue", () =>
-                  ctx.app.edit(item.href, { kind: "due", value: null }),
-                ),
-            },
-            icon("close"),
+        ? clearButton(t("task.removeDue"), () =>
+            ctx.run("ui.removeDue", () => ctx.app.edit(item.href, { kind: "due", value: null })),
           )
         : null,
     ),
+  );
+}
+
+/** Time of day of the due date; only with a due date. */
+function dueTimeRow(ctx: Ctx, item: TaskItem, due: Due, readonly: boolean): HTMLElement {
+  const id = "due-time-input";
+  const date = dueDate(due);
+  const value = dueClock(due);
+  return h(
+    "div",
+    { class: "group-row" },
+    icon("clock"),
+    h("label", { for: id, class: "row-label" }, t("task.dueTime")),
+    h(
+      "span",
+      { class: "row-control clearable" },
+      h("input", {
+        id,
+        type: "time",
+        value,
+        disabled: readonly,
+        onchange: (e: Event) => {
+          const v = (e.target as HTMLInputElement).value;
+          ctx.run("ui.editDueTime", () =>
+            ctx.app.edit(item.href, { kind: "due", value: dueAt(date, v) }),
+          );
+        },
+      }),
+      value !== "" && !readonly
+        ? clearButton(t("task.removeDueTime"), () =>
+            ctx.run("ui.removeDueTime", () =>
+              ctx.app.edit(item.href, { kind: "due", value: dueAt(date, "") }),
+            ),
+          )
+        : null,
+    ),
+  );
+}
+
+function clearButton(label: string, onclick: () => void): HTMLElement {
+  return h(
+    "button",
+    { type: "button", class: "icon-button", "aria-label": label, onclick },
+    icon("close"),
   );
 }
 
@@ -587,6 +619,7 @@ export class HakenTask extends HTMLElement {
         view.parentUid === null && !readonly ? focusRow(ctx, item, view) : null,
         view.parentUid === null && !readonly ? listRow(ctx, item, listId) : null,
         dueRow(ctx, item, view, readonly),
+        view.due === null ? null : dueTimeRow(ctx, item, view.due, readonly),
         view.parentUid === null && !readonly ? repeatRow(ctx, item, view) : null,
         labelsRow(ctx, item, view, readonly),
         attachmentsRow(ctx, item, view, readonly),

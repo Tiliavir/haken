@@ -54,42 +54,31 @@ export function starButton(
   );
 }
 
-/** The due day alone: "Today", "Tomorrow" or the formatted date. */
+/** "Today", "Tomorrow", "Yesterday" or `null`. */
+function nearDay(day: string, now: number): string | null {
+  if (day === localDate(now)) return t("due.today");
+  if (day === localDate(now + 86_400_000)) return t("due.tomorrow");
+  if (day === localDate(now - 86_400_000)) return t("due.yesterday");
+  return null;
+}
+
+/** The due day ("Today", "Tomorrow" or the formatted date), with the time of day if set. */
 export function dueText(view: TaskView, now: number): string | null {
   if (view.due === null) return null;
-  const day = dueDate(view.due);
-  const today = localDate(now);
-  const tomorrow = localDate(now + 86_400_000);
-  if (day === today) return t("due.today");
-  if (day === tomorrow) return t("due.tomorrow");
-  if (day === localDate(now - 86_400_000)) return t("due.yesterday");
-  const date =
-    view.due.kind === "date"
-      ? formatDate(new Date(`${view.due.date}T12:00:00`), {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-        })
-      : formatDate(view.due.instant, {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-  return date;
+  const date = dueDate(view.due);
+  const day =
+    nearDay(date, now) ??
+    formatDate(new Date(`${date}T12:00:00`), { weekday: "short", day: "numeric", month: "short" });
+  if (view.due.kind === "date") return day;
+  const time = formatDate(view.due.instant, { hour: "2-digit", minute: "2-digit" });
+  return t("due.dayTime", { day, time });
 }
 
 /** "Today", "Tomorrow" or "Due Mon, 9 Nov". */
 export function dueLabel(view: TaskView, now: number): string | null {
   const text = dueText(view, now);
   if (text === null || view.due === null) return null;
-  const day = dueDate(view.due);
-  const near =
-    day === localDate(now) ||
-    day === localDate(now + 86_400_000) ||
-    day === localDate(now - 86_400_000);
-  return near ? text : t("task.due", { date: text });
+  return nearDay(dueDate(view.due), now) === null ? t("task.due", { date: text }) : text;
 }
 
 export function isDueToday(view: TaskView, now: number): boolean {

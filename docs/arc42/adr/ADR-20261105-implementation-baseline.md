@@ -1,6 +1,6 @@
 # ADR-20261105: Implementation decisions of the first version
 
-Status: Accepted; partly superseded by [ADR-20261105-ci-image](ADR-20261105-ci-image.md), [ADR-20261106-release-from-main](ADR-20261106-release-from-main.md)
+Status: Accepted; partly superseded by [ADR-20261105-ci-image](ADR-20261105-ci-image.md), [ADR-20261106-release-from-main](ADR-20261106-release-from-main.md), [ADR-20261107-due-time](ADR-20261107-due-time.md)
 
 Decisions taken while implementing the accepted ADRs, reviewed one by one. Details live in the code named in brackets.
 

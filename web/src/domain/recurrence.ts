@@ -16,6 +16,8 @@
  * next occurrence after the current one and `DTSTART` moves by the same
  * amount. Occurrences are computed on the written wall-clock fields, so
  * `TZID`, UTC and floating values keep their form and their time of day.
+ * `UNTIL` follows the form of `DTSTART` (RFC 5545): a date, a floating
+ * date-time, or UTC for UTC and `TZID` series.
  */
 import ICAL from "../../vendor/ical.js/ical.js";
 import { HakenError, InvalidInputError } from "./errors.js";
@@ -117,9 +119,14 @@ export function checkRecurrence(rule: Recurrence): void {
   }
 }
 
-/** `UNTIL` as written for a series whose `DTSTART`/`DUE` is a date (`YYYYMMDD`) or a date-time (UTC, end of the local day). */
-function untilValue(date: string, isDate: boolean): string {
-  if (isDate) return date.replaceAll("-", "");
+/** How `UNTIL` is written, after the form of the series' `DTSTART`/`DUE` (RFC 5545). */
+export type UntilForm = "date" | "floating" | "utc";
+
+/** `UNTIL` for the inclusive local end date: the date, or the end of that local day. */
+function untilValue(date: string, form: UntilForm): string {
+  const compact = date.replaceAll("-", "");
+  if (form === "date") return compact;
+  if (form === "floating") return `${compact}T235959`;
   const [y, m, d] = date.split("-").map(Number) as [number, number, number];
   return new Date(y, m - 1, d, 23, 59, 59)
     .toISOString()
@@ -128,9 +135,9 @@ function untilValue(date: string, isDate: boolean): string {
 }
 
 /** The local date an `UNTIL` value means, or `null` if haken would not write it back the same way. */
-function untilDate(raw: string, isDate: boolean): string | null {
+function untilDate(raw: string, form: UntilForm): string | null {
   let date: string;
-  if (/^\d{8}$/.test(raw)) {
+  if (/^\d{8}(T\d{6})?$/.test(raw)) {
     date = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
   } else if (/^\d{8}T\d{6}Z$/.test(raw)) {
     const at = new Date(
@@ -147,7 +154,22 @@ function untilDate(raw: string, isDate: boolean): string | null {
   } else {
     return null;
   }
-  return untilValue(date, isDate) === raw ? date : null;
+  return untilValue(date, form) === raw ? date : null;
+}
+
+/** The `UNTIL` form of a date property, or null if absent. */
+function untilFormOf(todo: Component, name: string): UntilForm | null {
+  const prop = todo.getFirstProperty(name);
+  if (prop === null) return null;
+  const value = timeOf(todo, name) as Time;
+  if (value.isDate) return "date";
+  if (typeof prop.getFirstParameter("tzid") === "string") return "utc";
+  return value.zone === ICAL.Timezone.utcTimezone ? "utc" : "floating";
+}
+
+/** The `UNTIL` form of the series: after `DUE`, else `DTSTART`. */
+function seriesForm(todo: Component): UntilForm {
+  return untilFormOf(todo, "due") ?? untilFormOf(todo, "dtstart") ?? "date";
 }
 
 const RULE_KEYS = new Set([
@@ -248,7 +270,7 @@ export function readRecurrence(
     return readOnly;
   }
   const byDays = editableDays(days, freq);
-  const end = editableEnd(parts, anchor.isDate);
+  const end = editableEnd(parts, seriesForm(todo));
   if (byDays === null || end === null) return readOnly;
   return { repeats: true, rule: { freq: freq as Frequency, interval, ...byDays, end } };
 }
@@ -269,18 +291,18 @@ function editableDays(
 }
 
 /** `COUNT` or `UNTIL` as the editor shows it, or null. */
-function editableEnd(parts: ReadonlyMap<string, string>, isDate: boolean): RecurrenceEnd | null {
+function editableEnd(parts: ReadonlyMap<string, string>, form: UntilForm): RecurrenceEnd | null {
   const count = parts.get("COUNT");
   if (count !== undefined)
     return Number(count) > MAX_COUNT ? null : { kind: "count", count: Number(count) };
   const until = parts.get("UNTIL");
   if (until === undefined) return NEVER;
-  const date = untilDate(until, isDate);
+  const date = untilDate(until, form);
   return date === null ? null : { kind: "until", date };
 }
 
-/** The `RRULE` value; `isDate` says whether the series' `DTSTART`/`DUE` is a date (for `UNTIL`). */
-export function ruleString(rule: Recurrence, isDate = true): string {
+/** The `RRULE` value; `form` is the series' `UNTIL` form. */
+export function ruleString(rule: Recurrence, form: UntilForm = "date"): string {
   checkRecurrence(rule);
   const parts = [`FREQ=${rule.freq}`];
   if (rule.interval !== 1) parts.push(`INTERVAL=${rule.interval}`);
@@ -288,7 +310,7 @@ export function ruleString(rule: Recurrence, isDate = true): string {
     parts.push(`BYDAY=${WEEKDAYS.filter((d) => rule.byDay.includes(d)).join(",")}`);
   if (rule.monthlyNth !== null) parts.push(`BYDAY=${rule.monthlyNth.nth}${rule.monthlyNth.day}`);
   if (rule.end.kind === "count") parts.push(`COUNT=${rule.end.count}`);
-  if (rule.end.kind === "until") parts.push(`UNTIL=${untilValue(rule.end.date, isDate)}`);
+  if (rule.end.kind === "until") parts.push(`UNTIL=${untilValue(rule.end.date, form)}`);
   return parts.join(";");
 }
 
@@ -310,9 +332,8 @@ export function writeRecurrence(todo: Component, rule: Recurrence | null): void 
     );
     todo.addProperty(start);
   }
-  const anchor = timeOf(todo, "due");
   const prop = new ICAL.Property("rrule", todo);
-  prop.setValue(ICAL.Recur.fromString(ruleString(rule, anchor?.isDate ?? true)));
+  prop.setValue(ICAL.Recur.fromString(ruleString(rule, seriesForm(todo))));
   todo.addProperty(prop);
 }
 
@@ -487,30 +508,60 @@ export function advance(todo: Component, rule: Recurrence): string[] | "last" {
   return changed;
 }
 
-/**
- * Keeps `DTSTART` at the same distance from `DUE` when the user moves the
- * due date of a repeating task. Only when both are dates or both date-times.
- */
-export function followDue(todo: Component, previous: Time | null): boolean {
-  const due = timeOf(todo, "due");
-  const start = timeOf(todo, "dtstart");
-  if (
-    previous === null ||
-    due === null ||
-    due.isDate !== start?.isDate ||
-    previous.isDate !== due.isDate
-  ) {
-    return false;
-  }
-  const delta = fieldsMs(due) - fieldsMs(previous);
-  if (delta === 0) return false;
-  (todo.getFirstProperty("dtstart") as InstanceType<typeof ICAL.Property>).setValue(
-    shifted(start, delta),
-  );
-  return true;
+/** How a date property is written: `date`, `floating`, `utc` or `tzid:<id>`. */
+function formKey(todo: Component, name: string): string | null {
+  const tzid = todo.getFirstProperty(name)?.getFirstParameter("tzid");
+  return typeof tzid === "string" ? `tzid:${tzid}` : untilFormOf(todo, name);
 }
 
-export function dueTime(todo: Component): Time | null {
-  const value = timeOf(todo, "due");
-  return value === null ? null : value.clone();
+/** `DUE` before an edit, for {@link followDue}. */
+export interface PreviousDue {
+  readonly time: Time;
+  readonly form: string;
+}
+
+export function previousDue(todo: Component): PreviousDue | null {
+  const time = timeOf(todo, "due");
+  return time === null ? null : { time: time.clone(), form: formKey(todo, "due") as string };
+}
+
+/**
+ * Keeps `DTSTART` with `DUE` when the user changes the due date or time of a
+ * repeating task. Same form: `DTSTART` moves by the same wall-clock amount.
+ * Another form (a time added or removed, a `TZID` written as floating):
+ * `DTSTART` keeps its distance in days and takes the form and time of `DUE`
+ * (RFC 5545: same value type), and an `UNTIL` is rewritten in the new form.
+ * Returns the changed groups.
+ */
+export function followDue(
+  todo: Component,
+  previous: PreviousDue | null,
+  rule: Recurrence,
+): string[] {
+  const due = timeOf(todo, "due");
+  const start = timeOf(todo, "dtstart");
+  if (previous === null || due === null || start === null) return [];
+  if (previous.form === formKey(todo, "due") && due.isDate === start.isDate) {
+    const delta = fieldsMs(due) - fieldsMs(previous.time);
+    if (delta === 0) return [];
+    (todo.getFirstProperty("dtstart") as InstanceType<typeof ICAL.Property>).setValue(
+      shifted(start, delta),
+    );
+    return ["DTSTART"];
+  }
+  const startForm = untilFormOf(todo, "dtstart");
+  const days = dateMs(start) - dateMs(previous.time);
+  const dueProp = todo.getFirstProperty("due") as InstanceType<typeof ICAL.Property>;
+  todo.removeAllProperties("dtstart");
+  const next = new ICAL.Property(["dtstart", ...(dueProp.toJSON() as unknown[]).slice(1)], todo);
+  next.setValue(shifted(due, days));
+  todo.addProperty(next);
+  if (rule.end.kind !== "until" || startForm === seriesForm(todo)) return ["DTSTART"];
+  writeRecurrence(todo, rule);
+  return ["DTSTART", "RRULE"];
+}
+
+/** The calendar date alone, as a number of ms. */
+function dateMs(t: Time): number {
+  return Date.UTC(t.year, t.month - 1, t.day);
 }

@@ -187,3 +187,44 @@ test("a task that ends after two times completes for good on the second", async 
     .toBe(true);
   expect(await serverTask(request, "Twice only")).toContain("RRULE:FREQ=DAILY;COUNT=1");
 });
+
+test("a due time is written floating, shown in the meta line, and DTSTART follows", async ({
+  page,
+  request,
+}) => {
+  await setupServer(page);
+  await addTask(page, "Timed chore");
+  await page.locator(".task-row .title", { hasText: "Timed chore" }).click();
+  await expect(page.locator("#due-time-input")).toHaveCount(0);
+  const tomorrow = localDate(1);
+  await page
+    .locator("#due-input")
+    .fill(`${tomorrow.slice(0, 4)}-${tomorrow.slice(4, 6)}-${tomorrow.slice(6, 8)}`);
+  await page.getByLabel("Repeat").selectOption("weekly");
+  await page.locator("#due-time-input").fill("09:30");
+  const meta = page.locator(".task-row", { hasText: "Timed chore" }).locator(".meta");
+  await expect(meta).toContainText(/Tomorrow, 0?9:30/);
+  await waitSynced(page);
+  await expect
+    .poll(
+      async () =>
+        (await serverTask(request, "Timed chore").catch(() => "")).includes(
+          `DUE:${tomorrow}T093000`,
+        ),
+      {
+        timeout: 15_000,
+      },
+    )
+    .toBe(true);
+  expect(await serverTask(request, "Timed chore")).toContain(`DTSTART:${tomorrow}T093000`);
+
+  await page.getByRole("button", { name: "Remove time" }).click();
+  await expect(meta).not.toContainText("9:30");
+  await expect
+    .poll(
+      async () => (await serverTask(request, "Timed chore")).includes(`DUE;VALUE=DATE:${tomorrow}`),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+  expect(await serverTask(request, "Timed chore")).toContain(`DTSTART;VALUE=DATE:${tomorrow}`);
+});
