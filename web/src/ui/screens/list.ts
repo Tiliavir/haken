@@ -1,9 +1,10 @@
 /** List screen (chapter 8, Screens: List). */
 import type { TaskItem } from "../../app/service.js";
+import { HakenError } from "../../domain/errors.js";
 import type { Ctx } from "../context.js";
 import { makeSortable } from "../dnd/sortable.js";
 import { fill, h } from "../dom.js";
-import { submitField } from "../fields.js";
+import { pasteLines, submitField } from "../fields.js";
 import { t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
 import { type ListId, toHash } from "../route.js";
@@ -93,6 +94,17 @@ export class HakenList extends HTMLElement {
       autocomplete: "off",
       enterkeyhint: "done",
     });
+    const addTasks = (values: string[]): Promise<unknown> => {
+      if (target === null) throw new HakenError("ui", "No list to add tasks to");
+      // Today at submit time: the screen may have been rendered before midnight.
+      const date = localDate(Date.now());
+      return ctx.app.addTasks(target.href, values, {
+        important: shown.smart === "important",
+        due: shown.smart === "planned" ? { kind: "date", date } : null,
+        focus: shown.smart === "focus" ? date : null,
+      });
+    };
+    if (target !== null) pasteLines(input, addTasks, (work) => ctx.run("ui.addTasks", work));
     const add = h(
       "form",
       {
@@ -100,17 +112,7 @@ export class HakenList extends HTMLElement {
         onsubmit: (e: Event) => {
           e.preventDefault();
           if (target === null) return;
-          ctx.run("ui.addTask", () =>
-            submitField(input, (value) => {
-              // Today at submit time: the screen may have been rendered before midnight.
-              const date = localDate(Date.now());
-              return ctx.app.addTask(target.href, value, {
-                important: shown.smart === "important",
-                due: shown.smart === "planned" ? { kind: "date", date } : null,
-                focus: shown.smart === "focus" ? date : null,
-              });
-            }),
-          );
+          ctx.run("ui.addTask", () => submitField(input, (value) => addTasks([value])));
         },
       },
       h("button", { class: "icon-button", type: "submit", "aria-label": addLabel }, icon("plus")),

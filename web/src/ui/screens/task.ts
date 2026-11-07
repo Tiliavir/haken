@@ -4,7 +4,7 @@ import { HakenError } from "../../domain/errors.js";
 import type { Attachment, TaskView } from "../../domain/vtodo.js";
 import type { Ctx } from "../context.js";
 import { fill, h } from "../dom.js";
-import { autosave, submitField } from "../fields.js";
+import { autosave, pasteLines, submitField } from "../fields.js";
 import { formatDate, locale, t } from "../i18n.js";
 import { icon } from "../icons.js";
 import { type ListId, toHash } from "../route.js";
@@ -136,6 +136,9 @@ function steps(ctx: Ctx, item: TaskItem, readonly: boolean): HTMLElement {
     maxlength: "1000",
     autocomplete: "off",
   });
+  const addSteps = (values: string[]): Promise<unknown> =>
+    ctx.app.addTasks(item.list, values, { parentHref: item.href });
+  pasteLines(input, addSteps, (work) => ctx.run("ui.addSteps", work));
   return h(
     "section",
     { class: "steps", "aria-label": t("task.stepsTitle") },
@@ -187,11 +190,7 @@ function steps(ctx: Ctx, item: TaskItem, readonly: boolean): HTMLElement {
             class: "add-step",
             onsubmit: (e: Event) => {
               e.preventDefault();
-              ctx.run("ui.addStep", () =>
-                submitField(input, (value) =>
-                  ctx.app.addTask(item.list, value, { parentHref: item.href }),
-                ),
-              );
+              ctx.run("ui.addStep", () => submitField(input, (value) => addSteps([value])));
             },
           },
           h("span", { class: "icon-slot" }, icon("plus")),

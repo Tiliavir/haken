@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { pastedLines } from "../../web/src/ui/fields.js";
 import { separateAppStorage } from "../../web/src/ui/platform.js";
 import { parseHash, toHash } from "../../web/src/ui/route.js";
 
@@ -52,4 +53,16 @@ test("routes round-trip; garbage goes to the lists screen", () => {
   for (const bad of ["#/nope", "#/smart/bogus", "#/list/%E0%A4%A", "#/list/x/task"]) {
     assert.deepEqual(parseHash(bad), { kind: "lists" }, bad);
   }
+});
+
+test("pasted lines", () => {
+  // One line, also with a trailing line break: a normal paste.
+  assert.equal(pastedLines("", 0, 0, "Milk"), null);
+  assert.equal(pastedLines("", 0, 0, "Milk\n"), null);
+  assert.equal(pastedLines("", 0, 0, " \n\n "), null);
+  // Any line break style; blank lines dropped; lines trimmed.
+  assert.deepEqual(pastedLines("", 0, 0, " Milk \r\n\r\nEggs\rBread\n"), ["Milk", "Eggs", "Bread"]);
+  // Combined with the field's text at the cursor, replacing the selection.
+  assert.deepEqual(pastedLines("Buy  later", 4, 4, "milk\neggs"), ["Buy milk", "eggs later"]);
+  assert.deepEqual(pastedLines("Buy XX", 4, 6, "milk\neggs"), ["Buy milk", "eggs"]);
 });
