@@ -16,6 +16,7 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 ### Fixed
 
 - Drop-down arrows sit at the same place on every platform.
+- Task form: list, due date, repeat and its sub-fields share one column width; removing the due date no longer moves the field; the monthly day choice is styled.
 - Weekdays of a custom repeat stay on one line; the *Attach file* button and the label field line up with their icons; theme label and settings buttons align with the other content.
 
 ### Removed
