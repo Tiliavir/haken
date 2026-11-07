@@ -807,8 +807,63 @@ haken-task {
 
 .row-label {
   flex: 1;
+  min-width: 0;
   color: var(--text-2);
   font-size: 0.9375rem;
+}
+
+/*
+ * Value controls (List, Due date, Repeat, Every, Ends) share one column:
+ * same width, right-aligned, so their edges line up across rows.
+ */
+.row-control {
+  flex: 0 0 11rem;
+  width: 11rem;
+  min-width: 0;
+}
+
+.row-control.pair {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pair {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.row-control.pair > select {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-control.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.row-control.stack > select,
+.row-control.stack > input {
+  width: 100%;
+}
+
+/* A field with its clear button inside the reserved end padding. */
+.clearable {
+  position: relative;
+  display: block;
+}
+
+.clearable > input {
+  width: 100%;
+  padding-inline-end: 2.75rem;
+}
+
+.clearable > .icon-button {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
 }
 
 .chips,
@@ -1196,22 +1251,51 @@ haken-setup {
   flex: 0 1 auto;
 }
 
+/* Sub-rows of Repeat; labels align with the row labels above (icon + gap = 2rem). */
 .repeat-custom {
   display: flex;
   flex-basis: 100%;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 0.5rem;
   padding: 0 0 0.5rem 2rem;
 }
 
-.repeat-custom > label {
-  font-size: 0.9375rem;
+/* Monthly: one radio per line, each a full touch target. */
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.radio-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 2.75rem;
   color: var(--text-2);
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.radio-row > input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* Baseline: a label stays level with the first control of a stack. */
+.sub-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
 }
 
 .interval-input {
-  width: 5em;
+  flex: none;
+  width: 3.5rem;
   min-height: 2.75rem;
   padding: 0.625rem 0.75rem;
   border: 1px solid var(--border);
@@ -1227,7 +1311,7 @@ haken-setup {
 .weekdays {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  flex-basis: calc(100% + 2rem);
+  width: calc(100% + 2rem);
   gap: 2px;
   margin: 0 0 0 -2rem;
   padding: 0;

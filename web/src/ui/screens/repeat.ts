@@ -171,6 +171,7 @@ export function repeatRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement
     "select",
     {
       id: "repeat-select",
+      class: "row-control",
       onchange: (e: Event) => {
         const value = (e.target as HTMLSelectElement).value as Choice;
         if (value === "custom") {
@@ -261,9 +262,12 @@ function customEditor(
   return h(
     "div",
     { class: "repeat-custom", "data-href": item.href },
-    h("label", { for: "repeat-interval" }, t("repeat.interval")),
-    interval,
-    unit,
+    h(
+      "div",
+      { class: "sub-row" },
+      h("label", { for: "repeat-interval", class: "row-label" }, t("repeat.interval")),
+      h("span", { class: "row-control pair" }, interval, unit),
+    ),
     days,
     rule.freq === "MONTHLY" ? monthlyChoice(rule, due, save) : null,
   );
@@ -364,9 +368,18 @@ function endEditor(rule: Recurrence, due: string, save: (r: Recurrence) => void)
   return h(
     "div",
     { class: "repeat-custom" },
-    h("label", { for: "repeat-end" }, t("repeat.ends")),
-    kind,
-    detail,
-    end.kind === "count" ? h("span", { class: "muted" }, t("repeat.times")) : null,
+    h(
+      "div",
+      { class: "sub-row" },
+      h("label", { for: "repeat-end", class: "row-label" }, t("repeat.ends")),
+      h(
+        "span",
+        { class: "row-control stack" },
+        kind,
+        end.kind === "count"
+          ? h("span", { class: "pair" }, detail, h("span", { class: "muted" }, t("repeat.times")))
+          : detail,
+      ),
+    ),
   );
 }
