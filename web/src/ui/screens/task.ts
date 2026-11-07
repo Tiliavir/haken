@@ -213,6 +213,7 @@ function listRow(ctx: Ctx, item: TaskItem, listId: ListId): HTMLElement {
       "select",
       {
         id: "list-select",
+        class: "row-control",
         onchange: (e: Event) => {
           const target = (e.target as HTMLSelectElement).value;
           ctx.run("ui.moveToList", async () => {
@@ -263,34 +264,41 @@ function dueRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean): HT
     { class: "group-row" },
     icon("calendar"),
     h("label", { for: id, class: "row-label" }, t("task.setDue")),
-    h("input", {
-      id,
-      type: "date",
-      value,
-      disabled: readonly,
-      onchange: (e: Event) => {
-        const v = (e.target as HTMLInputElement).value;
-        ctx.run("ui.editDue", () =>
-          ctx.app.edit(item.href, {
-            kind: "due",
-            value: v === "" ? null : { kind: "date", date: v },
-          }),
-        );
-      },
-    }),
-    view.due !== null && !readonly
-      ? h(
-          "button",
-          {
-            type: "button",
-            class: "icon-button",
-            "aria-label": t("task.removeDue"),
-            onclick: () =>
-              ctx.run("ui.removeDue", () => ctx.app.edit(item.href, { kind: "due", value: null })),
-          },
-          icon("close"),
-        )
-      : null,
+    // The remove button sits in the field's reserved end padding: nothing moves when it appears.
+    h(
+      "span",
+      { class: "row-control clearable" },
+      h("input", {
+        id,
+        type: "date",
+        value,
+        disabled: readonly,
+        onchange: (e: Event) => {
+          const v = (e.target as HTMLInputElement).value;
+          ctx.run("ui.editDue", () =>
+            ctx.app.edit(item.href, {
+              kind: "due",
+              value: v === "" ? null : { kind: "date", date: v },
+            }),
+          );
+        },
+      }),
+      view.due !== null && !readonly
+        ? h(
+            "button",
+            {
+              type: "button",
+              class: "icon-button",
+              "aria-label": t("task.removeDue"),
+              onclick: () =>
+                ctx.run("ui.removeDue", () =>
+                  ctx.app.edit(item.href, { kind: "due", value: null }),
+                ),
+            },
+            icon("close"),
+          )
+        : null,
+    ),
   );
 }
 

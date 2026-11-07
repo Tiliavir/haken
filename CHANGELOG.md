@@ -4,7 +4,9 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
-## [Unreleased]
+## [0.2.0] - 2026-11-07
+
+Better on the phone: larger controls, drag by the whole row, a calmer layout.
 
 ### Changed
 
@@ -16,6 +18,7 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 ### Fixed
 
 - Drop-down arrows sit at the same place on every platform.
+- Task form: list, due date, repeat and its sub-fields share one column width; removing the due date no longer moves the field; the monthly day choice is styled.
 - Weekdays of a custom repeat stay on one line; the *Attach file* button and the label field line up with their icons; theme label and settings buttons align with the other content.
 
 ### Removed
