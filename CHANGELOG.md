@@ -4,7 +4,9 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
-## [Unreleased]
+## [0.4.0] - 2026-11-07
+
+Due times, a calmer update and better keyboard and screen reader support.
 
 ### Added
 
