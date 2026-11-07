@@ -33,3 +33,4 @@ Status: `Proposed` → `Accepted` | `Rejected` | `Superseded by …`.
 | [ADR-20261106-row-drag](adr/ADR-20261106-row-drag.md) | Drag the whole row (touch: hold); Alt+↑/↓; no long-press row actions | Proposed |
 | [ADR-20261107-app-update](adr/ADR-20261107-app-update.md) | A new version is offered with *Reload*, never forced; *What's new* from `CHANGELOG.md` once after an update | Accepted |
 | [ADR-20261107-due-time](adr/ADR-20261107-due-time.md) | Optional due time, written as floating `DATE-TIME`; `DTSTART` and `UNTIL` follow its form | Proposed |
+| [ADR-20261107-focus-quick-add](adr/ADR-20261107-focus-quick-add.md) | *Quick add* in *Focus*: open tasks not in Focus, due in 7 days first, then important, then by list | Proposed |

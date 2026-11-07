@@ -165,3 +165,39 @@ test("Focus: each part has its own manual order, kept after reload", async ({ pa
   await page.reload();
   await expect.poll(() => focusTitles(page)).toEqual(expected);
 });
+
+test("Focus: Quick add lists due soon, then important, then by list; adding keeps the dialog open", async ({
+  page,
+}) => {
+  const start = new Date("2026-11-04T09:00:00").getTime();
+  await page.clock.install({ time: start });
+  await setupLocal(page);
+  for (const title of ["Later", "Starred", "Soon"]) await addTask(page, title);
+  await setDue(page, "Soon", ymd(start + 3 * DAY));
+  await page
+    .locator("haken-list .task-row", { hasText: "Starred" })
+    .getByRole("button", { name: "Mark as important" })
+    .click();
+
+  await page.getByRole("link", { name: /^Focus/ }).click();
+  await page.getByRole("button", { name: "Quick add" }).click();
+  const dialog = page.locator("dialog[open]");
+  await expect(dialog.locator(".part-title")).toHaveText(["Due soon", "Important", /./]);
+  await expect(dialog.locator(".quick-add-row .title")).toHaveText(["Soon", "Starred", "Later"]);
+
+  await dialog.getByLabel("Filter").fill("star");
+  await page.keyboard.press("Enter");
+  await expect(dialog.locator(".quick-add-row .title")).toHaveText(["Starred"]);
+  await dialog.getByRole("button", { name: "Add “Starred” to Focus" }).click();
+  await expect(dialog.getByText("Nothing left to add.")).toBeVisible();
+  await expect(dialog.getByLabel("Filter")).toBeFocused();
+  await dialog.getByLabel("Filter").fill("");
+  await dialog.getByRole("button", { name: "Add “Soon” to Focus" }).click();
+  await expect(dialog.locator(".quick-add-row .title")).toHaveText(["Later"]);
+  await expect(dialog.getByRole("button", { name: "Add “Later” to Focus" })).toBeFocused();
+  await dialog.getByRole("button", { name: "Close" }).click();
+
+  // Same day added: the order ties by UID.
+  await expect.poll(async () => (await focusTitles(page)).sort()).toEqual(["Soon", "Starred"]);
+  await expect(page.getByRole("link", { name: /errorlogs/ })).toHaveCount(0);
+});

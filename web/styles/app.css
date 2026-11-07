@@ -160,6 +160,7 @@ a {
 :where(
   input[type="text"],
   input[type="password"],
+  input[type="search"],
   input[type="date"],
   input[type="time"],
   select,
@@ -1472,4 +1473,17 @@ haken-setup {
   border-radius: 8px;
   background: var(--surface);
   box-shadow: 0 10px 28px var(--shadow);
+}
+
+/* ------------------------------------------------------------ quick add */
+
+.quick-add-groups {
+  max-height: min(60vh, 28rem);
+  overflow-y: auto;
+}
+
+.quick-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
