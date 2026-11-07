@@ -1477,8 +1477,15 @@ haken-setup {
 
 /* ------------------------------------------------------------ quick add */
 
+/* Label above a full-width filter; fixed list height so the dialog does not jump while filtering. */
+.quick-add label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .quick-add-groups {
-  max-height: min(60vh, 28rem);
+  height: min(50vh, 28rem);
   overflow-y: auto;
 }
 
