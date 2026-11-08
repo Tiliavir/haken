@@ -6,6 +6,10 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 
 ## [Unreleased]
 
+### Security
+
+- Sign-in no longer sends the password when the page is not loaded over HTTPS (localhost excepted).
+
 ## [0.5.2] - 2026-11-08
 
 Sign-in and sync work in Firefox.

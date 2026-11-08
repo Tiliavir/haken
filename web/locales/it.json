@@ -141,6 +141,7 @@
   "setup.signin.invalid": "Nome utente o password errati.",
   "setup.signin.rateLimited": "Troppi tentativi. Riprova tra {seconds} s.",
   "setup.signin.unreachable": "Il server non è raggiungibile.",
+  "setup.signin.insecure": "Questa pagina non è caricata via HTTPS, quindi la password non viene inviata. Apri Haken con https://.",
   "setup.signin.startLocal": "Inizia invece su questo dispositivo",
   "setup.localWarning": "Spostare in seguito le attività locali su un server richiede un'esportazione e un'importazione.",
   "setup.local.title": "Solo su questo dispositivo",

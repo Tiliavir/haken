@@ -53,6 +53,8 @@ function signInError(result: LoginFailure): string {
       return t("setup.signin.rateLimited", { seconds: result.retryAfterSeconds });
     case "unreachable":
       return t("setup.signin.unreachable");
+    case "insecure":
+      return t("setup.signin.insecure");
   }
 }
 

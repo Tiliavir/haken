@@ -141,6 +141,7 @@
   "setup.signin.invalid": "User name or password is wrong.",
   "setup.signin.rateLimited": "Too many attempts. Try again in {seconds} s.",
   "setup.signin.unreachable": "The server cannot be reached.",
+  "setup.signin.insecure": "This page is not loaded over HTTPS, so your password is not sent. Open Haken with https://.",
   "setup.signin.startLocal": "Start on this device instead",
   "setup.localWarning": "Moving local tasks to a server later needs an export and an import.",
   "setup.local.title": "Only on this device",

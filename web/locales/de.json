@@ -141,6 +141,7 @@
   "setup.signin.invalid": "Benutzername oder Passwort ist falsch.",
   "setup.signin.rateLimited": "Zu viele Versuche. Versuche es in {seconds} s erneut.",
   "setup.signin.unreachable": "Der Server ist nicht erreichbar.",
+  "setup.signin.insecure": "Diese Seite ist nicht über HTTPS geladen, darum wird dein Passwort nicht gesendet. Öffne Haken mit https://.",
   "setup.signin.startLocal": "Stattdessen auf diesem Gerät starten",
   "setup.localWarning": "Lokale Aufgaben später auf einen Server zu bringen, braucht einen Export und einen Import.",
   "setup.local.title": "Nur auf diesem Gerät",
