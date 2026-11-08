@@ -15,13 +15,18 @@ const CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 's
 	"manifest-src 'self'; worker-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; " +
 	"require-trusted-types-for 'script'; trusted-types haken-sw haken-xml"
 
+// sameOrigin is the value of the Referrer-, Cross-Origin-Opener- and Cross-Origin-Resource-Policy.
+const sameOrigin = "same-origin"
+
 // SecurityHeaders sets the headers shared by all responses.
 func SecurityHeaders(h http.Header) {
 	h.Set("Content-Security-Policy", CSP)
 	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Referrer-Policy", "no-referrer")
-	h.Set("Cross-Origin-Opener-Policy", "same-origin")
-	h.Set("Cross-Origin-Resource-Policy", "same-origin")
+	// same-origin, not no-referrer: with no-referrer, Firefox sends `Origin: null` on the
+	// app's same-origin POSTs (Fetch standard), and the gateway's origin check refuses them.
+	h.Set("Referrer-Policy", sameOrigin)
+	h.Set("Cross-Origin-Opener-Policy", sameOrigin)
+	h.Set("Cross-Origin-Resource-Policy", sameOrigin)
 	h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
 	h.Set("X-Frame-Options", "DENY")
 }
