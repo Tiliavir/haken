@@ -15,7 +15,7 @@ import {
 } from "../domain/errortask.js";
 import { asFocusOrder, type FocusPart } from "../domain/focus.js";
 import { type ImportResult, joinIcsFile, splitIcsFile } from "../domain/icsfile.js";
-import { compareTasks, orderAtEnd, orderOnTop, reorder } from "../domain/order.js";
+import { compareTasks, orderAtEnd, orderOnTop, type Reorder, reorder } from "../domain/order.js";
 import {
   appleSeconds,
   applyEdit,
@@ -110,6 +110,8 @@ export interface AddOptions {
   readonly parentHref?: string;
   /** Put the new tasks on *Focus* (`YYYY-MM-DD`). */
   readonly focus?: string | null;
+  /** Labels of the new tasks (`CATEGORIES`). */
+  readonly categories?: readonly string[];
 }
 
 export type AttachResult =
@@ -662,6 +664,7 @@ export class AppService extends EventTarget implements ErrorSink {
           important: options.important ?? false,
           due: options.due ?? null,
           focus: options.focus ?? null,
+          categories: options.categories ?? [],
         },
         now,
       );
@@ -843,16 +846,47 @@ export class AppService extends EventTarget implements ErrorSink {
     siblingHrefs: readonly string[],
     targetIndex: number,
   ): Promise<void> {
+    const siblings = this.siblingItems(href, siblingHrefs);
+    const views = asFocusOrder(viewsOf(siblings), part);
+    await this.writeOrders(
+      siblings,
+      reorder(views, uidOf(siblings, href), targetIndex),
+      "focusOrder",
+    );
+  }
+
+  /**
+   * Moves a task among the open tasks of a view across lists (a label view);
+   * `siblingHrefs` are the view's open tasks. Writes `X-APPLE-SORT-ORDER`.
+   */
+  moveAmong(href: string, siblingHrefs: readonly string[], targetIndex: number): Promise<void> {
+    return this.exclusive(async () => {
+      const siblings = this.siblingItems(href, siblingHrefs);
+      const views = viewsOf(siblings).sort(compareTasks);
+      await this.writeOrders(
+        siblings,
+        reorder(views, uidOf(siblings, href), targetIndex),
+        "sortOrder",
+      );
+    });
+  }
+
+  private siblingItems(href: string, siblingHrefs: readonly string[]): TaskItem[] {
     const siblings = siblingHrefs.map((h) => {
       const item = this.findItem(h);
       if (!item?.view) throw new HakenError("app", "Unknown task", { path: h });
       return item;
     });
-    const moved = siblings.find((s) => s.href === href);
-    if (moved?.view == null)
-      throw new HakenError("app", "Moved task is not in this part", { path: href });
-    const views = asFocusOrder(viewsOf(siblings), part);
-    const moves = reorder(views, moved.view.uid, targetIndex);
+    if (!siblings.some((s) => s.href === href))
+      throw new HakenError("app", "Moved task is not among its siblings", { path: href });
+    return siblings;
+  }
+
+  private async writeOrders(
+    siblings: readonly TaskItem[],
+    moves: readonly Reorder[],
+    kind: "sortOrder" | "focusOrder",
+  ): Promise<void> {
     const store = this.requireStore();
     const now = new Date();
     const changes: {
@@ -874,7 +908,7 @@ export class AppService extends EventTarget implements ErrorSink {
       }),
     );
     for (const { move, record } of pairs) {
-      const result = applyEdit(record.ics, { kind: "focusOrder", value: move.sortOrder }, now);
+      const result = applyEdit(record.ics, { kind, value: move.sortOrder }, now);
       if (result.groups.length === 0) continue;
       changes.putTasks.push({ ...record, ics: result.ics });
       changes.expect.push({ href: record.href, ics: record.ics });
@@ -1243,6 +1277,12 @@ export class AppService extends EventTarget implements ErrorSink {
 }
 
 // ---------------------------------------------------------------- snapshot building
+
+function uidOf(items: readonly TaskItem[], href: string): string {
+  const view = items.find((i) => i.href === href)?.view;
+  if (view == null) throw new HakenError("app", "Unknown task", { path: href });
+  return view.uid;
+}
 
 function viewsOf(items: readonly TaskItem[]): TaskView[] {
   return items.flatMap((i) => (i.view === null ? [] : [i.view]));

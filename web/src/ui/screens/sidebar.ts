@@ -3,10 +3,10 @@
 import { type Ctx, syncStatus } from "../context.js";
 import { makeSortable } from "../dnd/sortable.js";
 import { fill, h } from "../dom.js";
-import { t, tp } from "../i18n.js";
+import { collator, t, tp } from "../i18n.js";
 import { type IconName, icon } from "../icons.js";
 import { type ListId, SMART, type SmartId, sameList, toHash } from "../route.js";
-import { smartCount } from "../views.js";
+import { labelCount, labelNames, smartCount } from "../views.js";
 
 const SMART_ICON: Readonly<Record<SmartId, IconName>> = {
   focus: "focus",
@@ -60,7 +60,7 @@ function row(
         class: "list-row",
         href,
         "aria-current": selected(ctx, id) ? "page" : undefined,
-        "data-drop": id.kind === "smart" && id.id === "focus" ? "focus" : undefined,
+        "data-drop": dropTarget(id),
         // Focus survives a re-render (Alt+↑/↓) and can move here after a delete.
         "data-focus": `list-${href}`,
         "aria-keyshortcuts": sortable ? "Alt+ArrowUp Alt+ArrowDown" : undefined,
@@ -70,6 +70,12 @@ function row(
       count > 0 ? h("span", { class: "count" }, String(count)) : null,
     ),
   );
+}
+
+/** Drop targets for task rows: *Focus* and labels (ADR-20261108-label-views). */
+function dropTarget(id: ListId): string | undefined {
+  if (id.kind === "label") return `label:${id.name}`;
+  return id.kind === "smart" && id.id === "focus" ? "focus" : undefined;
 }
 
 const STALE_DAYS = 3;
@@ -150,6 +156,7 @@ export class HakenSidebar extends HTMLElement {
         ownLists(ctx),
       ),
       form,
+      labels(ctx),
     );
   }
 }
@@ -175,4 +182,22 @@ function ownLists(ctx: Ctx): HTMLElement {
   );
   makeSortable(ul, (href, index) => ctx.run("ui.moveList", () => ctx.app.moveList(href, index)));
   return ul;
+}
+
+/** Labels in use, as views (ADR-20261108-label-views); hidden while there are none. */
+function labels(ctx: Ctx): HTMLElement | null {
+  const names = labelNames(ctx.snapshot, collator());
+  if (names.length === 0) return null;
+  return h(
+    "nav",
+    { class: "labels", "aria-labelledby": "labels-title" },
+    h("h2", { class: "section-title", id: "labels-title" }, t("labels.title")),
+    h(
+      "ul",
+      { class: "lists" },
+      names.map((name) =>
+        row(ctx, { kind: "label", name }, "tag", name, labelCount(ctx.snapshot, name)),
+      ),
+    ),
+  );
 }

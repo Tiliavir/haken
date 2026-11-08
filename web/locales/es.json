@@ -58,6 +58,8 @@
   "lists.title": "Listas",
   "lists.new": "Nueva lista",
   "lists.newPlaceholder": "Nueva lista",
+  "labels.title": "Etiquetas",
+  "labels.added": "Etiqueta «{label}» añadida.",
   "move.moved": "{title} movido a la posición {position} de {total}",
   "logout.title": "Cerrar sesión",
   "logout.ok": "Cerrar sesión",

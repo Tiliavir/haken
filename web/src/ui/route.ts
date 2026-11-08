@@ -6,7 +6,8 @@ export const SMART: readonly SmartId[] = ["focus", "important", "planned", "all"
 
 export type ListId =
   | { readonly kind: "smart"; readonly id: SmartId }
-  | { readonly kind: "list"; readonly href: string };
+  | { readonly kind: "list"; readonly href: string }
+  | { readonly kind: "label"; readonly name: string };
 
 export type Route =
   | { readonly kind: "lists" }
@@ -15,7 +16,14 @@ export type Route =
   | { readonly kind: "settings" };
 
 function encodeList(list: ListId): string {
-  return list.kind === "smart" ? `smart/${list.id}` : `list/${encodeURIComponent(list.href)}`;
+  switch (list.kind) {
+    case "smart":
+      return `smart/${list.id}`;
+    case "list":
+      return `list/${encodeURIComponent(list.href)}`;
+    case "label":
+      return `label/${encodeURIComponent(list.name)}`;
+  }
 }
 
 export function toHash(route: Route): string {
@@ -42,12 +50,14 @@ export function parseHash(hash: string): Route {
   let list: ListId | null = null;
   if (parts[0] === "smart" && SMART.includes(parts[1] as SmartId))
     list = { kind: "smart", id: parts[1] as SmartId };
-  if (parts[0] === "list" && parts[1] !== undefined) {
+  if ((parts[0] === "list" || parts[0] === "label") && parts[1] !== undefined) {
+    let value: string;
     try {
-      list = { kind: "list", href: decodeURIComponent(parts[1]) };
+      value = decodeURIComponent(parts[1]);
     } catch {
       return { kind: "lists" };
     }
+    list = parts[0] === "list" ? { kind: "list", href: value } : { kind: "label", name: value };
   }
   if (list === null) return { kind: "lists" };
   if (parts.length === 2) return { kind: "list", list };
@@ -62,9 +72,7 @@ export function parseHash(hash: string): Route {
 }
 
 export function sameList(a: ListId, b: ListId): boolean {
-  return a.kind === "smart"
-    ? b.kind === "smart" && a.id === b.id
-    : b.kind === "list" && a.href === b.href;
+  return toHash({ kind: "list", list: a }) === toHash({ kind: "list", list: b });
 }
 
 export function assertNever(value: never): never {

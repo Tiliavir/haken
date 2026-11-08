@@ -58,6 +58,8 @@
   "lists.title": "Listen",
   "lists.new": "Neue Liste",
   "lists.newPlaceholder": "Neue Liste",
+  "labels.title": "Labels",
+  "labels.added": "Label «{label}» hinzugefügt.",
   "move.moved": "{title} an Position {position} von {total} verschoben",
   "logout.title": "Abmelden",
   "logout.ok": "Abmelden",

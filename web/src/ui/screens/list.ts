@@ -8,7 +8,7 @@ import { pasteLines, submitField } from "../fields.js";
 import { t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
 import { type ListId, toHash } from "../route.js";
-import { defaultList, focusParts, localDate, show } from "../views.js";
+import { defaultList, focusParts, localDate, show, userLists } from "../views.js";
 import { backLink } from "./back.js";
 import { quickAddDialog } from "./quickadd.js";
 import { smartName } from "./sidebar.js";
@@ -21,6 +21,7 @@ function taskRow(
   sortable: boolean,
   showList: boolean,
 ): HTMLElement {
+  const viewLabel = listId.kind === "label" ? listId.name : null;
   const selected = ctx.route.kind === "task" && ctx.route.task === item.href;
   const link = (children: (Node | string | null)[], movable = false) =>
     h(
@@ -59,7 +60,10 @@ function taskRow(
       "aria-current": selected ? "true" : undefined,
     },
     checkCircle(ctx, item, view, readonly),
-    link([h("span", { class: "title" }, title), metaLine(item, view, ctx.now, listName)], movable),
+    link(
+      [h("span", { class: "title" }, title), metaLine(item, view, ctx.now, listName, viewLabel)],
+      movable,
+    ),
     starButton(ctx, item, view, readonly),
   );
 }
@@ -73,14 +77,17 @@ export class HakenList extends HTMLElement {
     }
     const title = shown.smart !== null ? smartName(shown.smart) : (shown.title ?? "");
     const target = shown.list ?? defaultList(ctx.snapshot);
+    // Across lists, a row names its list, unless there is only one.
+    const showList =
+      shown.smart !== null || (shown.label !== null && userLists(ctx.snapshot).length > 1);
     const open = shown.tasks.filter((x) => !x.view?.done);
     const done = shown.tasks.filter((x) => x.view?.done === true);
 
-    // A smart list is a view: say which list the new task goes to.
-    const addLabel =
-      shown.smart !== null && target !== null
-        ? t("list.addTo", { list: target.name })
-        : t("list.add");
+    // A view: say where the new task goes (a label view: the label it gets).
+    let addLabel = t("list.add");
+    if (shown.label !== null) addLabel = t("list.addTo", { list: shown.label });
+    else if (shown.smart !== null && target !== null)
+      addLabel = t("list.addTo", { list: target.name });
     const input = h("input", {
       class: "add-input",
       type: "text",
@@ -99,6 +106,7 @@ export class HakenList extends HTMLElement {
         important: shown.smart === "important",
         due: shown.smart === "planned" ? { kind: "date", date } : null,
         focus: shown.smart === "focus" ? date : null,
+        categories: shown.label === null ? [] : [shown.label],
       });
     };
     if (target !== null) pasteLines(input, addTasks, (work) => ctx.run("ui.addTasks", work));
@@ -153,19 +161,18 @@ export class HakenList extends HTMLElement {
     const openList = h(
       "ul",
       { class: "tasks", "aria-label": title },
-      open.map((item) => taskRow(ctx, listId, item, shown.sortable, shown.smart !== null)),
+      open.map((item) => taskRow(ctx, listId, item, shown.sortable, showList)),
     );
     if (shown.sortable) {
+      const label = shown.label;
+      const siblings = open.filter((i) => i.view !== null).map((i) => i.href);
       makeSortable(
         openList,
-        (href, index) => ctx.run("ui.move", () => ctx.app.move(href, index)),
-        (href, target) => {
-          if (target !== "focus") return;
-          ctx.run("ui.dropFocus", async () => {
-            await ctx.app.edit(href, { kind: "focus", value: localDate(ctx.now) });
-            ctx.notify(t("focus.added"));
-          });
-        },
+        (href, index) =>
+          label === null
+            ? ctx.run("ui.move", () => ctx.app.move(href, index))
+            : ctx.run("ui.moveAmong", () => ctx.app.moveAmong(href, siblings, index)),
+        (href, dropped) => drop(ctx, href, dropped, label),
       );
     }
 
@@ -207,12 +214,42 @@ export class HakenList extends HTMLElement {
             h(
               "ul",
               { class: "tasks" },
-              done.map((item) => taskRow(ctx, listId, item, false, shown.smart !== null)),
+              done.map((item) => taskRow(ctx, listId, item, false, showList)),
             ),
           )
         : null,
     );
   }
+}
+
+/**
+ * A task row dropped on a sidebar target: *Focus*, or a label. From a label
+ * view, a label replaces the view's label (a move); elsewhere it is added.
+ */
+function drop(ctx: Ctx, href: string, target: string, viewLabel: string | null): void {
+  if (target === "focus") {
+    ctx.run("ui.dropFocus", async () => {
+      await ctx.app.edit(href, { kind: "focus", value: localDate(ctx.now) });
+      ctx.notify(t("focus.added"));
+    });
+    return;
+  }
+  if (!target.startsWith("label:"))
+    throw new HakenError("ui", "Unknown drop target", { value: target });
+  const label = target.slice("label:".length);
+  ctx.run("ui.dropLabel", async () => {
+    const view = ctx.snapshot.lists.flatMap((l) => l.tasks).find((i) => i.href === href)?.view;
+    if (view == null) throw new HakenError("ui", "Dropped task not found", { path: href });
+    // Replace in place (a move) or append; setCategories drops duplicates.
+    const value =
+      viewLabel === null
+        ? [...view.categories, label]
+        : view.categories.map((c) => (c === viewLabel ? label : c));
+    await ctx.app.edit(href, { kind: "categories", value });
+    ctx.notify(
+      viewLabel === null ? t("labels.added", { label }) : t("task.moved", { list: label }),
+    );
+  });
 }
 
 function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {

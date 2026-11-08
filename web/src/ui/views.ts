@@ -3,6 +3,7 @@ import type { ListItem, Snapshot, TaskItem } from "../app/service.js";
 import { byCodeUnit } from "../domain/compare.js";
 import { HakenError } from "../domain/errors.js";
 import { compareFocus, type FocusPart } from "../domain/focus.js";
+import { compareTasks } from "../domain/order.js";
 import type { Due } from "../domain/vtodo.js";
 import type { ListId, SmartId } from "./route.js";
 
@@ -167,10 +168,12 @@ function matches(id: SmartId, item: TaskItem, today: string): boolean {
 export interface ShownList {
   readonly title: string | null;
   readonly smart: SmartId | null;
+  /** Set for a label view. */
+  readonly label: string | null;
   readonly list: ListItem | null;
   readonly tasks: readonly TaskItem[];
   readonly openCount: number;
-  /** Manual order is only meaningful in a real list. */
+  /** Manual order: in a real list and in a label view. */
   readonly sortable: boolean;
 }
 
@@ -200,10 +203,23 @@ export function show(snapshot: Snapshot, id: ListId, now: number): ShownList | n
     return {
       title: null,
       smart: id.id,
+      label: null,
       list: null,
       tasks,
       openCount: tasks.filter(open).length,
       sortable: false,
+    };
+  }
+  if (id.kind === "label") {
+    const tasks = labelTasks(snapshot, id.name);
+    return {
+      title: id.name,
+      smart: null,
+      label: id.name,
+      list: null,
+      tasks,
+      openCount: tasks.filter(open).length,
+      sortable: true,
     };
   }
   const list = snapshot.lists.find((l) => l.href === id.href);
@@ -211,6 +227,7 @@ export function show(snapshot: Snapshot, id: ListId, now: number): ShownList | n
   return {
     title: list.name,
     smart: null,
+    label: null,
     list,
     tasks: list.tasks,
     openCount: list.openCount,
@@ -221,4 +238,33 @@ export function show(snapshot: Snapshot, id: ListId, now: number): ShownList | n
 /** Target list for adding from a smart list: the first user list (not errorlogs). */
 export function defaultList(snapshot: Snapshot): ListItem | null {
   return snapshot.lists.find((l) => !l.errorlogs) ?? null;
+}
+
+function userTasks(snapshot: Snapshot): TaskItem[] {
+  return snapshot.lists.filter((l) => !l.errorlogs).flatMap((l) => l.tasks);
+}
+
+/** Labels in use on tasks of the user's lists, sorted by name (ADR-20261108-label-views). */
+export function labelNames(snapshot: Snapshot, collator: Intl.Collator): string[] {
+  const names = new Set<string>();
+  for (const item of userTasks(snapshot)) for (const c of item.view?.categories ?? []) names.add(c);
+  return [...names].sort((a, b) => collator.compare(a, b) || byCodeUnit(a, b));
+}
+
+/** A label view: open tasks in manual order, then completed ones as in their lists. */
+export function labelTasks(snapshot: Snapshot, label: string): TaskItem[] {
+  const tasks = userTasks(snapshot).filter((t) => t.view?.categories.includes(label) === true);
+  const openTasks = tasks
+    .filter(open)
+    .sort((a, b) => (a.view === null || b.view === null ? 0 : compareTasks(a.view, b.view)));
+  return [...openTasks, ...tasks.filter((t) => !open(t))];
+}
+
+export function labelCount(snapshot: Snapshot, label: string): number {
+  return labelTasks(snapshot, label).filter(open).length;
+}
+
+/** The user's lists, without *errorlogs*. */
+export function userLists(snapshot: Snapshot): ListItem[] {
+  return snapshot.lists.filter((l) => !l.errorlogs);
 }

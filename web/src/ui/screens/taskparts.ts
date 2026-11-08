@@ -114,6 +114,8 @@ export function metaLine(
   view: TaskView,
   now: number,
   listName: string | null,
+  /** The label of the view the row is in: not repeated as a chip. */
+  viewLabel: string | null = null,
 ): HTMLElement | null {
   const parts: HTMLElement[] = [];
   if (listName !== null) parts.push(h("span", { class: "meta-item" }, listName));
@@ -164,7 +166,8 @@ export function metaLine(
       ),
     );
   }
-  for (const label of view.categories) parts.push(h("span", { class: "chip" }, label));
+  for (const label of view.categories)
+    if (label !== viewLabel) parts.push(h("span", { class: "chip" }, label));
   return parts.length === 0 ? null : h("span", { class: "meta" }, parts);
 }
 
