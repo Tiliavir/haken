@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { expect, type Page } from "@playwright/test";
+import { type APIRequestContext, expect, type Page } from "@playwright/test";
 
 const PORT = Number(process.env["E2E_PORT"] ?? "8181");
 export const ORIGIN = `http://127.0.0.1:${PORT}`;
@@ -96,4 +96,21 @@ export function serverFiles(user: string): string[] {
   };
   walk(join("e2e-data", "collections", "collection-root", user));
   return out;
+}
+
+/** Radicale href of the user's list *Haken* (created at setup). */
+export async function firstList(request: APIRequestContext, user = "dev"): Promise<string> {
+  const res = await request.fetch(radicale(`/${user}/`), {
+    method: "PROPFIND",
+    headers: { ...basicAuth(user), Depth: "1", "Content-Type": "application/xml" },
+    data: '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>',
+  });
+  for (const m of (await res.text()).matchAll(
+    /<(?:\w+:)?response>([\s\S]*?)<\/(?:\w+:)?response>/g,
+  )) {
+    const block = m[1] ?? "";
+    if (/<(?:\w+:)?displayname>Haken</.test(block))
+      return /<(?:\w+:)?href>([^<]+)</.exec(block)?.[1] ?? "";
+  }
+  throw new Error("list Haken not found");
 }

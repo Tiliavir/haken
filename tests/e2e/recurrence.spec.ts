@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { type APIRequestContext, expect, test } from "@playwright/test";
-import { addTask, basicAuth, radicale, setupServer, waitSynced } from "./helpers.js";
+import { addTask, basicAuth, firstList, radicale, setupServer, waitSynced } from "./helpers.js";
 
 const AUTH = basicAuth("dev");
 
@@ -138,22 +138,6 @@ test("a rule haken cannot edit is shown read-only and never written", async ({ p
   await expect(page.getByText("repeats in a way Haken cannot edit")).toBeVisible();
   await expect(page.getByLabel("Repeat")).toHaveCount(0);
 });
-
-async function firstList(request: APIRequestContext): Promise<string> {
-  const res = await request.fetch(radicale("/dev/"), {
-    method: "PROPFIND",
-    headers: { ...AUTH, Depth: "1", "Content-Type": "application/xml" },
-    data: '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>',
-  });
-  for (const m of (await res.text()).matchAll(
-    /<(?:\w+:)?response>([\s\S]*?)<\/(?:\w+:)?response>/g,
-  )) {
-    const block = m[1] ?? "";
-    if (/<(?:\w+:)?displayname>Haken</.test(block))
-      return /<(?:\w+:)?href>([^<]+)</.exec(block)?.[1] ?? "";
-  }
-  throw new Error("list Haken not found");
-}
 
 test("a task that ends after two times completes for good on the second", async ({
   page,

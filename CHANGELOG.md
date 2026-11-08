@@ -6,6 +6,14 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 
 ## [Unreleased]
 
+### Added
+
+- *Edit label* in a label view: rename a label or delete it on all its tasks. Renaming to an existing label merges both; deleting keeps the tasks. Read-only repeating tasks keep the label, and a notice says how many.
+
+### Changed
+
+- *Labels* now appear above the lists in the sidebar.
+
 ## [0.6.0] - 2026-11-08
 
 Labels become views in the sidebar, so a task can sit in several of them.

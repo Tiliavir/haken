@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Snapshot, TaskItem } from "../../web/src/app/service.js";
 import { createTask, parseResource, readTask, type TaskView } from "../../web/src/domain/vtodo.js";
-import { labelCount, labelNames, labelTasks } from "../../web/src/ui/views.js";
+import { labelCount, labelNames, labelTasks, labelUses } from "../../web/src/ui/views.js";
 
 const NOW = new Date("2026-11-08T10:00:00");
 const base = readTask(
@@ -65,6 +65,26 @@ test("a label view spans lists: open tasks by sort order, then completed", () =>
   assert.equal(labelCount(snapshot(), "Home"), 3);
   assert.deepEqual(labelTasks(snapshot(), "home"), []);
   assert.deepEqual(labelTasks(snapshot(), "Errors"), []);
+});
+
+test("label uses: tasks and steps of user lists, completed included", () => {
+  const s = snapshot();
+  const first = s.lists[0];
+  assert.ok(first);
+  const withStep: Snapshot = {
+    ...s,
+    lists: [
+      {
+        ...first,
+        tasks: first.tasks.map((t, i) =>
+          i === 0 ? { ...t, steps: [item("/a/", "s1", { categories: ["Home"] })] } : t,
+        ),
+      },
+      ...s.lists.slice(1),
+    ],
+  };
+  assert.equal(labelUses(withStep, "Home"), 5);
+  assert.equal(labelUses(withStep, "Errors"), 0);
 });
 
 test("createTask writes labels as CATEGORIES", () => {

@@ -127,6 +127,12 @@ export interface ImportPreview {
   readonly replacing: number;
 }
 
+/** Tasks rewritten by a label rename or delete, and read-only tasks that kept the label. */
+export interface LabelResult {
+  readonly changed: number;
+  readonly skipped: number;
+}
+
 export type LogoutChoice = "delete" | "keep" | "discard";
 
 export class AppService extends EventTarget implements ErrorSink {
@@ -990,6 +996,69 @@ export class AppService extends EventTarget implements ErrorSink {
       })),
     });
     return newHref;
+  }
+
+  // ------------------------------------------------------------ labels
+
+  /**
+   * Renames `label` on every task carrying it; a task that has `name` already
+   * keeps it once (ADR-20261108-label-edit).
+   */
+  renameLabel(label: string, name: string): Promise<LabelResult> {
+    return this.exclusive(() => {
+      const trimmed = name.trim();
+      if (trimmed === "") throw new HakenError("app", "Empty label name");
+      return this.relabelNow(label, (c) => c.map((v) => (v === label ? trimmed : v)));
+    });
+  }
+
+  /** Removes `label` from every task carrying it; the tasks stay (ADR-20261108-label-edit). */
+  deleteLabel(label: string): Promise<LabelResult> {
+    return this.exclusive(() => this.relabelNow(label, (c) => c.filter((v) => v !== label)));
+  }
+
+  /** Rewrites `CATEGORIES` of the readable tasks of the user's lists; read-only ones are skipped. */
+  private async relabelNow(
+    label: string,
+    next: (categories: readonly string[]) => string[],
+  ): Promise<LabelResult> {
+    const store = this.requireStore();
+    const userLists = new Set(
+      (await store.lists())
+        .filter((l) => !l.deleted && l.displayName !== ERRORLOGS)
+        .map((l) => l.href),
+    );
+    const now = new Date();
+    const putTasks: TaskRecord[] = [];
+    const expect: { href: string; ics: string }[] = [];
+    const addOps: OutboxInput[] = [];
+    let skipped = 0;
+    for (const record of await store.tasks()) {
+      if (record.deleted || record.invalid !== null || !userLists.has(record.list)) continue;
+      const view = readTask(parseResource(record.ics));
+      if (!view.categories.includes(label)) continue;
+      if (view.repeats && view.recurrence === null) {
+        skipped += 1;
+        continue;
+      }
+      const result = applyEdit(
+        record.ics,
+        { kind: "categories", value: next(view.categories) },
+        now,
+      );
+      if (result.groups.length === 0) continue;
+      putTasks.push({ ...record, ics: result.ics });
+      expect.push({ href: record.href, ics: record.ics });
+      if (this.isServer)
+        addOps.push({
+          kind: "put",
+          href: record.href,
+          groups: [...result.groups],
+          editedAt: now.getTime(),
+        });
+    }
+    if (putTasks.length > 0) await this.changed({ putTasks, expect, addOps });
+    return { changed: putTasks.length, skipped };
   }
 
   useConflict(id: number): Promise<void> {

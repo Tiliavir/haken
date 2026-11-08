@@ -1,5 +1,5 @@
 /** List screen (chapter 8, Screens: List). */
-import type { TaskItem } from "../../app/service.js";
+import type { LabelResult, TaskItem } from "../../app/service.js";
 import { HakenError } from "../../domain/errors.js";
 import type { Ctx } from "../context.js";
 import { makeSortable } from "../dnd/sortable.js";
@@ -8,7 +8,7 @@ import { pasteLines, submitField } from "../fields.js";
 import { t, tp } from "../i18n.js";
 import { icon } from "../icons.js";
 import { type ListId, toHash } from "../route.js";
-import { defaultList, focusParts, localDate, show, userLists } from "../views.js";
+import { defaultList, focusParts, labelUses, localDate, show, userLists } from "../views.js";
 import { backLink } from "./back.js";
 import { quickAddDialog } from "./quickadd.js";
 import { smartName } from "./sidebar.js";
@@ -187,6 +187,7 @@ export class HakenList extends HTMLElement {
       shown.list !== null && !shown.list.errorlogs
         ? listMenu(ctx, shown.list.href, shown.list.name)
         : null,
+      shown.label === null ? null : labelMenu(ctx, shown.label),
       shown.smart === "focus"
         ? h(
             "div",
@@ -351,4 +352,104 @@ function remove(ctx: Ctx, href: string, name: string): void {
     ),
   );
   confirmInput.focus();
+}
+
+/** *Edit label*: rename or delete it on every task carrying it (ADR-20261108-label-edit). */
+function labelMenu(ctx: Ctx, label: string): HTMLElement {
+  const dialog = ctx.dialog;
+  const kept = (result: LabelResult): void => {
+    if (result.skipped > 0) ctx.notify(tp("labels.kept", result.skipped, { label }));
+  };
+  const edit = (): void => {
+    const nameInput = h("input", {
+      type: "text",
+      name: "name",
+      value: label,
+      maxlength: "100",
+      required: true,
+      autocomplete: "off",
+    });
+    fill(
+      dialog,
+      h(
+        "form",
+        {
+          method: "dialog",
+          onsubmit: () => {
+            const value = nameInput.value.trim();
+            if (value === "" || value === label) return;
+            ctx.run("ui.renameLabel", async () => {
+              kept(await ctx.app.renameLabel(label, value));
+              ctx.navigate({ kind: "list", list: { kind: "label", name: value } });
+            });
+          },
+        },
+        h("h2", {}, t("labels.edit")),
+        h("label", {}, t("labels.name"), nameInput),
+        h(
+          "div",
+          { class: "actions" },
+          h(
+            "button",
+            { type: "button", class: "button", onclick: () => dialog.close() },
+            t("common.cancel"),
+          ),
+          h("button", { type: "submit", class: "button primary" }, t("common.save")),
+        ),
+        h(
+          "button",
+          { type: "button", class: "button danger", onclick: () => removeLabel(ctx, label, kept) },
+          t("labels.delete"),
+        ),
+      ),
+    );
+    dialog.showModal();
+  };
+  return h(
+    "div",
+    { class: "list-actions" },
+    h(
+      "button",
+      { class: "icon-button", type: "button", "aria-label": t("labels.edit"), onclick: edit },
+      icon("edit"),
+    ),
+  );
+}
+
+/** Deleting a label removes it from its tasks; the tasks stay, so a plain confirmation is enough. */
+function removeLabel(ctx: Ctx, label: string, kept: (result: LabelResult) => void): void {
+  const dialog = ctx.dialog;
+  fill(
+    dialog,
+    h(
+      "form",
+      { method: "dialog" },
+      h("h2", {}, t("labels.delete")),
+      h(
+        "p",
+        { class: "warning" },
+        tp("labels.deleteConfirm", labelUses(ctx.snapshot, label), { name: label }),
+      ),
+      h(
+        "div",
+        { class: "actions" },
+        h("button", { type: "submit", class: "button primary" }, t("common.cancel")),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "button danger",
+            onclick: () => {
+              dialog.close();
+              ctx.run("ui.deleteLabel", async () => {
+                kept(await ctx.app.deleteLabel(label));
+                ctx.navigate({ kind: "lists" });
+              });
+            },
+          },
+          t("common.delete"),
+        ),
+      ),
+    ),
+  );
 }

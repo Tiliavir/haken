@@ -92,6 +92,7 @@ function staleWarning(ctx: Ctx): HTMLElement | null {
 
 export class HakenSidebar extends HTMLElement {
   render(ctx: Ctx): void {
+    const labels = labelSection(ctx);
     const input = h("input", {
       class: "new-list-input",
       type: "text",
@@ -153,10 +154,11 @@ export class HakenSidebar extends HTMLElement {
           ),
         ),
         h("hr", { class: "divider" }),
+        labels,
+        labels === null ? null : h("h2", { class: "section-title" }, t("lists.title")),
         ownLists(ctx),
       ),
       form,
-      labels(ctx),
     );
   }
 }
@@ -184,12 +186,12 @@ function ownLists(ctx: Ctx): HTMLElement {
   return ul;
 }
 
-/** Labels in use, as views (ADR-20261108-label-views); hidden while there are none. */
-function labels(ctx: Ctx): HTMLElement | null {
+/** Labels in use, as views, above the lists (ADR-20261108-label-edit); hidden while there are none. */
+function labelSection(ctx: Ctx): HTMLElement | null {
   const names = labelNames(ctx.snapshot, collator());
   if (names.length === 0) return null;
   return h(
-    "nav",
+    "section",
     { class: "labels", "aria-labelledby": "labels-title" },
     h("h2", { class: "section-title", id: "labels-title" }, t("labels.title")),
     h(
