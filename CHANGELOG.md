@@ -4,6 +4,12 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
+## [0.6.2] - 2026-11-08
+
+### Fixed
+
+- A label typed into a task is no longer lost when leaving the field without Enter.
+
 ## [0.6.1] - 2026-11-08
 
 ### Added

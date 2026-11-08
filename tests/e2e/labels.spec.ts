@@ -91,6 +91,27 @@ test("labels are views: sidebar, add with label, drop adds or moves, order kept"
   await expect.poll(async () => (await titles(page)).sort()).toEqual(["Milk", "Report"]);
 });
 
+test("a typed label is kept when leaving the field without Enter", async ({ page }) => {
+  await setupLocal(page);
+  await addTask(page, "Milk");
+  await page.locator("haken-list .task-row .title", { hasText: "Milk" }).click();
+  await expect(page.getByLabel("Title")).toHaveValue("Milk");
+  await page.getByPlaceholder("Label", { exact: true }).fill("Shopping");
+  await page.getByPlaceholder("Note").click();
+  await expect(page.locator(".chips .chip", { hasText: "Shopping" })).toBeVisible();
+  await expect(page.getByPlaceholder("Label", { exact: true })).toHaveValue("");
+
+  // Enter, then leaving the field, adds it once.
+  await page.getByPlaceholder("Label", { exact: true }).fill("Weekly");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".chips .chip", { hasText: "Weekly" })).toBeVisible();
+  await page.getByPlaceholder("Label", { exact: true }).fill("Errand");
+  await page.getByRole("link", { name: "Close" }).click();
+  await expect(page.locator(".labels .list-name")).toHaveText(["Errand", "Shopping", "Weekly"]);
+  await page.locator("haken-list .task-row .title", { hasText: "Milk" }).click();
+  await expect(page.locator(".chips .chip")).toHaveText(["Shopping", "Weekly", "Errand"]);
+});
+
 test("label views sync as CATEGORIES", async ({ page }) => {
   await setupServer(page);
   await addTask(page, "Label sync A");
