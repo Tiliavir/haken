@@ -349,6 +349,16 @@ function labelsRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
     maxlength: "100",
     autocomplete: "off",
   });
+  // Reads the task again: the label may already be there (Enter, then blur).
+  const add = (value: string): Promise<unknown> => {
+    const current = ctx.app.findItem(item.href)?.view?.categories ?? view.categories;
+    if (current.includes(value)) return Promise.resolve();
+    return ctx.app.edit(item.href, { kind: "categories", value: [...current, value] });
+  };
+  // No save button: leaving the field adds what was typed, like every other field.
+  input.addEventListener("blur", () => {
+    if (input.isConnected) ctx.run("ui.addLabel", () => submitField(input, add));
+  });
   return h(
     "div",
     { class: "group-row wrap" },
@@ -386,14 +396,7 @@ function labelsRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
         class: "add-label",
         onsubmit: (e: Event) => {
           e.preventDefault();
-          ctx.run("ui.addLabel", () =>
-            submitField(input, (value) =>
-              ctx.app.edit(item.href, {
-                kind: "categories",
-                value: [...view.categories, value],
-              }),
-            ),
-          );
+          ctx.run("ui.addLabel", () => submitField(input, add));
         },
       },
       input,
