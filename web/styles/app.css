@@ -439,6 +439,33 @@ label {
   border-top: 1px solid var(--border);
 }
 
+/* Labels (views): a quieter section below the lists. */
+.labels {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.section-title {
+  margin: 0.5rem 0.625rem 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.labels .list-row {
+  min-height: 2.75rem;
+}
+
+.labels .list-row .icon {
+  color: var(--control);
+}
+
+.labels .list-row[aria-current="page"] .icon,
+.labels .list-row.drop-target .icon {
+  color: var(--accent);
+}
+
 .new-list {
   display: flex;
   align-items: center;

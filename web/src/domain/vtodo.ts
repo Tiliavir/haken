@@ -892,6 +892,7 @@ export interface NewTask {
   readonly due: Due | null;
   /** Put on *Focus* on this day (`YYYY-MM-DD`). */
   readonly focus?: string | null;
+  readonly categories?: readonly string[];
 }
 
 export function createTask(task: NewTask, now: Date): string {
@@ -914,6 +915,7 @@ export function createTask(task: NewTask, now: Date): string {
   }
   todo.addPropertyWithValue("x-apple-sort-order", String(task.sortOrder));
   setDue(todo, null, task.due);
+  setCategories(todo, [], task.categories ?? []);
   if (task.focus !== undefined && task.focus !== null) {
     if (!checkDateString(task.focus))
       throw new HakenError("domain", "Invalid Focus date", { value: task.focus });

@@ -6,6 +6,21 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-08
+
+Labels become views in the sidebar, so a task can sit in several of them.
+
+### Added
+
+- The sidebar lists every label in use under *Labels*, with its count of open tasks. A label opens like a list.
+- Adding a task in a label view gives it that label; tasks there can be reordered by dragging.
+- Drag a task onto a label to label it; from a label view this moves it to the other label.
+- The label field suggests labels already in use.
+
+### Changed
+
+- The task screen hides the *List* choice while there is only one list.
+
 ### Fixed
 
 - On narrower desktop windows the task detail overlays the list instead of appearing below it.

@@ -47,10 +47,19 @@ test("routes round-trip; garbage goes to the lists screen", () => {
     { kind: "settings" },
     { kind: "list", list: { kind: "smart", id: "focus" } },
     { kind: "list", list: { kind: "list", href: "/dav/u/a b/" } },
+    { kind: "list", list: { kind: "label", name: "Home / Garden #1" } },
+    { kind: "task", list: { kind: "label", name: "Work" }, task: "/dav/u/x/1.ics" },
     { kind: "task", list: { kind: "list", href: "/dav/u/x/" }, task: "/dav/u/x/1.ics" },
   ] as const;
   for (const r of routes) assert.deepEqual(parseHash(toHash(r)), r);
-  for (const bad of ["#/nope", "#/smart/bogus", "#/list/%E0%A4%A", "#/list/x/task"]) {
+  for (const bad of [
+    "#/nope",
+    "#/smart/bogus",
+    "#/list/%E0%A4%A",
+    "#/list/x/task",
+    "#/label/%E0%A4%A",
+    "#/label",
+  ]) {
     assert.deepEqual(parseHash(bad), { kind: "lists" }, bad);
   }
 });

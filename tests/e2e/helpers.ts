@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { expect, type Page } from "@playwright/test";
 
 const PORT = Number(process.env["E2E_PORT"] ?? "8181");
@@ -79,4 +81,19 @@ export async function waitSynced(page: Page): Promise<void> {
 
 export function titles(page: Page): Promise<string[]> {
   return page.locator("haken-list > .tasks .task-row .title").allInnerTexts();
+}
+
+/** The `.ics` files of a user in Radicale's storage (E2E data dir). */
+export function serverFiles(user: string): string[] {
+  const out: string[] = [];
+  const walk = (dir: string): void => {
+    for (const name of readdirSync(dir)) {
+      if (name.startsWith(".Radicale")) continue;
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (name.endsWith(".ics")) out.push(readFileSync(p, "utf8"));
+    }
+  };
+  walk(join("e2e-data", "collections", "collection-root", user));
+  return out;
 }

@@ -5,10 +5,10 @@ import type { Attachment, Due, TaskView } from "../../domain/vtodo.js";
 import type { Ctx } from "../context.js";
 import { afterRemoval, fill, h } from "../dom.js";
 import { autosave, pasteLines, submitField } from "../fields.js";
-import { formatDate, locale, t } from "../i18n.js";
+import { collator, formatDate, locale, t } from "../i18n.js";
 import { icon } from "../icons.js";
 import { type ListId, toHash } from "../route.js";
-import { dueAt, dueClock, dueDate, localDate } from "../views.js";
+import { dueAt, dueClock, dueDate, labelNames, localDate, userLists } from "../views.js";
 import { backLink } from "./back.js";
 import { repeatRow } from "./repeat.js";
 import { checkCircle, formatSize, starButton } from "./taskparts.js";
@@ -333,11 +333,22 @@ function clearButton(label: string, onclick: () => void): HTMLElement {
   );
 }
 
+/** Nothing to choose: the task is in the only user list (ADR-20261108-label-views). */
+function onlyList(ctx: Ctx, item: TaskItem): boolean {
+  const lists = userLists(ctx.snapshot);
+  return lists.length === 1 && lists[0]?.href === item.list;
+}
+
 function labelsRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean): HTMLElement {
+  // Suggest labels in use (native <datalist>), so a label is picked, not retyped.
+  const suggestions = labelNames(ctx.snapshot, collator()).filter(
+    (l) => !view.categories.includes(l),
+  );
   const input = h("input", {
     type: "text",
     class: "label-input",
     name: "label",
+    list: "label-suggestions",
     placeholder: t("task.addLabel"),
     "aria-label": t("task.addLabel"),
     maxlength: "100",
@@ -395,6 +406,11 @@ function labelsRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean):
             },
           },
           input,
+          h(
+            "datalist",
+            { id: "label-suggestions" },
+            suggestions.map((l) => h("option", { value: l })),
+          ),
         ),
   );
 }
@@ -619,7 +635,9 @@ export class HakenTask extends HTMLElement {
         "section",
         { class: "group" },
         view.parentUid === null && !readonly ? focusRow(ctx, item, view) : null,
-        view.parentUid === null && !readonly ? listRow(ctx, item, listId) : null,
+        view.parentUid === null && !readonly && !onlyList(ctx, item)
+          ? listRow(ctx, item, listId)
+          : null,
         dueRow(ctx, item, view, readonly),
         view.due === null ? null : dueTimeRow(ctx, item, view.due, readonly),
         view.parentUid === null && !readonly ? repeatRow(ctx, item, view) : null,

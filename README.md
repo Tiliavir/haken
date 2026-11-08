@@ -29,7 +29,7 @@ first and foremost. No accounts, no cloud, no tracking.
 - [x] Manual sort order via drag and drop (and keyboard)
 - [x] Descriptions
 - [x] Checklists (sub-steps)
-- [x] Labels
+- [x] Labels, shown as views in the sidebar
 - [x] Attachments (inline, up to 5 MB)
 - [x] Due dates — reminders are still open
 - [x] Repeating tasks (daily, weekdays, weekly, monthly, yearly, custom)

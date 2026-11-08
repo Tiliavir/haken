@@ -58,6 +58,8 @@
   "lists.title": "Elenchi",
   "lists.new": "Nuovo elenco",
   "lists.newPlaceholder": "Nuovo elenco",
+  "labels.title": "Etichette",
+  "labels.added": "Etichetta «{label}» aggiunta.",
   "move.moved": "{title} spostato in posizione {position} di {total}",
   "logout.title": "Esci",
   "logout.ok": "Esci",

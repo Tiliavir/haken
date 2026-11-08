@@ -1,23 +1,7 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { addTask, setupLocal, setupServer, waitSynced } from "./helpers.js";
+import { addTask, serverFiles, setupLocal, setupServer, waitSynced } from "./helpers.js";
 
 const DAY = 86_400_000;
-
-function serverFiles(user: string): string[] {
-  const out: string[] = [];
-  const walk = (dir: string): void => {
-    for (const name of readdirSync(dir)) {
-      if (name.startsWith(".Radicale")) continue;
-      const p = join(dir, name);
-      if (statSync(p).isDirectory()) walk(p);
-      else if (name.endsWith(".ics")) out.push(readFileSync(p, "utf8"));
-    }
-  };
-  walk(join("e2e-data", "collections", "collection-root", user));
-  return out;
-}
 
 function ymd(t: number): string {
   const d = new Date(t);
