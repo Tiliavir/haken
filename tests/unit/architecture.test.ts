@@ -131,6 +131,17 @@ describe("rules", () => {
     assert.doesNotMatch(html, /\son[a-z]+\s*=/i, "inline event handler in index.html");
     assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/i, "inline script in index.html");
   });
+  // no-referrer makes Firefox send Origin: null, which the gateway refuses. The page's policy
+  // comes only from the gateway header (static.go, asserted in its test), not from a meta tag.
+  test("fetch referrer policy is same-origin; no referrer meta tag", () => {
+    const policies = files.flatMap((f) =>
+      [...code(f).matchAll(/referrerPolicy:\s*"([^"]*)"/g)].map((m) => m[1]),
+    );
+    assert.ok(policies.length > 0, "no referrerPolicy found");
+    assert.deepEqual([...new Set(policies)], ["same-origin"]);
+    const html = readFileSync(join(ROOT, "web", "index.html"), "utf8");
+    assert.doesNotMatch(html, /<meta[^>]+name="referrer"/i);
+  });
   test("package.json has no runtime dependencies", () => {
     const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as Record<
       string,

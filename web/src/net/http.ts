@@ -53,7 +53,7 @@ export async function server(
       cache: "no-store",
       redirect: "error",
       mode: "same-origin",
-      referrerPolicy: "no-referrer",
+      referrerPolicy: "same-origin",
       signal: AbortSignal.timeout(init.timeoutMs ?? TIMEOUT_MS),
     });
   } catch (cause) {
@@ -83,7 +83,7 @@ export async function staticJson(path: string): Promise<unknown> {
     credentials: "omit",
     mode: "same-origin",
     redirect: "error",
-    referrerPolicy: "no-referrer",
+    referrerPolicy: "same-origin",
   });
   if (response.status !== 200) {
     throw new HakenError("net", "Static file not loaded", { path, status: response.status });
