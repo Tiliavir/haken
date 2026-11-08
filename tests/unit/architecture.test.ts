@@ -131,6 +131,14 @@ describe("rules", () => {
     assert.doesNotMatch(html, /\son[a-z]+\s*=/i, "inline event handler in index.html");
     assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/i, "inline script in index.html");
   });
+  test("referrer policy is same-origin everywhere (no-referrer makes Firefox send Origin: null)", () => {
+    assert.deepEqual(
+      offenders(/no-referrer"/, () => false),
+      [],
+    );
+    const html = readFileSync(join(ROOT, "web", "index.html"), "utf8");
+    assert.match(html, /<meta name="referrer" content="same-origin">/);
+  });
   test("package.json has no runtime dependencies", () => {
     const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as Record<
       string,

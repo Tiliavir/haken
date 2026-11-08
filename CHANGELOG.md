@@ -6,6 +6,14 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-08
+
+Sign-in and sync work in Firefox.
+
+### Fixed
+
+- Firefox no longer sends `Origin: null` on sign-in and sync requests, which the server refused.
+
 ## [0.5.1] - 2026-11-08
 
 Sign-in works in Firefox.
