@@ -6,6 +6,10 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 
 ## [Unreleased]
 
+### Fixed
+
+- On narrower desktop windows the task detail overlays the list instead of appearing below it.
+
 ## [0.5.2] - 2026-11-08
 
 Sign-in and sync work in Firefox.

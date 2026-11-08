@@ -196,3 +196,19 @@ test("list: rename and delete in the edit dialog; delete needs the name typed in
   await expect(page.locator(".own-lists .list-item", { hasText: "Shopping" })).toHaveCount(0);
   expect(problems).toEqual([]);
 });
+
+test("desktop task detail sits beside the list, or overlays it when narrow", async ({ page }) => {
+  await setupLocal(page);
+  await addTask(page, "Detail");
+  for (const width of [800, 1200]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.locator(".task-row .title", { hasText: "Detail" }).click();
+    const detail = await page.locator(".pane-detail").boundingBox();
+    const list = await page.locator(".pane-main").boundingBox();
+    if (detail === null || list === null) throw new Error("no boxes");
+    expect(detail.y).toBe(0);
+    expect(detail.x + detail.width).toBe(width);
+    if (width === 1200) expect(list.x + list.width).toBeLessThanOrEqual(detail.x);
+    await page.getByRole("link", { name: "Close" }).click();
+  }
+});
