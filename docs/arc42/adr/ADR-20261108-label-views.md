@@ -1,6 +1,6 @@
 # ADR-20261108: Labels as views in the sidebar
 
-Status: Accepted
+Status: Accepted; partly superseded by [label-edit](ADR-20261108-label-edit.md)
 
 ## Decision
 
