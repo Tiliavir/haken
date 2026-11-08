@@ -35,9 +35,9 @@ Smart lists are views and are never stored on the server. Their names are transl
 ### Layout
 
 - **Mobile:** one screen at a time. Back is a chevron before the title, in the slot the logo takes on the lists screen, so every title sits on the same line; its accessible name is *Back to* + the parent's name.
-- **Desktop:** three panes: sidebar (lists, 260 px), list (fluid, content max 760 px) and task detail (≥ 340 px, closable). The panes use `flex-wrap`, so they stack on narrow windows without breakpoint code. The selected list and selected task are highlighted with `--selected` / `--surface-2`.
+- **Desktop:** three panes side by side, never stacked: sidebar (lists, 260 px), list (fluid, content max 760 px) and task detail (≥ 340 px, closable). Below 1060 px, where all three do not fit, the task detail overlays the list from the right edge. The selected list and selected task are highlighted with `--selected` / `--surface-2`.
 - The settings screen scrolls; nothing else needs to scroll horizontally.
-- Avoid breakpoint code; layouts adapt through `flex-wrap` and intrinsic sizes. Exceptions: mobile shows one pane at a time by a single CSS media query at 720 px (no layout code in JS); `pointer: coarse` scales the root font size.
+- Avoid breakpoint code; layouts adapt through `flex-wrap` and intrinsic sizes. Exceptions (CSS media queries only, no layout code in JS): mobile shows one pane at a time at ≤ 720 px; the desktop task detail overlays below 1060 px; `pointer: coarse` scales the root font size.
 - All modals use one `<dialog>` owned by `<haken-app>`; a re-render never closes it. Text in the focused field survives a re-render.
 - After deleting a task or list, focus moves to the next row, else the previous one, else the add field (*Add a task* / *New list*).
 - **Updates** ([app update](adr/ADR-20261107-app-update.md)): a new version shows a bar *A new version of Haken is ready.* with *Reload* above the bottom edge until reloaded. After an update, *What's new* opens once: per version a heading, the summary and the changelog sections (English text); only the entries scroll.

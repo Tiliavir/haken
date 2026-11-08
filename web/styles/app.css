@@ -262,6 +262,25 @@ label {
   border-left: 1px solid var(--border);
 }
 
+/* Desktop: panes never stack; without room for all three, the detail overlays the list. */
+@media (min-width: 721px) {
+  .shell {
+    flex-wrap: nowrap;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1059px) {
+  .pane-detail {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 380px;
+    overflow-y: auto;
+    background: var(--bg);
+    box-shadow: -8px 0 24px var(--shadow);
+  }
+}
+
 /* Mobile: one screen at a time. */
 @media (max-width: 720px) {
   .pane {
