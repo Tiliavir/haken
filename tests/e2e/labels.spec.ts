@@ -87,6 +87,8 @@ test("label views sync as CATEGORIES", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(row(page, "Label sync B")).toBeVisible();
   await page.locator(".own-lists .list-row").first().click();
+  // Wait for the list screen: the label view's add field would label the task.
+  await expect(page.getByPlaceholder("Add a task")).toBeVisible();
   await addTask(page, "Label sync C");
   await label(page, "Label sync C", "Label sync two");
   await labelLink(page, "Label sync one").click();
