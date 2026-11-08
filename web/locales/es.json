@@ -61,7 +61,6 @@
   "labels.title": "Etiquetas",
   "labels.added": "Etiqueta «{label}» añadida.",
   "labels.edit": "Editar etiqueta",
-  "labels.name": "Nombre",
   "labels.delete": "Eliminar etiqueta",
   "labels.deleteConfirm.one": "¿Quitar «{name}» de {count} tarea? La tarea se conserva.",
   "labels.deleteConfirm.other": "¿Quitar «{name}» de {count} tareas? Las tareas se conservan.",

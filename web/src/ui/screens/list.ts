@@ -254,14 +254,26 @@ function drop(ctx: Ctx, href: string, target: string, viewLabel: string | null):
   });
 }
 
-function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
+/** Texts and actions of an *Edit* menu (list or label). */
+interface NameMenu {
+  readonly title: string;
+  readonly deleteText: string;
+  readonly name: string;
+  readonly maxLength: number;
+  /** Called with a changed, non-empty name. */
+  readonly rename: (value: string) => void;
+  readonly remove: () => void;
+}
+
+/** An *Edit* button opening a dialog: name, *Save*, *Cancel* and a delete button. */
+function nameMenu(ctx: Ctx, menu: NameMenu): HTMLElement {
   const dialog = ctx.dialog;
   const edit = (): void => {
     const nameInput = h("input", {
       type: "text",
       name: "name",
-      value: name,
-      maxlength: "200",
+      value: menu.name,
+      maxlength: String(menu.maxLength),
       required: true,
       autocomplete: "off",
     });
@@ -273,11 +285,10 @@ function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
           method: "dialog",
           onsubmit: () => {
             const value = nameInput.value.trim();
-            if (value !== "" && value !== name)
-              ctx.run("ui.renameList", () => ctx.app.renameList(href, value));
+            if (value !== "" && value !== menu.name) menu.rename(value);
           },
         },
-        h("h2", {}, t("list.edit")),
+        h("h2", {}, menu.title),
         h("label", {}, t("list.name"), nameInput),
         h(
           "div",
@@ -291,8 +302,8 @@ function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
         ),
         h(
           "button",
-          { type: "button", class: "button danger", onclick: () => remove(ctx, href, name) },
-          t("list.delete"),
+          { type: "button", class: "button danger", onclick: menu.remove },
+          menu.deleteText,
         ),
       ),
     );
@@ -303,10 +314,21 @@ function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
     { class: "list-actions" },
     h(
       "button",
-      { class: "icon-button", type: "button", "aria-label": t("list.edit"), onclick: edit },
+      { class: "icon-button", type: "button", "aria-label": menu.title, onclick: edit },
       icon("edit"),
     ),
   );
+}
+
+function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
+  return nameMenu(ctx, {
+    title: t("list.edit"),
+    deleteText: t("list.delete"),
+    name,
+    maxLength: 200,
+    rename: (value) => ctx.run("ui.renameList", () => ctx.app.renameList(href, value)),
+    remove: () => remove(ctx, href, name),
+  });
 }
 
 /** Deleting a list needs its name typed in; only then is the delete button enabled. */
@@ -357,61 +379,18 @@ function remove(ctx: Ctx, href: string, name: string): void {
 
 /** *Edit label*: rename or delete it on every task carrying it (ADR-20261108-label-edit). */
 function labelMenu(ctx: Ctx, label: string): HTMLElement {
-  const dialog = ctx.dialog;
-  const edit = (): void => {
-    const nameInput = h("input", {
-      type: "text",
-      name: "name",
-      value: label,
-      maxlength: "100",
-      required: true,
-      autocomplete: "off",
-    });
-    fill(
-      dialog,
-      h(
-        "form",
-        {
-          method: "dialog",
-          onsubmit: () => {
-            const value = nameInput.value.trim();
-            if (value === "" || value === label) return;
-            ctx.run("ui.renameLabel", async () => {
-              await ctx.app.renameLabel(label, value);
-              ctx.navigate({ kind: "list", list: { kind: "label", name: value } });
-            });
-          },
-        },
-        h("h2", {}, t("labels.edit")),
-        h("label", {}, t("labels.name"), nameInput),
-        h(
-          "div",
-          { class: "actions" },
-          h(
-            "button",
-            { type: "button", class: "button", onclick: () => dialog.close() },
-            t("common.cancel"),
-          ),
-          h("button", { type: "submit", class: "button primary" }, t("common.save")),
-        ),
-        h(
-          "button",
-          { type: "button", class: "button danger", onclick: () => removeLabel(ctx, label) },
-          t("labels.delete"),
-        ),
-      ),
-    );
-    dialog.showModal();
-  };
-  return h(
-    "div",
-    { class: "list-actions" },
-    h(
-      "button",
-      { class: "icon-button", type: "button", "aria-label": t("labels.edit"), onclick: edit },
-      icon("edit"),
-    ),
-  );
+  return nameMenu(ctx, {
+    title: t("labels.edit"),
+    deleteText: t("labels.delete"),
+    name: label,
+    maxLength: 100,
+    rename: (value) =>
+      ctx.run("ui.renameLabel", async () => {
+        await ctx.app.renameLabel(label, value);
+        ctx.navigate({ kind: "list", list: { kind: "label", name: value } });
+      }),
+    remove: () => removeLabel(ctx, label),
+  });
 }
 
 /** Deleting a label removes it from its tasks; the tasks stay, so a plain confirmation is enough. */

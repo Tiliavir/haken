@@ -61,7 +61,6 @@
   "labels.title": "Labels",
   "labels.added": "Label “{label}” added.",
   "labels.edit": "Edit label",
-  "labels.name": "Name",
   "labels.delete": "Delete label",
   "labels.deleteConfirm.one": "Remove “{name}” from {count} task? The task stays.",
   "labels.deleteConfirm.other": "Remove “{name}” from {count} tasks? The tasks stay.",

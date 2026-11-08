@@ -61,7 +61,6 @@
   "labels.title": "Labels",
   "labels.added": "Label „{label}“ hinzugefügt.",
   "labels.edit": "Label bearbeiten",
-  "labels.name": "Name",
   "labels.delete": "Label löschen",
   "labels.deleteConfirm.one": "„{name}“ von {count} Aufgabe entfernen? Die Aufgabe bleibt.",
   "labels.deleteConfirm.other": "„{name}“ von {count} Aufgaben entfernen? Die Aufgaben bleiben.",

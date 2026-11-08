@@ -61,7 +61,6 @@
   "labels.title": "Étiquettes",
   "labels.added": "Étiquette « {label} » ajoutée.",
   "labels.edit": "Modifier l’étiquette",
-  "labels.name": "Nom",
   "labels.delete": "Supprimer l’étiquette",
   "labels.deleteConfirm.one": "Retirer « {name} » de {count} tâche ? La tâche reste.",
   "labels.deleteConfirm.other": "Retirer « {name} » de {count} tâches ? Les tâches restent.",

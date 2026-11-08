@@ -61,7 +61,6 @@
   "labels.title": "Etichette",
   "labels.added": "Etichetta «{label}» aggiunta.",
   "labels.edit": "Modifica etichetta",
-  "labels.name": "Nome",
   "labels.delete": "Elimina etichetta",
   "labels.deleteConfirm.one": "Rimuovere «{name}» da {count} attività? L’attività resta.",
   "labels.deleteConfirm.other": "Rimuovere «{name}» da {count} attività? Le attività restano.",
