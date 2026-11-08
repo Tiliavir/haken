@@ -6,6 +6,10 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 
 ## [Unreleased]
 
+### Fixed
+
+- On narrower desktop windows the task detail overlays the list instead of appearing below it.
+
 ### Security
 
 - Sign-in no longer sends the password when the page is not loaded over HTTPS (localhost excepted).
