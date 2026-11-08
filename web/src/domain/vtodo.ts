@@ -77,9 +77,9 @@ export interface TaskView {
   readonly attachments: readonly Attachment[];
   readonly created: number | null;
   readonly lastModified: number | null;
-  /** Has `RRULE`/`RDATE`: haken shows it read-only (recurrence is not supported). */
+  /** Has `RRULE`/`RDATE`. */
   readonly repeats: boolean;
-  /** The rule if haken can edit it; `repeats` without `recurrence` means read-only. */
+  /** The rule if haken can edit it; `repeats` without `recurrence`: see `ruleLocked`. */
   readonly recurrence: Recurrence | null;
   /** Day the task was put on *Focus* (`YYYY-MM-DD`), `null` if not. It stays until removed. */
   readonly focus: string | null;
@@ -575,6 +575,37 @@ function touch(todo: Component, now: Date): void {
   todo.updatePropertyWithValue("dtstamp", isoUtc(now));
 }
 
+/**
+ * Repeats by a rule haken cannot edit: the rule and what depends on it (completion, due and start
+ * dates) stay untouched; everything else is editable (ADR-20261108-rule-locked-edits).
+ */
+export function ruleLocked(view: TaskView): boolean {
+  return view.repeats && view.recurrence === null;
+}
+
+/** Property groups that depend on the repeat rule. */
+const RULE_GROUPS: ReadonlySet<string> = new Set([
+  "COMPLETION",
+  "DUE",
+  "DTSTART",
+  "RRULE",
+  "RDATE",
+  "EXDATE",
+]);
+
+function ruleBound(edit: TaskEdit): boolean {
+  switch (edit.kind) {
+    case "done":
+    case "due":
+    case "recurrence":
+      return true;
+    case "restoreGroup":
+      return RULE_GROUPS.has(edit.group);
+    default:
+      return false;
+  }
+}
+
 export interface EditResult {
   readonly ics: string;
   /** Property groups changed by the edit (empty: nothing changed, `ics` is the input). */
@@ -582,14 +613,17 @@ export interface EditResult {
 }
 
 /**
- * Applies one edit to a resource. Throws for read-only tasks (repeating in a way haken cannot edit) and
- * for edits that do not fit the resource.
+ * Applies one edit to a resource. Throws for an edit that depends on a repeat rule haken cannot edit
+ * (ADR-20261108-rule-locked-edits) and for edits that do not fit the resource.
  */
 export function applyEdit(ics: string, edit: TaskEdit, now: Date): EditResult {
   const resource = parseResource(ics);
   const view = readTask(resource);
-  if (view.repeats && view.recurrence === null) {
-    throw new HakenError("domain", "This repeating task is read-only", { uid: view.uid });
+  if (ruleLocked(view) && ruleBound(edit)) {
+    throw new HakenError("domain", "This edit depends on a repeat rule haken cannot edit", {
+      uid: view.uid,
+      edit: edit.kind,
+    });
   }
   const groups = new Set(editGroups(resource.todo, view, edit, now));
   if (groups.size === 0) return { ics, groups: [] };

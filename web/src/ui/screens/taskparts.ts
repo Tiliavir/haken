@@ -8,11 +8,12 @@ import { icon } from "../icons.js";
 import { dueDate, localDate } from "../views.js";
 import { describeRule } from "./repeat.js";
 
+/** `locked`: completing depends on a repeat rule haken cannot edit. */
 export function checkCircle(
   ctx: Ctx,
   item: TaskItem,
   view: TaskView,
-  readonly: boolean,
+  locked: boolean,
 ): HTMLElement {
   return h(
     "button",
@@ -21,7 +22,7 @@ export function checkCircle(
       type: "button",
       "aria-label": view.done ? t("task.uncomplete") : t("task.complete"),
       "aria-pressed": view.done ? "true" : "false",
-      disabled: readonly,
+      disabled: locked,
       onclick: () =>
         ctx.run("ui.toggleDone", () =>
           ctx.app.edit(item.href, { kind: "done", value: !view.done }),
@@ -31,12 +32,7 @@ export function checkCircle(
   );
 }
 
-export function starButton(
-  ctx: Ctx,
-  item: TaskItem,
-  view: TaskView,
-  readonly: boolean,
-): HTMLElement {
+export function starButton(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
   return h(
     "button",
     {
@@ -44,7 +40,6 @@ export function starButton(
       type: "button",
       "aria-label": view.important ? t("task.unstar") : t("task.star"),
       "aria-pressed": view.important ? "true" : "false",
-      disabled: readonly,
       onclick: () =>
         ctx.run("ui.toggleImportant", () =>
           ctx.app.edit(item.href, { kind: "important", value: !view.important }),

@@ -264,6 +264,13 @@ export function labelCount(snapshot: Snapshot, label: string): number {
   return labelTasks(snapshot, label).filter(open).length;
 }
 
+/** Readable tasks and steps of the user's lists that carry `label` (what a rename or delete rewrites). */
+export function labelUses(snapshot: Snapshot, label: string): number {
+  return userTasks(snapshot)
+    .flatMap((t) => [t, ...t.steps])
+    .filter((t) => t.view?.categories.includes(label) === true).length;
+}
+
 /** The user's lists, without *errorlogs*. */
 export function userLists(snapshot: Snapshot): ListItem[] {
   return snapshot.lists.filter((l) => !l.errorlogs);

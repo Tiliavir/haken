@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { type APIRequestContext, expect, test } from "@playwright/test";
-import { addTask, basicAuth, radicale, setupServer, waitSynced } from "./helpers.js";
+import { addTask, basicAuth, firstList, radicale, setupServer, waitSynced } from "./helpers.js";
 
 const AUTH = basicAuth("dev");
 
@@ -117,7 +117,10 @@ test("a recurring task from Tasks.org is advanced and keeps its own properties",
   }
 });
 
-test("a rule haken cannot edit is shown read-only and never written", async ({ page, request }) => {
+test("a rule haken cannot edit locks completing and dates; other edits keep the rule", async ({
+  page,
+  request,
+}) => {
   await setupServer(page);
   const list = await firstList(request);
   const count = readFileSync("tests/fixtures/vtodo/recurring-bymonthday.ics", "utf8").replace(
@@ -137,23 +140,30 @@ test("a rule haken cannot edit is shown read-only and never written", async ({ p
   await row.locator(".title").click();
   await expect(page.getByText("repeats in a way Haken cannot edit")).toBeVisible();
   await expect(page.getByLabel("Repeat")).toHaveCount(0);
+  await expect(page.getByLabel("Due date")).toBeDisabled();
+  await page.locator(".task-head").getByRole("button", { name: "Mark as important" }).click();
+  await page.getByLabel("Title", { exact: true }).fill("Five times edited");
+  await page.getByLabel("Title", { exact: true }).press("Enter");
+  await expect(page.locator(".task-row", { hasText: "Five times edited" })).toBeVisible();
+  await waitSynced(page);
+  await expect
+    .poll(
+      async () =>
+        (await serverTask(request, "Five times edited").catch(() => "")).includes("PRIORITY:1"),
+      {
+        timeout: 15_000,
+      },
+    )
+    .toBe(true);
+  const ics = await serverTask(request, "Five times edited");
+  for (const line of [
+    "RRULE:FREQ=MONTHLY;BYMONTHDAY=1,15",
+    "DUE;VALUE=DATE:20261101",
+    "DTSTART;VALUE=DATE:20261101",
+  ])
+    expect(ics, line).toContain(line);
+  expect(ics).not.toContain("STATUS:COMPLETED");
 });
-
-async function firstList(request: APIRequestContext): Promise<string> {
-  const res = await request.fetch(radicale("/dev/"), {
-    method: "PROPFIND",
-    headers: { ...AUTH, Depth: "1", "Content-Type": "application/xml" },
-    data: '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>',
-  });
-  for (const m of (await res.text()).matchAll(
-    /<(?:\w+:)?response>([\s\S]*?)<\/(?:\w+:)?response>/g,
-  )) {
-    const block = m[1] ?? "";
-    if (/<(?:\w+:)?displayname>Haken</.test(block))
-      return /<(?:\w+:)?href>([^<]+)</.exec(block)?.[1] ?? "";
-  }
-  throw new Error("list Haken not found");
-}
 
 test("a task that ends after two times completes for good on the second", async ({
   page,

@@ -179,9 +179,12 @@ describe("edits", () => {
     const removed = applyEdit(a, { kind: "removeAttachment", index: 0 }, NOW).ics;
     assert.equal(readTask(parseResource(removed)).attachments.length, 0);
   });
-  test("repeating tasks outside the supported rules are read-only", () => {
-    assert.throws(() =>
-      applyEdit(fixture("recurring-bymonthday.ics"), { kind: "summary", value: "x" }, NOW),
+  test("repeating tasks outside the supported rules cannot be completed", () => {
+    const ics = fixture("recurring-bymonthday.ics");
+    assert.throws(() => applyEdit(ics, { kind: "done", value: true }, NOW));
+    assert.equal(
+      readTask(parseResource(applyEdit(ics, { kind: "summary", value: "x" }, NOW).ics)).summary,
+      "x",
     );
   });
 });

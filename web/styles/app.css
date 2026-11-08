@@ -439,13 +439,7 @@ label {
   border-top: 1px solid var(--border);
 }
 
-/* Labels (views): a quieter section below the lists. */
-.labels {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border);
-}
-
+/* Labels (views): a section between the smart lists and the lists, under the divider. */
 .section-title {
   margin: 0.5rem 0.625rem 0.25rem;
   color: var(--text-muted);
