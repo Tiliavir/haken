@@ -1,6 +1,6 @@
 # ADR-20261104: Repeating tasks
 
-Status: Accepted
+Status: Accepted; partly superseded by [rule-locked edits](ADR-20261108-rule-locked-edits.md)
 
 ## Decision
 
