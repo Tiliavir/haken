@@ -46,9 +46,12 @@ export type Login =
   | { readonly kind: "ok"; readonly user: string }
   | { readonly kind: "invalid" }
   | { readonly kind: "rate-limited"; readonly retryAfterSeconds: number }
-  | { readonly kind: "unreachable" };
+  | { readonly kind: "unreachable" }
+  | { readonly kind: "insecure" };
 
 export async function login(user: string, password: string): Promise<Login> {
+  // Never send a password over plain HTTP (localhost counts as secure).
+  if (!globalThis.isSecureContext) return { kind: "insecure" };
   let response: Awaited<ReturnType<typeof server>>;
   try {
     response = await server("POST", "/api/session", {

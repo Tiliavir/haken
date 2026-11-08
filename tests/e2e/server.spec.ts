@@ -160,3 +160,23 @@ test("an ended session: edits stay local, signing in again syncs them", async ({
   await dialog.getByRole("button", { name: "Sign in" }).click();
   await waitSynced(page);
 });
+
+test("sign-in over plain HTTP refuses to send the password", async ({ page }) => {
+  // 127.0.0.1 is a secure context; simulate http:// on a LAN address.
+  await page.addInitScript(() =>
+    Object.defineProperty(window, "isSecureContext", { value: false }),
+  );
+  const posts: string[] = [];
+  page.on("request", (r) => {
+    if (r.method() === "POST") posts.push(r.url());
+  });
+  await page.goto("/");
+  await button(page, "Start");
+  await button(page, "Skip");
+  await button(page, /Sync with my server/);
+  await page.getByLabel("User name").fill("dev");
+  await page.getByLabel("Password").fill("dev");
+  await button(page, "Sign in");
+  await expect(page.getByText(/not loaded over HTTPS/)).toBeVisible();
+  expect(posts).toEqual([]);
+});
