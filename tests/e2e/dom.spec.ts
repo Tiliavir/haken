@@ -76,7 +76,7 @@ test("every screen renders valid HTML and names every control", async ({ page })
   await page.locator(".task-row .title", { hasText: "Validate me" }).click();
   await page.getByPlaceholder("Add item").fill("Step");
   await page.keyboard.press("Enter");
-  await page.getByRole("textbox", { name: "Label" }).fill("tag");
+  await page.getByRole("combobox", { name: "Label" }).fill("tag");
   await page.keyboard.press("Enter");
   await expect(page.locator(".chip", { hasText: "tag" }).first()).toBeVisible();
   files.push(await snapshot(page, "task"));
