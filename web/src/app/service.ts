@@ -127,12 +127,6 @@ export interface ImportPreview {
   readonly replacing: number;
 }
 
-/** Tasks rewritten by a label rename or delete, and read-only tasks that kept the label. */
-export interface LabelResult {
-  readonly changed: number;
-  readonly skipped: number;
-}
-
 export type LogoutChoice = "delete" | "keep" | "discard";
 
 export class AppService extends EventTarget implements ErrorSink {
@@ -1004,7 +998,7 @@ export class AppService extends EventTarget implements ErrorSink {
    * Renames `label` on every task carrying it; a task that has `name` already
    * keeps it once (ADR-20261108-label-edit).
    */
-  renameLabel(label: string, name: string): Promise<LabelResult> {
+  renameLabel(label: string, name: string): Promise<void> {
     return this.exclusive(() => {
       const trimmed = name.trim();
       if (trimmed === "") throw new HakenError("app", "Empty label name");
@@ -1013,15 +1007,15 @@ export class AppService extends EventTarget implements ErrorSink {
   }
 
   /** Removes `label` from every task carrying it; the tasks stay (ADR-20261108-label-edit). */
-  deleteLabel(label: string): Promise<LabelResult> {
+  deleteLabel(label: string): Promise<void> {
     return this.exclusive(() => this.relabelNow(label, (c) => c.filter((v) => v !== label)));
   }
 
-  /** Rewrites `CATEGORIES` of the readable tasks of the user's lists; read-only ones are skipped. */
+  /** Rewrites `CATEGORIES` of the readable tasks of the user's lists. */
   private async relabelNow(
     label: string,
     next: (categories: readonly string[]) => string[],
-  ): Promise<LabelResult> {
+  ): Promise<void> {
     const store = this.requireStore();
     const userLists = new Set(
       (await store.lists())
@@ -1032,15 +1026,10 @@ export class AppService extends EventTarget implements ErrorSink {
     const putTasks: TaskRecord[] = [];
     const expect: { href: string; ics: string }[] = [];
     const addOps: OutboxInput[] = [];
-    let skipped = 0;
     for (const record of await store.tasks()) {
       if (record.deleted || record.invalid !== null || !userLists.has(record.list)) continue;
       const view = readTask(parseResource(record.ics));
       if (!view.categories.includes(label)) continue;
-      if (view.repeats && view.recurrence === null) {
-        skipped += 1;
-        continue;
-      }
       const result = applyEdit(
         record.ics,
         { kind: "categories", value: next(view.categories) },
@@ -1058,7 +1047,6 @@ export class AppService extends EventTarget implements ErrorSink {
         });
     }
     if (putTasks.length > 0) await this.changed({ putTasks, expect, addOps });
-    return { changed: putTasks.length, skipped };
   }
 
   useConflict(id: number): Promise<void> {

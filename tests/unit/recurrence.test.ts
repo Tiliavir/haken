@@ -54,7 +54,7 @@ describe("reading rules", () => {
       end: { kind: "never" },
     });
   });
-  test("valid rules outside the subset are kept read-only", () => {
+  test("valid rules outside the subset lock the rule, completing and dates; the rest stays editable", () => {
     for (const ics of [
       task("20261102", "FREQ=MONTHLY;BYMONTHDAY=15"),
       task("20261102", "FREQ=MONTHLY;BYDAY=1MO,3MO"),
@@ -68,7 +68,31 @@ describe("reading rules", () => {
       const v = view(ics);
       assert.equal(v.repeats, true);
       assert.equal(v.recurrence, null);
-      assert.throws(() => applyEdit(ics, { kind: "summary", value: "x" }, NOW), /read-only/);
+      for (const edit of [
+        { kind: "done", value: true },
+        { kind: "due", value: null },
+        { kind: "recurrence", value: null, today: "2026-11-04" },
+        { kind: "restoreGroup", group: "DUE", lines: "" },
+        { kind: "restoreGroup", group: "COMPLETION", lines: "" },
+      ] as const) {
+        assert.throws(() => applyEdit(ics, edit, NOW), /repeat rule haken cannot edit/, edit.kind);
+      }
+      // Rule-independent edits change only their own lines; the rule stays as written.
+      let out = ics;
+      for (const edit of [
+        { kind: "summary", value: "x" },
+        { kind: "description", value: "note" },
+        { kind: "important", value: true },
+        { kind: "categories", value: ["A, b", "C"] },
+        { kind: "sortOrder", value: 7 },
+      ] as const) {
+        out = applyEdit(out, edit, NOW).ics;
+      }
+      const own =
+        /^(SUMMARY|DESCRIPTION|PRIORITY|CATEGORIES|X-APPLE-SORT-ORDER|DTSTAMP|LAST-MODIFIED)[:;]/;
+      const rest = (text: string) => lines(text).filter((l) => !own.test(l));
+      assert.deepEqual(rest(out), rest(ics));
+      assert.deepEqual(view(out).categories, ["A, b", "C"]);
     }
   });
   test("invalid rules are invalid input", () => {
@@ -263,7 +287,7 @@ describe("ends and monthly weekdays", () => {
     ics = complete(ics).ics;
     assert.equal(view(ics).done, true);
   });
-  test("UNTIL in a form haken would not write back stays read-only", () => {
+  test("UNTIL in a form haken would not write back locks the rule", () => {
     assert.equal(view(task("20261102", "FREQ=WEEKLY;UNTIL=20261110T120000Z")).recurrence, null);
   });
   test("monthly on the second Tuesday and on the last Friday", () => {

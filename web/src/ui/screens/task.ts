@@ -1,7 +1,7 @@
 /** Task detail (chapter 8, Screens: Task; States: conflict notes). */
 import { ATTACHMENT_LIMIT, type TaskItem } from "../../app/service.js";
 import { HakenError } from "../../domain/errors.js";
-import type { Attachment, Due, TaskView } from "../../domain/vtodo.js";
+import { type Attachment, type Due, ruleLocked, type TaskView } from "../../domain/vtodo.js";
 import type { Ctx } from "../context.js";
 import { afterRemoval, fill, h } from "../dom.js";
 import { autosave, pasteLines, submitField } from "../fields.js";
@@ -126,7 +126,7 @@ function conflicts(ctx: Ctx, item: TaskItem): HTMLElement | null {
   );
 }
 
-function steps(ctx: Ctx, item: TaskItem, readonly: boolean): HTMLElement {
+function steps(ctx: Ctx, item: TaskItem): HTMLElement {
   const input = h("input", {
     type: "text",
     class: "add-input",
@@ -155,7 +155,6 @@ function steps(ctx: Ctx, item: TaskItem, readonly: boolean): HTMLElement {
           "aria-label": t("task.stepTitle"),
           "data-focus": `step-${step.href}`,
           maxlength: "1000",
-          disabled: readonly,
         });
         autosave(title, `${step.href} summary`, (raw) => {
           const value = raw.trim();
@@ -165,37 +164,33 @@ function steps(ctx: Ctx, item: TaskItem, readonly: boolean): HTMLElement {
         return h(
           "li",
           { class: "step" },
-          checkCircle(ctx, step, v, readonly),
+          checkCircle(ctx, step, v, ruleLocked(v)),
           title,
-          readonly
-            ? null
-            : h(
-                "button",
-                {
-                  type: "button",
-                  class: "icon-button",
-                  "aria-label": t("task.removeStep"),
-                  onclick: () => ctx.run("ui.deleteStep", () => ctx.app.deleteTask(step.href)),
-                },
-                icon("close"),
-              ),
+          h(
+            "button",
+            {
+              type: "button",
+              class: "icon-button",
+              "aria-label": t("task.removeStep"),
+              onclick: () => ctx.run("ui.deleteStep", () => ctx.app.deleteTask(step.href)),
+            },
+            icon("close"),
+          ),
         );
       }),
     ),
-    readonly
-      ? null
-      : h(
-          "form",
-          {
-            class: "add-step",
-            onsubmit: (e: Event) => {
-              e.preventDefault();
-              ctx.run("ui.addStep", () => submitField(input, (value) => addSteps([value])));
-            },
-          },
-          h("span", { class: "icon-slot" }, icon("plus")),
-          input,
-        ),
+    h(
+      "form",
+      {
+        class: "add-step",
+        onsubmit: (e: Event) => {
+          e.preventDefault();
+          ctx.run("ui.addStep", () => submitField(input, (value) => addSteps([value])));
+        },
+      },
+      h("span", { class: "icon-slot" }, icon("plus")),
+      input,
+    ),
   );
 }
 
@@ -255,7 +250,7 @@ function focusRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
   );
 }
 
-function dueRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean): HTMLElement {
+function dueRow(ctx: Ctx, item: TaskItem, view: TaskView, locked: boolean): HTMLElement {
   const id = "due-input";
   return h(
     "div",
@@ -270,7 +265,7 @@ function dueRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean): HT
         id,
         type: "date",
         value: view.due === null ? "" : dueDate(view.due),
-        disabled: readonly,
+        disabled: locked,
         onchange: (e: Event) => {
           const v = (e.target as HTMLInputElement).value;
           // A new date keeps the time of day.
@@ -280,7 +275,7 @@ function dueRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean): HT
           );
         },
       }),
-      view.due !== null && !readonly
+      view.due !== null && !locked
         ? clearButton(t("task.removeDue"), () =>
             ctx.run("ui.removeDue", () => ctx.app.edit(item.href, { kind: "due", value: null })),
           )
@@ -290,7 +285,7 @@ function dueRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean): HT
 }
 
 /** Time of day of the due date; only with a due date. */
-function dueTimeRow(ctx: Ctx, item: TaskItem, due: Due, readonly: boolean): HTMLElement {
+function dueTimeRow(ctx: Ctx, item: TaskItem, due: Due, locked: boolean): HTMLElement {
   const id = "due-time-input";
   const date = dueDate(due);
   const value = dueClock(due);
@@ -306,7 +301,7 @@ function dueTimeRow(ctx: Ctx, item: TaskItem, due: Due, readonly: boolean): HTML
         id,
         type: "time",
         value,
-        disabled: readonly,
+        disabled: locked,
         onchange: (e: Event) => {
           const v = (e.target as HTMLInputElement).value;
           ctx.run("ui.editDueTime", () =>
@@ -314,7 +309,7 @@ function dueTimeRow(ctx: Ctx, item: TaskItem, due: Due, readonly: boolean): HTML
           );
         },
       }),
-      value !== "" && !readonly
+      value !== "" && !locked
         ? clearButton(t("task.removeDueTime"), () =>
             ctx.run("ui.removeDueTime", () =>
               ctx.app.edit(item.href, { kind: "due", value: dueAt(date, "") }),
@@ -339,7 +334,7 @@ function onlyList(ctx: Ctx, item: TaskItem): boolean {
   return lists.length === 1 && lists[0]?.href === item.list;
 }
 
-function labelsRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean): HTMLElement {
+function labelsRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
   // Suggest labels in use (native <datalist>), so a label is picked, not retyped.
   const suggestions = labelNames(ctx.snapshot, collator()).filter(
     (l) => !view.categories.includes(l),
@@ -366,52 +361,48 @@ function labelsRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean):
           "li",
           { class: "chip" },
           label,
-          readonly
-            ? null
-            : h(
-                "button",
-                {
-                  type: "button",
-                  class: "chip-remove",
-                  "aria-label": t("task.removeLabel", { label }),
-                  onclick: () =>
-                    ctx.run("ui.removeLabel", () =>
-                      ctx.app.edit(item.href, {
-                        kind: "categories",
-                        value: view.categories.filter((c) => c !== label),
-                      }),
-                    ),
-                },
-                icon("close", "icon small"),
-              ),
+          h(
+            "button",
+            {
+              type: "button",
+              class: "chip-remove",
+              "aria-label": t("task.removeLabel", { label }),
+              onclick: () =>
+                ctx.run("ui.removeLabel", () =>
+                  ctx.app.edit(item.href, {
+                    kind: "categories",
+                    value: view.categories.filter((c) => c !== label),
+                  }),
+                ),
+            },
+            icon("close", "icon small"),
+          ),
         ),
       ),
     ),
-    readonly
-      ? null
-      : h(
-          "form",
-          {
-            class: "add-label",
-            onsubmit: (e: Event) => {
-              e.preventDefault();
-              ctx.run("ui.addLabel", () =>
-                submitField(input, (value) =>
-                  ctx.app.edit(item.href, {
-                    kind: "categories",
-                    value: [...view.categories, value],
-                  }),
-                ),
-              );
-            },
-          },
-          input,
-          h(
-            "datalist",
-            { id: "label-suggestions" },
-            suggestions.map((l) => h("option", { value: l })),
-          ),
-        ),
+    h(
+      "form",
+      {
+        class: "add-label",
+        onsubmit: (e: Event) => {
+          e.preventDefault();
+          ctx.run("ui.addLabel", () =>
+            submitField(input, (value) =>
+              ctx.app.edit(item.href, {
+                kind: "categories",
+                value: [...view.categories, value],
+              }),
+            ),
+          );
+        },
+      },
+      input,
+      h(
+        "datalist",
+        { id: "label-suggestions" },
+        suggestions.map((l) => h("option", { value: l })),
+      ),
+    ),
   );
 }
 
@@ -442,28 +433,26 @@ function attachmentName(ctx: Ctx, item: TaskItem, a: Attachment, name: string): 
   );
 }
 
-function attachmentItem(ctx: Ctx, item: TaskItem, a: Attachment, readonly: boolean): HTMLElement {
+function attachmentItem(ctx: Ctx, item: TaskItem, a: Attachment): HTMLElement {
   const name = a.filename ?? (a.kind === "uri" ? a.uri : t("task.attachment"));
   return h(
     "li",
     { class: "attachment" },
     attachmentName(ctx, item, a, name),
     a.kind === "binary" ? h("span", { class: "size" }, formatSize(a.size, locale())) : null,
-    readonly
-      ? null
-      : h(
-          "button",
-          {
-            type: "button",
-            class: "icon-button",
-            "aria-label": t("task.removeAttachment", { name }),
-            onclick: () =>
-              ctx.run("ui.removeAttachment", () =>
-                ctx.app.edit(item.href, { kind: "removeAttachment", index: a.index }),
-              ),
-          },
-          icon("close"),
-        ),
+    h(
+      "button",
+      {
+        type: "button",
+        class: "icon-button",
+        "aria-label": t("task.removeAttachment", { name }),
+        onclick: () =>
+          ctx.run("ui.removeAttachment", () =>
+            ctx.app.edit(item.href, { kind: "removeAttachment", index: a.index }),
+          ),
+      },
+      icon("close"),
+    ),
   );
 }
 
@@ -476,7 +465,7 @@ export function download(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-function attachmentsRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: boolean): HTMLElement {
+function attachmentsRow(ctx: Ctx, item: TaskItem, view: TaskView): HTMLElement {
   const file = h("input", {
     type: "file",
     class: "visually-hidden",
@@ -504,13 +493,13 @@ function attachmentsRow(ctx: Ctx, item: TaskItem, view: TaskView, readonly: bool
     h(
       "ul",
       { class: "attachments", "aria-label": t("task.attachments") },
-      view.attachments.map((a) => attachmentItem(ctx, item, a, readonly)),
+      view.attachments.map((a) => attachmentItem(ctx, item, a)),
     ),
     item.tooLarge
       ? h("p", { class: "field-error", role: "alert" }, t("task.serverTooLarge"))
       : null,
-    readonly ? null : h("label", { for: "attach-input", class: "button" }, t("task.attach")),
-    readonly ? null : file,
+    h("label", { for: "attach-input", class: "button" }, t("task.attach")),
+    file,
   );
 }
 
@@ -542,7 +531,7 @@ export class HakenTask extends HTMLElement {
       return;
     }
     const view = item.view;
-    const readonly = view.repeats && view.recurrence === null;
+    const locked = ruleLocked(view);
     const listName = ctx.snapshot.lists.find((l) => l.href === item.list)?.name ?? "";
     const back = backLink(closeHref, listName);
     const title = h("textarea", {
@@ -551,7 +540,6 @@ export class HakenTask extends HTMLElement {
       maxlength: "1000",
       "aria-label": t("task.title"),
       "data-focus": "title",
-      disabled: readonly,
       onkeydown: (e: Event) => {
         if ((e as KeyboardEvent).key === "Enter") {
           e.preventDefault();
@@ -575,7 +563,6 @@ export class HakenTask extends HTMLElement {
       placeholder: t("task.note"),
       "aria-label": t("task.note"),
       "data-focus": "note",
-      disabled: readonly,
     });
     note.value = view.description;
     autosave(note, `${item.href} description`, (value) =>
@@ -624,25 +611,23 @@ export class HakenTask extends HTMLElement {
         "div",
         { class: "task-head" },
         back,
-        checkCircle(ctx, item, view, readonly),
+        checkCircle(ctx, item, view, locked),
         title,
-        starButton(ctx, item, view, readonly),
+        starButton(ctx, item, view),
       ),
-      readonly ? h("p", { class: "hint" }, t("task.repeats")) : null,
+      locked ? h("p", { class: "hint" }, t("task.repeats")) : null,
       conflicts(ctx, item),
-      view.parentUid === null ? steps(ctx, item, readonly) : null,
+      view.parentUid === null ? steps(ctx, item) : null,
       h(
         "section",
         { class: "group" },
-        view.parentUid === null && !readonly ? focusRow(ctx, item, view) : null,
-        view.parentUid === null && !readonly && !onlyList(ctx, item)
-          ? listRow(ctx, item, listId)
-          : null,
-        dueRow(ctx, item, view, readonly),
-        view.due === null ? null : dueTimeRow(ctx, item, view.due, readonly),
-        view.parentUid === null && !readonly ? repeatRow(ctx, item, view) : null,
-        labelsRow(ctx, item, view, readonly),
-        attachmentsRow(ctx, item, view, readonly),
+        view.parentUid === null ? focusRow(ctx, item, view) : null,
+        view.parentUid === null && !onlyList(ctx, item) ? listRow(ctx, item, listId) : null,
+        dueRow(ctx, item, view, locked),
+        view.due === null ? null : dueTimeRow(ctx, item, view.due, locked),
+        view.parentUid === null && !locked ? repeatRow(ctx, item, view) : null,
+        labelsRow(ctx, item, view),
+        attachmentsRow(ctx, item, view),
       ),
       note,
       h(
@@ -655,18 +640,16 @@ export class HakenTask extends HTMLElement {
             ? ""
             : t("task.created", { date: formatDate(view.created, { dateStyle: "medium" }) }),
         ),
-        readonly
-          ? null
-          : h(
-              "button",
-              {
-                type: "button",
-                class: "icon-button",
-                "aria-label": t("task.delete"),
-                onclick: confirmDelete,
-              },
-              icon("trash"),
-            ),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "icon-button",
+            "aria-label": t("task.delete"),
+            onclick: confirmDelete,
+          },
+          icon("trash"),
+        ),
       ),
     );
   }

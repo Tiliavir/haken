@@ -174,7 +174,10 @@ test("labels sit above the lists; rename, rename onto another label, delete", as
   await expect(labelNames(page)).toHaveText(["Groceries"]);
 });
 
-test("a label rename syncs; a read-only task keeps the label", async ({ page, request }) => {
+test("a label rename syncs, also to a task with a rule haken cannot edit", async ({
+  page,
+  request,
+}) => {
   await setupServer(page);
   const list = await firstList(request);
   const ics = readFileSync("tests/fixtures/vtodo/recurring-bymonthday.ics", "utf8")
@@ -196,15 +199,18 @@ test("a label rename syncs; a read-only task keeps the label", async ({ page, re
   await waitSynced(page);
 
   await renameLabel(page, "Label old e2e", "Label new e2e");
-  await expect(page.locator(".toast")).toHaveText("1 read-only task keeps “Label old e2e”.");
-  await expect(titles(page)).resolves.toEqual(["Label rw e2e"]);
-  await expect(labelLink(page, "Label old e2e")).toBeVisible();
+  await expect
+    .poll(async () => (await titles(page)).sort())
+    .toEqual(["Label ro e2e", "Label rw e2e"]);
+  await expect(labelLink(page, "Label old e2e")).toHaveCount(0);
   await waitSynced(page);
   const file = (summary: string): string =>
     serverFiles("dev").find((f) => f.includes(`SUMMARY:${summary}\r`)) ?? "";
   await expect
     .poll(() => /CATEGORIES:(.*)\r?\n/.exec(file("Label rw e2e"))?.[1], { timeout: 15_000 })
     .toBe("Label new e2e");
-  expect(file("Label ro e2e")).toContain("CATEGORIES:Label old e2e");
-  expect(file("Label ro e2e")).not.toContain("Label new e2e");
+  await expect
+    .poll(() => /CATEGORIES:(.*)\r?\n/.exec(file("Label ro e2e"))?.[1], { timeout: 15_000 })
+    .toBe("Label new e2e");
+  expect(file("Label ro e2e")).toContain("RRULE:FREQ=MONTHLY;BYMONTHDAY=1,15\r\n");
 });

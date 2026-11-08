@@ -8,11 +8,12 @@ versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 
 ### Added
 
-- *Edit label* in a label view: rename a label or delete it on all its tasks. Renaming to an existing label merges both; deleting keeps the tasks. Read-only repeating tasks keep the label, and a notice says how many.
+- *Edit label* in a label view: rename a label or delete it on all its tasks. Renaming to an existing label merges both; deleting keeps the tasks.
 
 ### Changed
 
 - *Labels* now appear above the lists in the sidebar.
+- Tasks that repeat in a way Haken cannot edit are no longer read-only: only completing them and changing their dates or repeat are blocked.
 
 ## [0.6.0] - 2026-11-08
 

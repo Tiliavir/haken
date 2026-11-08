@@ -1,6 +1,7 @@
 /** List screen (chapter 8, Screens: List). */
-import type { LabelResult, TaskItem } from "../../app/service.js";
+import type { TaskItem } from "../../app/service.js";
 import { HakenError } from "../../domain/errors.js";
+import { ruleLocked } from "../../domain/vtodo.js";
 import type { Ctx } from "../context.js";
 import { makeSortable } from "../dnd/sortable.js";
 import { afterRemoval, fill, h } from "../dom.js";
@@ -44,11 +45,11 @@ function taskRow(
     );
   }
   const view = item.view;
-  const readonly = view.repeats && view.recurrence === null;
+  const locked = ruleLocked(view);
   const listName = showList
     ? (ctx.snapshot.lists.find((l) => l.href === item.list)?.name ?? null)
     : null;
-  const movable = sortable && !view.done && !readonly;
+  const movable = sortable && !view.done;
   const title = view.summary === "" ? t("task.untitled") : view.summary;
   return h(
     "li",
@@ -59,12 +60,12 @@ function taskRow(
       "data-label": title,
       "aria-current": selected ? "true" : undefined,
     },
-    checkCircle(ctx, item, view, readonly),
+    checkCircle(ctx, item, view, locked),
     link(
       [h("span", { class: "title" }, title), metaLine(item, view, ctx.now, listName, viewLabel)],
       movable,
     ),
-    starButton(ctx, item, view, readonly),
+    starButton(ctx, item, view),
   );
 }
 
@@ -357,9 +358,6 @@ function remove(ctx: Ctx, href: string, name: string): void {
 /** *Edit label*: rename or delete it on every task carrying it (ADR-20261108-label-edit). */
 function labelMenu(ctx: Ctx, label: string): HTMLElement {
   const dialog = ctx.dialog;
-  const kept = (result: LabelResult): void => {
-    if (result.skipped > 0) ctx.notify(tp("labels.kept", result.skipped, { label }));
-  };
   const edit = (): void => {
     const nameInput = h("input", {
       type: "text",
@@ -379,7 +377,7 @@ function labelMenu(ctx: Ctx, label: string): HTMLElement {
             const value = nameInput.value.trim();
             if (value === "" || value === label) return;
             ctx.run("ui.renameLabel", async () => {
-              kept(await ctx.app.renameLabel(label, value));
+              await ctx.app.renameLabel(label, value);
               ctx.navigate({ kind: "list", list: { kind: "label", name: value } });
             });
           },
@@ -398,7 +396,7 @@ function labelMenu(ctx: Ctx, label: string): HTMLElement {
         ),
         h(
           "button",
-          { type: "button", class: "button danger", onclick: () => removeLabel(ctx, label, kept) },
+          { type: "button", class: "button danger", onclick: () => removeLabel(ctx, label) },
           t("labels.delete"),
         ),
       ),
@@ -417,7 +415,7 @@ function labelMenu(ctx: Ctx, label: string): HTMLElement {
 }
 
 /** Deleting a label removes it from its tasks; the tasks stay, so a plain confirmation is enough. */
-function removeLabel(ctx: Ctx, label: string, kept: (result: LabelResult) => void): void {
+function removeLabel(ctx: Ctx, label: string): void {
   const dialog = ctx.dialog;
   fill(
     dialog,
@@ -442,7 +440,7 @@ function removeLabel(ctx: Ctx, label: string, kept: (result: LabelResult) => voi
             onclick: () => {
               dialog.close();
               ctx.run("ui.deleteLabel", async () => {
-                kept(await ctx.app.deleteLabel(label));
+                await ctx.app.deleteLabel(label);
                 ctx.navigate({ kind: "lists" });
               });
             },
