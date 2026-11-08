@@ -3,6 +3,8 @@ import { addTask, serverFiles, setupLocal, setupServer, titles, waitSynced } fro
 
 async function label(page: Page, task: string, name: string): Promise<void> {
   await page.locator("haken-list .task-row .title", { hasText: task }).click();
+  // Wait for this task's detail: typing into the previous one's field is lost on re-render.
+  await expect(page.getByLabel("Title")).toHaveValue(task);
   await page.getByPlaceholder("Label", { exact: true }).fill(name);
   await page.keyboard.press("Enter");
   await expect(page.locator(".chips .chip", { hasText: name })).toBeVisible();
