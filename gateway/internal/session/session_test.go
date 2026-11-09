@@ -42,12 +42,18 @@ func TestLoginProbeLogout(t *testing.T) {
 	if cookie.Name != CookieName || !cookie.HttpOnly || !cookie.Secure || cookie.SameSite != http.SameSiteStrictMode {
 		t.Fatalf("cookie attributes: %+v", cookie)
 	}
+	if cookie.MaxAge != 3600 {
+		t.Fatalf("cookie lifetime: %d", cookie.MaxAge)
+	}
 	probe := httptest.NewRequest(http.MethodGet, "/api/session", nil)
 	probe.AddCookie(cookie)
 	rec = httptest.NewRecorder()
 	m.ServeHTTP(rec, probe)
 	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"user":"alice"}` {
 		t.Fatalf("probe: %d %q", rec.Code, rec.Body.String())
+	}
+	if c := rec.Result().Cookies(); len(c) != 1 || c[0].Value != cookie.Value || c[0].MaxAge != 3600 {
+		t.Fatalf("probe must renew the cookie: %+v", c)
 	}
 	del := httptest.NewRequest(http.MethodDelete, "/api/session", nil)
 	del.AddCookie(cookie)

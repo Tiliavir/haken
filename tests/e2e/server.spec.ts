@@ -143,6 +143,16 @@ test("gateway serves only the app's own session", async ({ page, request }) => {
   expect(direct.status()).toBe(207);
 });
 
+test("the session survives closing the browser", async ({ page, context }) => {
+  await setupServer(page);
+  // A browser-session cookie (expires -1) is dropped when a mobile app is closed.
+  const cookie = (await context.cookies()).find((c) => c.name === "__Host-haken");
+  if (cookie === undefined) throw new Error("no session cookie");
+  const days = (cookie.expires * 1000 - Date.now()) / 86_400_000;
+  expect(days).toBeGreaterThan(6.9);
+  expect(days).toBeLessThanOrEqual(7);
+});
+
 test("an ended session: edits stay local, signing in again syncs them", async ({
   page,
   context,
