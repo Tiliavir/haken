@@ -4,6 +4,12 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
+## [0.6.4] - 2026-11-09
+
+### Fixed
+
+- Closing the app no longer signs you out; a session now lasts until 7 days without use, as intended.
+
 ## [0.6.3] - 2026-11-09
 
 ### Fixed

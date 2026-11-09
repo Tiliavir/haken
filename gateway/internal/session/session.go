@@ -143,6 +143,10 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+		// Lookup succeeded, so the cookie exists. Sending it again slides its
+		// expiry along with the idle timer.
+		c, _ := r.Cookie(CookieName)
+		m.setCookie(w, c.Value)
 		httpx.JSON(w, http.StatusOK, map[string]string{"user": creds.User})
 	case http.MethodPost:
 		m.login(w, r)
@@ -198,15 +202,23 @@ func (m *Manager) login(w http.ResponseWriter, r *http.Request) {
 	m.mu.Lock()
 	m.sessions[id] = &entry{creds: Credentials(req), lastSeen: m.now()}
 	m.mu.Unlock()
+	m.setCookie(w, id)
+	httpx.JSON(w, http.StatusOK, map[string]string{"user": req.User})
+}
+
+// setCookie sets the session cookie with the idle timeout as its lifetime: a
+// cookie without one is dropped when the browser closes, which on mobile
+// happens whenever the app is closed.
+func (m *Manager) setCookie(w http.ResponseWriter, id string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     CookieName,
 		Value:    id,
 		Path:     "/",
+		MaxAge:   int(m.idle / time.Second),
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 	})
-	httpx.JSON(w, http.StatusOK, map[string]string{"user": req.User})
 }
 
 func (m *Manager) logout(w http.ResponseWriter, r *http.Request) {
