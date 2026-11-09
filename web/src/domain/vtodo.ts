@@ -884,7 +884,8 @@ export function replaceGroup(todo: Component, group: string, lines: string): boo
   if (groupLines(todo, group) === lines) return false;
   const isSub =
     !Object.hasOwn(GROUPS, group) && todo.getAllSubcomponents(group.toLowerCase()).length > 0;
-  for (const prop of todo.getAllProperties()) {
+  // A copy: without a name, ical.js returns its live array and removing would skip the next property.
+  for (const prop of [...todo.getAllProperties()]) {
     if (groupOf(prop.name) === group) todo.removeProperty(prop);
   }
   if (isSub || lines.startsWith("BEGIN:")) todo.removeAllSubcomponents(group.toLowerCase());

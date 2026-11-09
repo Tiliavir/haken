@@ -56,6 +56,34 @@ describe("merge", () => {
     assert.equal(v.summary, "S");
     assert.match(r.ics, /PERCENT-COMPLETE:100/);
   });
+  test("completed on both sides, local newer: group replaced whole, no duplicates", () => {
+    const server = applyEdit(base, { kind: "done", value: true }, T1).ics;
+    const local = applyEdit(base, { kind: "done", value: true }, T2).ics;
+    const r = merge(base, local, server, new Map([["COMPLETION", T2.getTime()]]));
+    const out = lines(r.ics);
+    assert.equal(out.filter((l) => l.startsWith("STATUS")).length, 1);
+    assert.equal(out.filter((l) => l.startsWith("PERCENT-COMPLETE")).length, 1);
+    assert.deepEqual(
+      out.filter((l) => l.startsWith("COMPLETED")),
+      ["COMPLETED:20261103T100000Z"],
+    );
+  });
+  test("adjacent group members in another client's order are all replaced", () => {
+    const server = applyEdit(base, { kind: "summary", value: "S" }, T1)
+      .ics.replace("STATUS:NEEDS-ACTION\r\n", "")
+      .replace("END:VTODO", "PERCENT-COMPLETE:50\r\nSTATUS:IN-PROCESS\r\nEND:VTODO");
+    const local = applyEdit(base, { kind: "done", value: true }, T2).ics;
+    const r = merge(base, local, server, new Map([["COMPLETION", T2.getTime()]]));
+    const out = lines(r.ics);
+    assert.deepEqual(
+      out.filter((l) => l.startsWith("STATUS")),
+      ["STATUS:COMPLETED"],
+    );
+    assert.deepEqual(
+      out.filter((l) => l.startsWith("PERCENT-COMPLETE")),
+      ["PERCENT-COMPLETE:100"],
+    );
+  });
   test("unknown properties added by the server survive a local win", () => {
     const original = fixture("thunderbird-tzid.ics");
     const server = original.replace("X-MOZ-GENERATION:3", "X-MOZ-GENERATION:4");
