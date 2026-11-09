@@ -6,9 +6,9 @@
   "license": "0BSD",
   "scripts": {},
   "devDependencies": {
-    "@biomejs/biome": "2.6.4",
+    "@biomejs/biome": "2.6.6",
     "@playwright/test": "1.65.0",
     "typescript": "7.0.2",
-    "vnu-jar": "26.11.3"
+    "vnu-jar": "26.11.4"
   }
 }
