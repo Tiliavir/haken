@@ -4,6 +4,12 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
+## [0.6.3] - 2026-11-09
+
+### Fixed
+
+- Sync no longer quarantines a task whose completion changed on both sides; the merge wrote a property twice and rejected its own result.
+
 ## [0.6.2] - 2026-11-08
 
 ### Fixed
