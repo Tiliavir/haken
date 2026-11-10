@@ -21,7 +21,7 @@ jobs:
       PLAYWRIGHT_CHANNEL: chromium
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # Sonar attributes new code by history
       # The container runs as root, the checkout belongs to the runner user:
@@ -32,7 +32,7 @@ jobs:
           node -e 'const v = require("./package-lock.json").packages["node_modules/playwright-core"]?.version;
           if (!v) throw new Error("playwright-core missing in package-lock.json");
           console.log("version=" + v)' >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /ms-playwright
           key: playwright-${{ steps.playwright.outputs.version }}
