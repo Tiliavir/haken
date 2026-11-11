@@ -1,6 +1,6 @@
 # ADR-20261111: Label order kept on the device
 
-Status: Proposed
+Status: Accepted
 
 Supersedes, in [label views](ADR-20261108-label-views.md), "sorted by name".
 

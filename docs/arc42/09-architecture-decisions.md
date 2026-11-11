@@ -37,4 +37,4 @@ Status: `Proposed` → `Accepted` | `Rejected` | `Superseded by …`.
 | [ADR-20261108-label-views](adr/ADR-20261108-label-views.md) | Labels as views in the sidebar; lists stay collections; drop on a label labels (moves from a label view) | Accepted; partly superseded by label-edit, label-order |
 | [ADR-20261108-label-edit](adr/ADR-20261108-label-edit.md) | Rename and delete labels across tasks; *Labels* above the lists | Accepted |
 | [ADR-20261108-rule-locked-edits](adr/ADR-20261108-rule-locked-edits.md) | A rule haken cannot edit locks only the rule, completing and due/start; the rest of the task stays editable | Accepted |
-| [ADR-20261111-label-order](adr/ADR-20261111-label-order.md) | Labels reordered by dragging; the order stays on the device | Proposed |
+| [ADR-20261111-label-order](adr/ADR-20261111-label-order.md) | Labels reordered by dragging; the order stays on the device | Accepted |
