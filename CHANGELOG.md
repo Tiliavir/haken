@@ -4,6 +4,12 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
+## [Unreleased]
+
+### Added
+
+- Reorder labels in the sidebar by dragging them (or Alt+↑/↓). The order is kept on this device.
+
 ## [0.6.4] - 2026-11-09
 
 ### Fixed

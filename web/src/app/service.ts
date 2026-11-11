@@ -15,6 +15,7 @@ import {
 } from "../domain/errortask.js";
 import { asFocusOrder, type FocusPart } from "../domain/focus.js";
 import { type ImportResult, joinIcsFile, splitIcsFile } from "../domain/icsfile.js";
+import { asLabelOrder, relabelOrder } from "../domain/labels.js";
 import { compareTasks, orderAtEnd, orderOnTop, type Reorder, reorder } from "../domain/order.js";
 import {
   appleSeconds,
@@ -97,6 +98,8 @@ export interface Snapshot {
   readonly account: AccountRecord | null;
   readonly settings: Settings;
   readonly lists: readonly ListItem[];
+  /** Manual label order on this device (ADR-20261111-label-order). */
+  readonly labelOrder: readonly string[];
   readonly status: SyncStatus;
   readonly lastSync: number | null;
   readonly pending: number;
@@ -127,6 +130,17 @@ export interface ImportPreview {
   readonly replacing: number;
 }
 
+const LABEL_ORDER = "labelOrder";
+
+function invalidLabelOrder(cause?: unknown): InvalidInputError {
+  return new InvalidInputError(
+    "store",
+    "Stored state has an unexpected value",
+    { store: "state", key: LABEL_ORDER },
+    { cause },
+  );
+}
+
 export type LogoutChoice = "delete" | "keep" | "discard";
 
 export class AppService extends EventTarget implements ErrorSink {
@@ -150,6 +164,7 @@ export class AppService extends EventTarget implements ErrorSink {
       account: null,
       settings,
       lists: [],
+      labelOrder: [],
       status: { kind: "local" },
       lastSync: null,
       pending: 0,
@@ -220,6 +235,7 @@ export class AppService extends EventTarget implements ErrorSink {
         account: null,
         settings,
         lists: [],
+        labelOrder: [],
         status: { kind: "local" },
         lastSync: null,
         pending: 0,
@@ -234,6 +250,7 @@ export class AppService extends EventTarget implements ErrorSink {
       this.store.conflicts(),
     ]);
     const lastSync = await this.store.state("lastSync");
+    const labelOrder = await this.labelOrder();
     const tooLarge = new Set<string>();
     let quarantined = 0;
     for (const [key, value] of await this.store.allState()) {
@@ -248,6 +265,7 @@ export class AppService extends EventTarget implements ErrorSink {
       account: this.account,
       settings,
       lists: built.lists,
+      labelOrder,
       status: this.statusFor(pending, quarantined),
       lastSync: typeof lastSync === "number" ? lastSync : null,
       pending,
@@ -994,6 +1012,25 @@ export class AppService extends EventTarget implements ErrorSink {
 
   // ------------------------------------------------------------ labels
 
+  /** The stored label order (`state` key `labelOrder`, a JSON array); `[]` = by name. */
+  private async labelOrder(): Promise<string[]> {
+    const stored = await this.requireStore().state(LABEL_ORDER);
+    if (stored === null) return [];
+    if (typeof stored !== "string") throw invalidLabelOrder();
+    try {
+      return asLabelOrder(JSON.parse(stored));
+    } catch (error) {
+      throw invalidLabelOrder(error);
+    }
+  }
+
+  /** Stores the label order as shown after a move; on this device only (ADR-20261111-label-order). */
+  setLabelOrder(order: readonly string[]): Promise<void> {
+    return this.exclusive(() =>
+      this.changed({ putState: { [LABEL_ORDER]: JSON.stringify(asLabelOrder(order)) } }, false),
+    );
+  }
+
   /**
    * Renames `label` on every task carrying it; a task that has `name` already
    * keeps it once (ADR-20261108-label-edit).
@@ -1046,7 +1083,17 @@ export class AppService extends EventTarget implements ErrorSink {
           editedAt: now.getTime(),
         });
     }
-    if (putTasks.length > 0) await this.changed({ putTasks, expect, addOps });
+    const order = await this.labelOrder();
+    const nextOrder = relabelOrder(order, next);
+    const changedOrder =
+      nextOrder.length !== order.length || nextOrder.some((name, i) => name !== order[i]);
+    if (putTasks.length === 0 && !changedOrder) return;
+    await this.changed({
+      putTasks,
+      expect,
+      addOps,
+      putState: changedOrder ? { [LABEL_ORDER]: JSON.stringify(nextOrder) } : {},
+    });
   }
 
   useConflict(id: number): Promise<void> {

@@ -3,6 +3,7 @@ import type { ListItem, Snapshot, TaskItem } from "../app/service.js";
 import { byCodeUnit } from "../domain/compare.js";
 import { HakenError } from "../domain/errors.js";
 import { compareFocus, type FocusPart } from "../domain/focus.js";
+import { sortLabels } from "../domain/labels.js";
 import { compareTasks } from "../domain/order.js";
 import type { Due } from "../domain/vtodo.js";
 import type { ListId, SmartId } from "./route.js";
@@ -244,11 +245,11 @@ function userTasks(snapshot: Snapshot): TaskItem[] {
   return snapshot.lists.filter((l) => !l.errorlogs).flatMap((l) => l.tasks);
 }
 
-/** Labels in use on tasks of the user's lists, sorted by name (ADR-20261108-label-views). */
+/** Labels in use on tasks of the user's lists, in the manual order, the rest by name (ADR-20261111-label-order). */
 export function labelNames(snapshot: Snapshot, collator: Intl.Collator): string[] {
   const names = new Set<string>();
   for (const item of userTasks(snapshot)) for (const c of item.view?.categories ?? []) names.add(c);
-  return [...names].sort((a, b) => collator.compare(a, b) || byCodeUnit(a, b));
+  return sortLabels(names, snapshot.labelOrder, collator);
 }
 
 /** A label view: open tasks in manual order, then completed ones as in their lists. */

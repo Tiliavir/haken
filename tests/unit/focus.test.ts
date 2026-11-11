@@ -81,6 +81,7 @@ function snapshot(tasks: TaskItem[]): Snapshot {
         openCount: 1,
       },
     ],
+    labelOrder: [],
     status: { kind: "local" },
     lastSync: null,
     pending: 0,

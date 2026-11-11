@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Snapshot, TaskItem } from "../../web/src/app/service.js";
+import { asLabelOrder, moveLabel, relabelOrder, sortLabels } from "../../web/src/domain/labels.js";
 import { createTask, parseResource, readTask, type TaskView } from "../../web/src/domain/vtodo.js";
 import { labelCount, labelNames, labelTasks, labelUses } from "../../web/src/ui/views.js";
 
@@ -48,6 +49,7 @@ function snapshot(): Snapshot {
       list("/b/", false, [item("/b/", "b1", { categories: ["Home", "10 later"], sortOrder: 3 })]),
       list("/e/", true, [item("/e/", "e1", { categories: ["Errors"] })]),
     ],
+    labelOrder: [],
     status: { kind: "local" },
     lastSync: null,
     pending: 0,
@@ -57,6 +59,42 @@ function snapshot(): Snapshot {
 test("labels in use: by name, numbers natural, errorlogs excluded", () => {
   const collator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
   assert.deepEqual(labelNames(snapshot(), collator), ["10 later", "Home", "work"]);
+});
+
+const COLLATOR = new Intl.Collator("en", { sensitivity: "base", numeric: true });
+
+test("label order: ordered labels first, new ones after by name, unused ones ignored", () => {
+  const s: Snapshot = { ...snapshot(), labelOrder: ["work", "gone", "10 later"] };
+  assert.deepEqual(labelNames(s, COLLATOR), ["work", "10 later", "Home"]);
+  assert.deepEqual(sortLabels(["b", "a", "c"], ["c"], COLLATOR), ["c", "a", "b"]);
+});
+
+test("label order: a move stores the shown order, clamped to its ends", () => {
+  const shown = ["a", "b", "c"];
+  assert.deepEqual(moveLabel(shown, "c", 0), ["c", "a", "b"]);
+  assert.deepEqual(moveLabel(shown, "a", 1), ["b", "a", "c"]);
+  assert.deepEqual(moveLabel(shown, "a", 9), ["b", "c", "a"]);
+  assert.throws(() => moveLabel(shown, "x", 0), /Moved label is not shown/);
+});
+
+test("label order: rename keeps the place, a merge the first one, delete drops it", () => {
+  const order = ["a", "b", "c"];
+  const rename = (from: string, to: string) => (n: readonly string[]) =>
+    n.map((v) => (v === from ? to : v));
+  assert.deepEqual(relabelOrder(order, rename("b", "x")), ["a", "x", "c"]);
+  assert.deepEqual(relabelOrder(order, rename("c", "a")), ["a", "b"]);
+  assert.deepEqual(relabelOrder(order, rename("a", "c")), ["c", "b"]);
+  assert.deepEqual(
+    relabelOrder(order, (n) => n.filter((v) => v !== "b")),
+    ["a", "c"],
+  );
+});
+
+test("label order: stored values are validated strictly", () => {
+  assert.deepEqual(asLabelOrder(["a", "b"]), ["a", "b"]);
+  for (const bad of [null, "a", [1], [""], ["a", "a"], { 0: "a" }]) {
+    assert.throws(() => asLabelOrder(bad), /Invalid label order/);
+  }
 });
 
 test("a label view spans lists: open tasks by sort order, then completed", () => {

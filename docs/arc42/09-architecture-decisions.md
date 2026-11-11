@@ -34,6 +34,7 @@ Status: `Proposed` → `Accepted` | `Rejected` | `Superseded by …`.
 | [ADR-20261107-app-update](adr/ADR-20261107-app-update.md) | A new version is offered with *Reload*, never forced; *What's new* from `CHANGELOG.md` once after an update | Accepted |
 | [ADR-20261107-due-time](adr/ADR-20261107-due-time.md) | Optional due time, written as floating `DATE-TIME`; `DTSTART` and `UNTIL` follow its form | Proposed |
 | [ADR-20261107-focus-quick-add](adr/ADR-20261107-focus-quick-add.md) | *Quick add* in *Focus*: open tasks not in Focus, due in 7 days first, then important, then by list | Proposed |
-| [ADR-20261108-label-views](adr/ADR-20261108-label-views.md) | Labels as views in the sidebar; lists stay collections; drop on a label labels (moves from a label view) | Accepted; partly superseded by label-edit |
+| [ADR-20261108-label-views](adr/ADR-20261108-label-views.md) | Labels as views in the sidebar; lists stay collections; drop on a label labels (moves from a label view) | Accepted; partly superseded by label-edit, label-order |
 | [ADR-20261108-label-edit](adr/ADR-20261108-label-edit.md) | Rename and delete labels across tasks; *Labels* above the lists | Accepted |
 | [ADR-20261108-rule-locked-edits](adr/ADR-20261108-rule-locked-edits.md) | A rule haken cannot edit locks only the rule, completing and due/start; the rest of the task stays editable | Accepted |
+| [ADR-20261111-label-order](adr/ADR-20261111-label-order.md) | Labels reordered by dragging; the order stays on the device | Proposed |

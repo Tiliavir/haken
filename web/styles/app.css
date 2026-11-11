@@ -1493,7 +1493,8 @@ haken-setup {
   user-select: none;
 }
 
-.own-lists {
+.own-lists,
+.labels > .lists {
   position: relative;
 }
 
