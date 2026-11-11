@@ -33,6 +33,14 @@ async function drag(page: Page, from: Locator, to: Locator): Promise<void> {
   await page.mouse.up();
 }
 
+/** The element's box, read in one step once it is attached (boundingBox does not wait). */
+function box(locator: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
+  return locator.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  });
+}
+
 function labelLink(page: Page, name: string): Locator {
   return page.locator(".labels").getByRole("link", { name: new RegExp(`^${name}`) });
 }
@@ -89,6 +97,41 @@ test("labels are views: sidebar, add with label, drop adds or moves, order kept"
   await expect.poll(() => titles(page)).toEqual(["Tulips", "Bread"]);
   await labelLink(page, "Work").click();
   await expect.poll(async () => (await titles(page)).sort()).toEqual(["Milk", "Report"]);
+});
+
+test("labels reorder by drag and keyboard; the order survives reload and rename", async ({
+  page,
+}) => {
+  await setupLocal(page);
+  await addTask(page, "Milk");
+  for (const name of ["Alpha", "Beta", "Gamma"]) await label(page, "Milk", name);
+  // A reload settles the screen: no re-render pending that would replace the rows mid-drag.
+  await page.reload();
+  const names = page.locator(".labels .list-name");
+  await expect(names).toHaveText(["Alpha", "Beta", "Gamma"]);
+
+  // Drag Gamma above Alpha: dropping reorders and does not open the label.
+  const from = await box(labelLink(page, "Gamma"));
+  const to = await box(labelLink(page, "Alpha"));
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + 2, { steps: 10 });
+  await page.mouse.up();
+  await expect(names).toHaveText(["Gamma", "Alpha", "Beta"]);
+  await expect(page.getByRole("heading", { level: 1 })).not.toHaveText("Gamma");
+
+  await labelLink(page, "Beta").focus();
+  await page.keyboard.press("Alt+ArrowUp");
+  await expect(names).toHaveText(["Gamma", "Beta", "Alpha"]);
+  await page.reload();
+  await expect(names).toHaveText(["Gamma", "Beta", "Alpha"]);
+
+  // A renamed label keeps its place; a new one comes last.
+  await renameLabel(page, "Beta", "Zeta");
+  await expect(names).toHaveText(["Gamma", "Zeta", "Alpha"]);
+  await page.locator(".own-lists .list-row").first().click();
+  await label(page, "Milk", "Delta");
+  await expect(names).toHaveText(["Gamma", "Zeta", "Alpha", "Delta"]);
 });
 
 test("a typed label is kept when leaving the field without Enter", async ({ page }) => {
