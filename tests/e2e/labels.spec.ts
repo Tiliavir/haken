@@ -33,6 +33,14 @@ async function drag(page: Page, from: Locator, to: Locator): Promise<void> {
   await page.mouse.up();
 }
 
+/** The element's box, read in one step once it is attached (boundingBox does not wait). */
+function box(locator: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
+  return locator.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  });
+}
+
 function labelLink(page: Page, name: string): Locator {
   return page.locator(".labels").getByRole("link", { name: new RegExp(`^${name}`) });
 }
@@ -97,14 +105,14 @@ test("labels reorder by drag and keyboard; the order survives reload and rename"
   await setupLocal(page);
   await addTask(page, "Milk");
   for (const name of ["Alpha", "Beta", "Gamma"]) await label(page, "Milk", name);
-  await page.getByRole("link", { name: "Close" }).click();
+  // A reload settles the screen: no re-render pending that would replace the rows mid-drag.
+  await page.reload();
   const names = page.locator(".labels .list-name");
   await expect(names).toHaveText(["Alpha", "Beta", "Gamma"]);
 
   // Drag Gamma above Alpha: dropping reorders and does not open the label.
-  const from = await labelLink(page, "Gamma").boundingBox();
-  const to = await labelLink(page, "Alpha").boundingBox();
-  if (from === null || to === null) throw new Error("no boxes");
+  const from = await box(labelLink(page, "Gamma"));
+  const to = await box(labelLink(page, "Alpha"));
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(to.x + to.width / 2, to.y + 2, { steps: 10 });
