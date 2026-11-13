@@ -460,6 +460,13 @@ label {
   color: var(--control);
 }
 
+/* A label's emoji in place of its icon (ADR-20261113-label-emoji). */
+.icon.emoji {
+  font-size: 1.125rem;
+  line-height: 1.375rem;
+  text-align: center;
+}
+
 .labels .list-row[aria-current="page"] .icon,
 .labels .list-row.drop-target .icon {
   color: var(--accent);
@@ -1276,6 +1283,17 @@ haken-setup {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+/* Label above its field, like quick add: an inline label sat under the field's focus ring. */
+.dialog form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dialog .hint {
+  margin: 0;
 }
 
 .toast {

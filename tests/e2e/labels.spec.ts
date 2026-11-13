@@ -278,3 +278,40 @@ test("a label rename syncs, also to a task with a rule haken cannot edit", async
     .toBe("Label new e2e");
   expect(file("Label ro e2e")).toContain("RRULE:FREQ=MONTHLY;BYMONTHDAY=1,15\r\n");
 });
+
+test("a label's emoji replaces its icon on this device, survives reload and rename, never syncs", async ({
+  page,
+}) => {
+  await setupServer(page);
+  await addTask(page, "Emoji task");
+  await label(page, "Emoji task", "Garden");
+  await page.getByRole("link", { name: "Close" }).click();
+  const glyph = () => labelLink(page, "Garden").locator(".icon");
+
+  await editLabel(page, "Garden");
+  const emoji = page.getByRole("dialog").getByLabel("Emoji");
+  await emoji.fill("not an emoji");
+  await page.getByRole("button", { name: "Save" }).click();
+  // Constraint validation keeps the dialog open.
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await emoji.fill("🌱");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(glyph()).toHaveText("🌱");
+  await expect(glyph()).toHaveAttribute("aria-hidden", "true");
+
+  await page.reload();
+  await expect(glyph()).toHaveText("🌱");
+  await renameLabel(page, "Garden", "Yard");
+  await expect(labelLink(page, "Yard").locator(".icon")).toHaveText("🌱");
+
+  await waitSynced(page);
+  const ics = serverFiles("dev").find((f) => f.includes("SUMMARY:Emoji task\r")) ?? "";
+  expect(ics).toContain("CATEGORIES:Yard");
+  expect(ics).not.toContain("🌱");
+
+  // Emptying the field brings the tag icon back.
+  await editLabel(page, "Yard");
+  await page.getByRole("dialog").getByLabel("Emoji").fill("");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(labelLink(page, "Yard").locator("svg.icon")).toHaveCount(1);
+});

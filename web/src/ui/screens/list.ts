@@ -1,6 +1,7 @@
 /** List screen (chapter 8, Screens: List). */
 import type { TaskItem } from "../../app/service.js";
 import { HakenError } from "../../domain/errors.js";
+import { isEmoji } from "../../domain/labels.js";
 import { ruleLocked } from "../../domain/vtodo.js";
 import type { Ctx } from "../context.js";
 import { makeSortable } from "../dnd/sortable.js";
@@ -308,8 +309,10 @@ interface NameMenu {
   readonly deleteText: string;
   readonly name: string;
   readonly maxLength: number;
-  /** Called with a changed, non-empty name. */
-  readonly rename: (value: string) => void;
+  /** The current emoji (`""`: none); `undefined`: no emoji field. */
+  readonly emoji?: string;
+  /** Called with what changed: a non-empty name, an emoji or `""` to remove it. */
+  readonly save: (change: { readonly name?: string; readonly emoji?: string }) => void;
   readonly remove: () => void;
 }
 
@@ -325,6 +328,14 @@ function nameMenu(ctx: Ctx, menu: NameMenu): HTMLElement {
       required: true,
       autocomplete: "off",
     });
+    const emojiInput =
+      menu.emoji === undefined
+        ? null
+        : h("input", { type: "text", name: "emoji", value: menu.emoji, autocomplete: "off" });
+    emojiInput?.addEventListener("input", () => {
+      const value = emojiInput.value.trim();
+      emojiInput.setCustomValidity(value === "" || isEmoji(value) ? "" : t("labels.emojiInvalid"));
+    });
     fill(
       dialog,
       h(
@@ -332,12 +343,18 @@ function nameMenu(ctx: Ctx, menu: NameMenu): HTMLElement {
         {
           method: "dialog",
           onsubmit: () => {
-            const value = nameInput.value.trim();
-            if (value !== "" && value !== menu.name) menu.rename(value);
+            const name = nameInput.value.trim();
+            const emoji = emojiInput?.value.trim();
+            menu.save({
+              ...(name !== "" && name !== menu.name ? { name } : {}),
+              ...(emoji !== undefined && emoji !== menu.emoji ? { emoji } : {}),
+            });
           },
         },
         h("h2", {}, menu.title),
         h("label", {}, t("list.name"), nameInput),
+        emojiInput === null ? null : h("label", {}, t("labels.emoji"), emojiInput),
+        emojiInput === null ? null : h("p", { class: "hint" }, t("labels.emojiHint")),
         h(
           "div",
           { class: "actions" },
@@ -374,7 +391,9 @@ function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
     deleteText: t("list.delete"),
     name,
     maxLength: 200,
-    rename: (value) => ctx.run("ui.renameList", () => ctx.app.renameList(href, value)),
+    save: ({ name: value }) => {
+      if (value !== undefined) ctx.run("ui.renameList", () => ctx.app.renameList(href, value));
+    },
     remove: () => remove(ctx, href, name),
   });
 }
@@ -425,18 +444,27 @@ function remove(ctx: Ctx, href: string, name: string): void {
   confirmInput.focus();
 }
 
-/** *Edit label*: rename or delete it on every task carrying it (ADR-20261108-label-edit). */
+/**
+ * *Edit label*: rename or delete it on every task carrying it (ADR-20261108-label-edit);
+ * its emoji stays on this device (ADR-20261113-label-emoji).
+ */
 function labelMenu(ctx: Ctx, label: string): HTMLElement {
   return nameMenu(ctx, {
     title: t("labels.edit"),
     deleteText: t("labels.delete"),
     name: label,
     maxLength: 100,
-    rename: (value) =>
-      ctx.run("ui.renameLabel", async () => {
-        await ctx.app.renameLabel(label, value);
-        ctx.navigate({ kind: "list", list: { kind: "label", name: value } });
-      }),
+    emoji: ctx.snapshot.labelEmoji.get(label) ?? "",
+    save: ({ name, emoji }) => {
+      if (name === undefined && emoji === undefined) return;
+      ctx.run("ui.editLabel", async () => {
+        if (emoji !== undefined) await ctx.app.setLabelEmoji(label, emoji);
+        if (name !== undefined) {
+          await ctx.app.renameLabel(label, name);
+          ctx.navigate({ kind: "list", list: { kind: "label", name } });
+        }
+      });
+    },
     remove: () => removeLabel(ctx, label),
   });
 }

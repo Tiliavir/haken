@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Snapshot, TaskItem } from "../../web/src/app/service.js";
-import { asLabelOrder, moveLabel, relabelOrder, sortLabels } from "../../web/src/domain/labels.js";
+import {
+  asLabelEmoji,
+  asLabelOrder,
+  isEmoji,
+  moveLabel,
+  relabelEmoji,
+  relabelOrder,
+  sortLabels,
+  withLabelEmoji,
+} from "../../web/src/domain/labels.js";
 import { createTask, parseResource, readTask, type TaskView } from "../../web/src/domain/vtodo.js";
 import { labelCount, labelNames, labelTasks, labelUses } from "../../web/src/ui/views.js";
 
@@ -50,6 +59,7 @@ function snapshot(): Snapshot {
       list("/e/", true, [item("/e/", "e1", { categories: ["Errors"] })]),
     ],
     labelOrder: [],
+    labelEmoji: new Map(),
     status: { kind: "local" },
     lastSync: null,
     pending: 0,
@@ -140,4 +150,45 @@ test("createTask writes labels as CATEGORIES", () => {
     NOW,
   );
   assert.deepEqual(readTask(parseResource(ics)).categories, ["Home", "Garden, front"]);
+});
+
+test("label emoji: exactly one emoji, flags and ZWJ sequences included", () => {
+  for (const ok of ["🌱", "❤️", "👩‍👩‍👧", "🇨🇭", "👍🏽"]) assert.equal(isEmoji(ok), true, ok);
+  for (const bad of ["", "a", "🌱🌱", "🌱a", "1", "★ "]) assert.equal(isEmoji(bad), false, bad);
+});
+
+test("label emoji: set, remove, rename and delete", () => {
+  const start = withLabelEmoji(new Map(), "a", "🌱");
+  assert.deepEqual(
+    [...withLabelEmoji(start, "b", "🔥")],
+    [
+      ["a", "🌱"],
+      ["b", "🔥"],
+    ],
+  );
+  assert.deepEqual([...withLabelEmoji(start, "a", "")], []);
+  assert.throws(() => withLabelEmoji(start, "a", "x"), /Not one emoji/);
+  const both = new Map([
+    ["a", "🌱"],
+    ["b", "🔥"],
+  ]);
+  const rename = (from: string, to: string) => (n: readonly string[]) =>
+    n.map((v) => (v === from ? to : v));
+  assert.deepEqual(
+    [...relabelEmoji(both, rename("a", "x"))],
+    [
+      ["b", "🔥"],
+      ["x", "🌱"],
+    ],
+  );
+  // Onto a label with its own emoji: that one stays.
+  assert.deepEqual([...relabelEmoji(both, rename("a", "b"))], [["b", "🔥"]]);
+  assert.deepEqual([...relabelEmoji(both, (n) => n.filter((v) => v !== "a"))], [["b", "🔥"]]);
+});
+
+test("label emoji: stored values are validated strictly", () => {
+  assert.deepEqual([...asLabelEmoji({ a: "🌱" })], [["a", "🌱"]]);
+  for (const bad of [null, [], "a", { a: 1 }, { a: "x" }, { "": "🌱" }]) {
+    assert.throws(() => asLabelEmoji(bad), /Invalid label emoji/);
+  }
 });
