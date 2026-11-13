@@ -1,6 +1,7 @@
 /** List screen (chapter 8, Screens: List). */
 import type { TaskItem } from "../../app/service.js";
 import { HakenError } from "../../domain/errors.js";
+import { isEmoji } from "../../domain/labels.js";
 import { ruleLocked } from "../../domain/vtodo.js";
 import type { Ctx } from "../context.js";
 import { makeSortable } from "../dnd/sortable.js";
@@ -66,6 +67,53 @@ function taskRow(
       movable,
     ),
     starButton(ctx, item, view),
+  );
+}
+
+/**
+ * In *errorlogs*: the tasks and lists sync skips (ADR-20261104-sync-quarantine),
+ * each linked to where it can be fixed. Editing a task retries it.
+ */
+function notSynced(ctx: Ctx): HTMLElement | null {
+  const hrefs = ctx.snapshot.quarantined;
+  if (hrefs.length === 0) return null;
+  const row = (href: string): HTMLElement => {
+    const list = ctx.snapshot.lists.find((l) => l.href === href);
+    const task = list === undefined ? ctx.app.findItem(href) : null;
+    let title: string;
+    let target: string | null = null;
+    if (list !== undefined) {
+      title = list.name;
+      target = toHash({ kind: "list", list: { kind: "list", href } });
+    } else if (task !== null) {
+      const summary = task.view?.summary ?? null;
+      if (summary === null) title = t("task.readonly");
+      else title = summary === "" ? t("task.untitled") : summary;
+      target = toHash({
+        kind: "task",
+        list: { kind: "list", href: task.list },
+        task: href,
+      });
+    } else {
+      // Known only to the server, e.g. a new task that could not be read.
+      title = href;
+    }
+    const text = h("span", { class: "title" }, title);
+    return h(
+      "li",
+      { class: "task-row" },
+      h("span", { class: "check-placeholder" }, icon("alert")),
+      target === null
+        ? h("span", { class: "task-title" }, text)
+        : h("a", { class: "task-title", href: target }, text),
+    );
+  };
+  return h(
+    "section",
+    { class: "not-synced", "aria-labelledby": "not-synced-title" },
+    h("h2", { class: "section-title", id: "not-synced-title" }, tp("sync.notSynced", hrefs.length)),
+    h("p", { class: "hint" }, t("sync.notSyncedHint")),
+    h("ul", { class: "tasks" }, hrefs.map(row)),
   );
 }
 
@@ -205,6 +253,7 @@ export class HakenList extends HTMLElement {
     fill(
       this,
       header,
+      shown.list?.errorlogs === true ? notSynced(ctx) : null,
       target === null ? null : add,
       open.length === 0 && done.length === 0 ? h("p", { class: "empty" }, t("list.empty")) : null,
       parts ?? openList,
@@ -260,8 +309,10 @@ interface NameMenu {
   readonly deleteText: string;
   readonly name: string;
   readonly maxLength: number;
-  /** Called with a changed, non-empty name. */
-  readonly rename: (value: string) => void;
+  /** The current emoji (`""`: none); `undefined`: no emoji field. */
+  readonly emoji?: string;
+  /** Called with what changed: a non-empty name, an emoji or `""` to remove it. */
+  readonly save: (change: { readonly name?: string; readonly emoji?: string }) => void;
   readonly remove: () => void;
 }
 
@@ -277,6 +328,14 @@ function nameMenu(ctx: Ctx, menu: NameMenu): HTMLElement {
       required: true,
       autocomplete: "off",
     });
+    const emojiInput =
+      menu.emoji === undefined
+        ? null
+        : h("input", { type: "text", name: "emoji", value: menu.emoji, autocomplete: "off" });
+    emojiInput?.addEventListener("input", () => {
+      const value = emojiInput.value.trim();
+      emojiInput.setCustomValidity(value === "" || isEmoji(value) ? "" : t("labels.emojiInvalid"));
+    });
     fill(
       dialog,
       h(
@@ -284,12 +343,18 @@ function nameMenu(ctx: Ctx, menu: NameMenu): HTMLElement {
         {
           method: "dialog",
           onsubmit: () => {
-            const value = nameInput.value.trim();
-            if (value !== "" && value !== menu.name) menu.rename(value);
+            const name = nameInput.value.trim();
+            const emoji = emojiInput?.value.trim();
+            menu.save({
+              ...(name !== "" && name !== menu.name ? { name } : {}),
+              ...(emoji !== undefined && emoji !== menu.emoji ? { emoji } : {}),
+            });
           },
         },
         h("h2", {}, menu.title),
         h("label", {}, t("list.name"), nameInput),
+        emojiInput === null ? null : h("label", {}, t("labels.emoji"), emojiInput),
+        emojiInput === null ? null : h("p", { class: "hint" }, t("labels.emojiHint")),
         h(
           "div",
           { class: "actions" },
@@ -326,7 +391,9 @@ function listMenu(ctx: Ctx, href: string, name: string): HTMLElement {
     deleteText: t("list.delete"),
     name,
     maxLength: 200,
-    rename: (value) => ctx.run("ui.renameList", () => ctx.app.renameList(href, value)),
+    save: ({ name: value }) => {
+      if (value !== undefined) ctx.run("ui.renameList", () => ctx.app.renameList(href, value));
+    },
     remove: () => remove(ctx, href, name),
   });
 }
@@ -377,18 +444,27 @@ function remove(ctx: Ctx, href: string, name: string): void {
   confirmInput.focus();
 }
 
-/** *Edit label*: rename or delete it on every task carrying it (ADR-20261108-label-edit). */
+/**
+ * *Edit label*: rename or delete it on every task carrying it (ADR-20261108-label-edit);
+ * its emoji stays on this device (ADR-20261113-label-emoji).
+ */
 function labelMenu(ctx: Ctx, label: string): HTMLElement {
   return nameMenu(ctx, {
     title: t("labels.edit"),
     deleteText: t("labels.delete"),
     name: label,
     maxLength: 100,
-    rename: (value) =>
-      ctx.run("ui.renameLabel", async () => {
-        await ctx.app.renameLabel(label, value);
-        ctx.navigate({ kind: "list", list: { kind: "label", name: value } });
-      }),
+    emoji: ctx.snapshot.labelEmoji.get(label) ?? "",
+    save: ({ name, emoji }) => {
+      if (name === undefined && emoji === undefined) return;
+      ctx.run("ui.editLabel", async () => {
+        if (emoji !== undefined) await ctx.app.setLabelEmoji(label, emoji);
+        if (name !== undefined) {
+          await ctx.app.renameLabel(label, name);
+          ctx.navigate({ kind: "list", list: { kind: "label", name } });
+        }
+      });
+    },
     remove: () => removeLabel(ctx, label),
   });
 }

@@ -4,6 +4,7 @@
  * is on disk; sync runs separately. Queries are snapshots rebuilt from the
  * store after every change.
  */
+import { byCodeUnit } from "../domain/compare.js";
 import { type AppConfig, parseConfig } from "../domain/config.js";
 import { HakenError, InvalidInputError } from "../domain/errors.js";
 import {
@@ -15,7 +16,14 @@ import {
 } from "../domain/errortask.js";
 import { asFocusOrder, type FocusPart } from "../domain/focus.js";
 import { type ImportResult, joinIcsFile, splitIcsFile } from "../domain/icsfile.js";
-import { asLabelOrder, relabelOrder } from "../domain/labels.js";
+import {
+  asLabelEmoji,
+  asLabelOrder,
+  labelEmojiJson,
+  relabelEmoji,
+  relabelOrder,
+  withLabelEmoji,
+} from "../domain/labels.js";
 import { compareTasks, orderAtEnd, orderOnTop, type Reorder, reorder } from "../domain/order.js";
 import {
   appleSeconds,
@@ -45,7 +53,7 @@ import {
   type SetupStep,
   type TaskRecord,
 } from "../store/records.js";
-import { homeOf, type Notice, QUARANTINE, SyncRunner } from "../sync/runner.js";
+import { homeOf, type Notice, QUARANTINE, quarantinedHref, SyncRunner } from "../sync/runner.js";
 import { APP_VERSION, ErrorReporter, type ErrorSink } from "./errors.js";
 
 export type { Frequency, Recurrence, Weekday } from "../domain/recurrence.js";
@@ -100,9 +108,13 @@ export interface Snapshot {
   readonly lists: readonly ListItem[];
   /** Manual label order on this device (ADR-20261111-label-order). */
   readonly labelOrder: readonly string[];
+  /** Emoji shown instead of a label's icon, on this device (ADR-20261113-label-emoji). */
+  readonly labelEmoji: ReadonlyMap<string, string>;
   readonly status: SyncStatus;
   readonly lastSync: number | null;
   readonly pending: number;
+  /** Task and list paths sync skips (ADR-20261104-sync-quarantine), sorted. */
+  readonly quarantined: readonly string[];
 }
 
 export type AddResult = { readonly kind: "ok"; readonly href: string };
@@ -131,12 +143,13 @@ export interface ImportPreview {
 }
 
 const LABEL_ORDER = "labelOrder";
+const LABEL_EMOJI = "labelEmoji";
 
-function invalidLabelOrder(cause?: unknown): InvalidInputError {
+function invalidState(key: string, cause?: unknown): InvalidInputError {
   return new InvalidInputError(
     "store",
     "Stored state has an unexpected value",
-    { store: "state", key: LABEL_ORDER },
+    { store: "state", key },
     { cause },
   );
 }
@@ -165,9 +178,11 @@ export class AppService extends EventTarget implements ErrorSink {
       settings,
       lists: [],
       labelOrder: [],
+      labelEmoji: new Map(),
       status: { kind: "local" },
       lastSync: null,
       pending: 0,
+      quarantined: [],
     };
   }
 
@@ -236,9 +251,11 @@ export class AppService extends EventTarget implements ErrorSink {
         settings,
         lists: [],
         labelOrder: [],
+        labelEmoji: new Map(),
         status: { kind: "local" },
         lastSync: null,
         pending: 0,
+        quarantined: [],
       };
       this.dispatchEvent(new Event("change"));
       return;
@@ -251,12 +268,13 @@ export class AppService extends EventTarget implements ErrorSink {
     ]);
     const lastSync = await this.store.state("lastSync");
     const labelOrder = await this.labelOrder();
+    const labelEmoji = await this.labelEmoji();
     const tooLarge = new Set<string>();
-    let quarantined = 0;
+    const quarantined = new Set<string>();
     for (const [key, value] of await this.store.allState()) {
       if (key.startsWith("tooLarge:") && value !== null)
         tooLarge.add(key.slice("tooLarge:".length));
-      if (key.startsWith(QUARANTINE) && value !== null) quarantined++;
+      if (key.startsWith(QUARANTINE) && value !== null) quarantined.add(quarantinedHref(key));
     }
     const pending = outbox.length;
     const pendingHrefs = new Set(outbox.map((o) => o.href));
@@ -266,9 +284,11 @@ export class AppService extends EventTarget implements ErrorSink {
       settings,
       lists: built.lists,
       labelOrder,
-      status: this.statusFor(pending, quarantined),
+      labelEmoji,
+      status: this.statusFor(pending, quarantined.size),
       lastSync: typeof lastSync === "number" ? lastSync : null,
       pending,
+      quarantined: [...quarantined].sort(byCodeUnit),
     };
     for (const orphan of built.orphans) {
       if (this.reportedOrphans.has(orphan)) continue;
@@ -1016,11 +1036,11 @@ export class AppService extends EventTarget implements ErrorSink {
   private async labelOrder(): Promise<string[]> {
     const stored = await this.requireStore().state(LABEL_ORDER);
     if (stored === null) return [];
-    if (typeof stored !== "string") throw invalidLabelOrder();
+    if (typeof stored !== "string") throw invalidState(LABEL_ORDER);
     try {
       return asLabelOrder(JSON.parse(stored));
     } catch (error) {
-      throw invalidLabelOrder(error);
+      throw invalidState(LABEL_ORDER, error);
     }
   }
 
@@ -1029,6 +1049,26 @@ export class AppService extends EventTarget implements ErrorSink {
     return this.exclusive(() =>
       this.changed({ putState: { [LABEL_ORDER]: JSON.stringify(asLabelOrder(order)) } }, false),
     );
+  }
+
+  /** The stored emoji per label (`state` key `labelEmoji`, a JSON object). */
+  private async labelEmoji(): Promise<Map<string, string>> {
+    const stored = await this.requireStore().state(LABEL_EMOJI);
+    if (stored === null) return new Map();
+    if (typeof stored !== "string") throw invalidState(LABEL_EMOJI);
+    try {
+      return asLabelEmoji(JSON.parse(stored));
+    } catch (error) {
+      throw invalidState(LABEL_EMOJI, error);
+    }
+  }
+
+  /** Shows `emoji` instead of `label`'s icon (`""` removes it); on this device only (ADR-20261113-label-emoji). */
+  setLabelEmoji(label: string, emoji: string): Promise<void> {
+    return this.exclusive(async () => {
+      const next = withLabelEmoji(await this.labelEmoji(), label, emoji);
+      await this.changed({ putState: { [LABEL_EMOJI]: labelEmojiJson(next) } }, false);
+    });
   }
 
   /**
@@ -1087,12 +1127,18 @@ export class AppService extends EventTarget implements ErrorSink {
     const nextOrder = relabelOrder(order, next);
     const changedOrder =
       nextOrder.length !== order.length || nextOrder.some((name, i) => name !== order[i]);
-    if (putTasks.length === 0 && !changedOrder) return;
+    const emoji = await this.labelEmoji();
+    const nextEmoji = relabelEmoji(emoji, next);
+    const changedEmoji = labelEmojiJson(nextEmoji) !== labelEmojiJson(emoji);
+    if (putTasks.length === 0 && !changedOrder && !changedEmoji) return;
     await this.changed({
       putTasks,
       expect,
       addOps,
-      putState: changedOrder ? { [LABEL_ORDER]: JSON.stringify(nextOrder) } : {},
+      putState: {
+        ...(changedOrder ? { [LABEL_ORDER]: JSON.stringify(nextOrder) } : {}),
+        ...(changedEmoji ? { [LABEL_EMOJI]: labelEmojiJson(nextEmoji) } : {}),
+      },
     });
   }
 

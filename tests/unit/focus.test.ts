@@ -82,9 +82,11 @@ function snapshot(tasks: TaskItem[]): Snapshot {
       },
     ],
     labelOrder: [],
+    labelEmoji: new Map(),
     status: { kind: "local" },
     lastSync: null,
     pending: 0,
+    quarantined: [],
   };
 }
 

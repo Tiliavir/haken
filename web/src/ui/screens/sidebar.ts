@@ -40,12 +40,21 @@ function row(
   iconName: IconName,
   name: string,
   count: number,
-  options: { readonly sortable?: boolean; readonly color?: string | null } = {},
+  options: {
+    readonly sortable?: boolean;
+    readonly color?: string | null;
+    readonly emoji?: string | undefined;
+  } = {},
 ): HTMLElement {
   const href = toHash({ kind: "list", list: id });
-  const glyph = icon(iconName);
-  // The list's own colour (calendar-color) as an SVG presentation attribute: no inline style.
-  if (options.color != null) glyph.setAttribute("color", options.color.slice(0, 7));
+  let glyph: Element;
+  if (options.emoji === undefined) {
+    glyph = icon(iconName);
+    // The list's own colour (calendar-color) as an SVG presentation attribute: no inline style.
+    if (options.color != null) glyph.setAttribute("color", options.color.slice(0, 7));
+  } else {
+    glyph = h("span", { class: "icon emoji", "aria-hidden": "true" }, options.emoji);
+  }
   const sortable = options.sortable === true;
   return h(
     "li",
@@ -195,7 +204,8 @@ function ownLists(ctx: Ctx): HTMLElement {
 
 /**
  * Labels in use, as views, above the lists (ADR-20261108-label-edit); hidden while there are none.
- * Reordered by dragging the row, kept on this device (ADR-20261111-label-order).
+ * Reordered by dragging the row, kept on this device (ADR-20261111-label-order);
+ * an emoji set for a label replaces its tag icon (ADR-20261113-label-emoji).
  */
 function labelSection(ctx: Ctx): HTMLElement | null {
   const names = labelNames(ctx.snapshot, collator());
@@ -206,6 +216,7 @@ function labelSection(ctx: Ctx): HTMLElement | null {
     names.map((name) =>
       row(ctx, { kind: "label", name }, "tag", name, labelCount(ctx.snapshot, name), {
         sortable: true,
+        emoji: ctx.snapshot.labelEmoji.get(name),
       }),
     ),
   );

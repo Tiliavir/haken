@@ -4,6 +4,17 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
+## [0.6.6] - 2026-11-13
+
+### Added
+
+- An emoji per label (*Edit label*) replaces its icon in the sidebar; kept on this device, never synced.
+- *errorlogs* lists the tasks and lists sync skips after an error under *Not synced*, each linked to it, so it can be found and changed to retry it.
+
+### Changed
+
+- Dialog fields have their label above them.
+
 ## [0.6.5] - 2026-11-11
 
 ### Added
