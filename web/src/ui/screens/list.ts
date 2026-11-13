@@ -69,6 +69,53 @@ function taskRow(
   );
 }
 
+/**
+ * In *errorlogs*: the tasks and lists sync skips (ADR-20261104-sync-quarantine),
+ * each linked to where it can be fixed. Editing a task retries it.
+ */
+function notSynced(ctx: Ctx): HTMLElement | null {
+  const hrefs = ctx.snapshot.quarantined;
+  if (hrefs.length === 0) return null;
+  const row = (href: string): HTMLElement => {
+    const list = ctx.snapshot.lists.find((l) => l.href === href);
+    const task = list === undefined ? ctx.app.findItem(href) : null;
+    let title: string;
+    let target: string | null = null;
+    if (list !== undefined) {
+      title = list.name;
+      target = toHash({ kind: "list", list: { kind: "list", href } });
+    } else if (task !== null) {
+      const summary = task.view?.summary ?? null;
+      if (summary === null) title = t("task.readonly");
+      else title = summary === "" ? t("task.untitled") : summary;
+      target = toHash({
+        kind: "task",
+        list: { kind: "list", href: task.list },
+        task: href,
+      });
+    } else {
+      // Known only to the server, e.g. a new task that could not be read.
+      title = href;
+    }
+    const text = h("span", { class: "title" }, title);
+    return h(
+      "li",
+      { class: "task-row" },
+      h("span", { class: "check-placeholder" }, icon("alert")),
+      target === null
+        ? h("span", { class: "task-title" }, text)
+        : h("a", { class: "task-title", href: target }, text),
+    );
+  };
+  return h(
+    "section",
+    { class: "not-synced", "aria-labelledby": "not-synced-title" },
+    h("h2", { class: "section-title", id: "not-synced-title" }, tp("sync.notSynced", hrefs.length)),
+    h("p", { class: "hint" }, t("sync.notSyncedHint")),
+    h("ul", { class: "tasks" }, hrefs.map(row)),
+  );
+}
+
 export class HakenList extends HTMLElement {
   render(ctx: Ctx, listId: ListId): void {
     const shown = show(ctx.snapshot, listId, ctx.now);
@@ -205,6 +252,7 @@ export class HakenList extends HTMLElement {
     fill(
       this,
       header,
+      shown.list?.errorlogs === true ? notSynced(ctx) : null,
       target === null ? null : add,
       open.length === 0 && done.length === 0 ? h("p", { class: "empty" }, t("list.empty")) : null,
       parts ?? openList,

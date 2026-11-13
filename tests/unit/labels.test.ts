@@ -53,6 +53,7 @@ function snapshot(): Snapshot {
     status: { kind: "local" },
     lastSync: null,
     pending: 0,
+    quarantined: [],
   };
 }
 

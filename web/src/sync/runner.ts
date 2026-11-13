@@ -68,6 +68,13 @@ const STALE_RETRIES = 3;
  */
 export const QUARANTINE = "quarantine:";
 const PULL = "pull:";
+
+/** The task or list path of a quarantine `state` key. */
+export function quarantinedHref(key: string): string {
+  if (!key.startsWith(QUARANTINE)) throw new HakenError("sync", "Not a quarantine key", { key });
+  const rest = key.slice(QUARANTINE.length);
+  return rest.startsWith(PULL) ? rest.slice(PULL.length) : rest;
+}
 /** Server state of a resource the server reported removed (an ETag is always quoted). */
 const GONE = "gone";
 

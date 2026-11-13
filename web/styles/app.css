@@ -228,6 +228,11 @@ label {
   font-size: 0.8125rem;
 }
 
+/* errorlogs: items sync skips (quarantine). */
+.not-synced .hint {
+  margin: 0 0.625rem 0.25rem;
+}
+
 /* ------------------------------------------------------------ layout */
 
 .shell {

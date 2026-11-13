@@ -4,6 +4,7 @@
  * is on disk; sync runs separately. Queries are snapshots rebuilt from the
  * store after every change.
  */
+import { byCodeUnit } from "../domain/compare.js";
 import { type AppConfig, parseConfig } from "../domain/config.js";
 import { HakenError, InvalidInputError } from "../domain/errors.js";
 import {
@@ -45,7 +46,7 @@ import {
   type SetupStep,
   type TaskRecord,
 } from "../store/records.js";
-import { homeOf, type Notice, QUARANTINE, SyncRunner } from "../sync/runner.js";
+import { homeOf, type Notice, QUARANTINE, quarantinedHref, SyncRunner } from "../sync/runner.js";
 import { APP_VERSION, ErrorReporter, type ErrorSink } from "./errors.js";
 
 export type { Frequency, Recurrence, Weekday } from "../domain/recurrence.js";
@@ -103,6 +104,8 @@ export interface Snapshot {
   readonly status: SyncStatus;
   readonly lastSync: number | null;
   readonly pending: number;
+  /** Task and list paths sync skips (ADR-20261104-sync-quarantine), sorted. */
+  readonly quarantined: readonly string[];
 }
 
 export type AddResult = { readonly kind: "ok"; readonly href: string };
@@ -168,6 +171,7 @@ export class AppService extends EventTarget implements ErrorSink {
       status: { kind: "local" },
       lastSync: null,
       pending: 0,
+      quarantined: [],
     };
   }
 
@@ -239,6 +243,7 @@ export class AppService extends EventTarget implements ErrorSink {
         status: { kind: "local" },
         lastSync: null,
         pending: 0,
+        quarantined: [],
       };
       this.dispatchEvent(new Event("change"));
       return;
@@ -252,11 +257,11 @@ export class AppService extends EventTarget implements ErrorSink {
     const lastSync = await this.store.state("lastSync");
     const labelOrder = await this.labelOrder();
     const tooLarge = new Set<string>();
-    let quarantined = 0;
+    const quarantined = new Set<string>();
     for (const [key, value] of await this.store.allState()) {
       if (key.startsWith("tooLarge:") && value !== null)
         tooLarge.add(key.slice("tooLarge:".length));
-      if (key.startsWith(QUARANTINE) && value !== null) quarantined++;
+      if (key.startsWith(QUARANTINE) && value !== null) quarantined.add(quarantinedHref(key));
     }
     const pending = outbox.length;
     const pendingHrefs = new Set(outbox.map((o) => o.href));
@@ -266,9 +271,10 @@ export class AppService extends EventTarget implements ErrorSink {
       settings,
       lists: built.lists,
       labelOrder,
-      status: this.statusFor(pending, quarantined),
+      status: this.statusFor(pending, quarantined.size),
       lastSync: typeof lastSync === "number" ? lastSync : null,
       pending,
+      quarantined: [...quarantined].sort(byCodeUnit),
     };
     for (const orphan of built.orphans) {
       if (this.reportedOrphans.has(orphan)) continue;

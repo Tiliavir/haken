@@ -224,3 +224,48 @@ test("two tabs of the same account: edits in one show in the other, both sync", 
   await expect(page.locator(".task-row .title", { hasText: "From tab two" })).toBeVisible();
   await expect(page.locator(".completed")).toHaveCount(1);
 });
+
+test("errorlogs lists a task sync skips and links to it", async ({ page, context, request }) => {
+  await setupServer(page);
+  await waitSynced(page);
+  const list = await listHref(request, "Haken");
+  // Offline, haken creates a task whose UID another client then uses for another resource.
+  await context.setOffline(true);
+  await page.getByRole("link", { name: "Settings" }).click();
+  const [chooser] = await Promise.all([
+    page.waitForEvent("filechooser"),
+    page.getByRole("button", { name: "Import", exact: true }).click(),
+  ]);
+  const vtodo = (summary: string) =>
+    [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//e2e//other client//EN",
+      "BEGIN:VTODO",
+      "UID:e2e-clash",
+      "DTSTAMP:20261101T000000Z",
+      `SUMMARY:${summary}`,
+      "END:VTODO",
+      "END:VCALENDAR",
+      "",
+    ].join("\r\n");
+  await chooser.setFiles({
+    name: "in.ics",
+    mimeType: "text/calendar",
+    buffer: Buffer.from(vtodo("Clash")),
+  });
+  await page.locator("dialog").getByRole("button", { name: "Import" }).click();
+  const put = await request.fetch(radicale(`${list}e2e-other.ics`), {
+    method: "PUT",
+    headers: { ...AUTH, "Content-Type": "text/calendar", "If-None-Match": "*" },
+    data: vtodo("Other client"),
+  });
+  expect(put.status()).toBe(201);
+  await context.setOffline(false);
+  await syncNow(page);
+  await page.getByRole("link", { name: "1 item not synced" }).click({ timeout: 15_000 });
+  const section = page.getByRole("region", { name: "Not synced · 1" });
+  await expect(section).toBeVisible();
+  await section.getByRole("link", { name: "Clash" }).click();
+  await expect(page.getByLabel("Title")).toHaveValue("Clash");
+});
