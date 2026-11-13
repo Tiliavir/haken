@@ -1,6 +1,6 @@
 # ADR-20261113: Label emoji kept on the device
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 
