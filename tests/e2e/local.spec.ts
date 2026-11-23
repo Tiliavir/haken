@@ -212,3 +212,33 @@ test("desktop task detail sits beside the list, or overlays it when narrow", asy
     await page.getByRole("link", { name: "Close" }).click();
   }
 });
+
+test("mobile: a re-render keeps the scroll position while the add field has focus", async ({
+  page,
+}) => {
+  await setupLocal(page);
+  for (let i = 1; i <= 15; i++) await addTask(page, `Task ${i}`);
+  // Open the list by its route: on mobile, the start route shows the lists.
+  await page
+    .getByRole("navigation", { name: "Lists" })
+    .getByRole("link", { name: /^Haken/ })
+    .click();
+  await page.setViewportSize({ width: 390, height: 640 });
+  const input = page.getByPlaceholder("Add a task");
+  await addTask(page, "Task 16");
+  await expect(input).toBeFocused();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  // Stands in for the on-screen keyboard covering the field: out of view, focus() would scroll to it.
+  await page.evaluate(() => {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(".add-task { position: static; }");
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+  });
+  // Any re-render (here: system theme change) restores focus; it must not scroll.
+  await input.evaluate((el) => el.classList.add("stale"));
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator(".add-input.stale")).toHaveCount(0);
+  await expect(input).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});

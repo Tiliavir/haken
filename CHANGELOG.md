@@ -4,6 +4,12 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
+## [Unreleased]
+
+### Fixed
+
+- Mobile: while adding tasks, scrolling up no longer jumps back to the add field; it stays at the bottom, above the on-screen keyboard.
+
 ## [0.6.6] - 2026-11-13
 
 ### Added

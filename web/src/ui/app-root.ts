@@ -328,7 +328,8 @@ export class HakenApp extends HTMLElement {
       if (selectable && focus.start !== null && focus.end !== null)
         el.setSelectionRange(focus.start, focus.end);
     }
-    el.focus();
+    // The user may have scrolled away from the field (e.g. while the on-screen keyboard covers it).
+    el.focus({ preventScroll: true });
   }
 
   private focusTarget(key: string): Element | null {
