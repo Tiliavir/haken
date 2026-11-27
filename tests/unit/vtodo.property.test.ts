@@ -46,22 +46,31 @@ function mutate(rng: Rng, ics: string): string {
   return lines.join("\r\n");
 }
 
-/** Accepted input must read the same after a round-trip; rejected input must say why. */
-function strictRead(ics: string): void {
-  let first: string;
+/**
+ * Accepted input must read the same after a round-trip; rejected input must
+ * say why. Returns the written-back form, or `null` when rejected.
+ */
+function strictRead(ics: string): string | null {
   try {
     const view = readTask(parseResource(ics));
-    first = serialize(parseResource(ics));
-    assert.deepEqual(readTask(parseResource(first)), view);
+    const out = serialize(parseResource(ics));
+    assert.deepEqual(readTask(parseResource(out)), view);
+    return out;
   } catch (error) {
-    if (error instanceof InvalidInputError) return;
+    if (error instanceof InvalidInputError) return null;
     throw error;
   }
-  assert.equal(serialize(parseResource(first)), first);
 }
 
 test("parser: mutated real-world tasks are read and round-tripped, or rejected as invalid input", () => {
-  forAll((rng) => mutate(rng, rng.pick(VALID)), strictRead, 1000);
+  forAll(
+    (rng) => mutate(rng, rng.pick(VALID)),
+    (ics) => {
+      const out = strictRead(ics);
+      if (out !== null) assert.equal(serialize(parseResource(out)), out, "stable after one write");
+    },
+    1000,
+  );
 });
 
 test("import: split(join(tasks)) returns every task unchanged", () => {
@@ -91,7 +100,7 @@ test("import: a mutated file is split or rejected as invalid input, never half-r
         const { items, problems } = splitIcsFile(text);
         const todos = text.match(/^BEGIN:VTODO\r?$/gim)?.length ?? 0;
         assert.ok(items.length + problems.length <= todos);
-        for (const item of items) strictRead(item.ics);
+        for (const item of items) assert.notEqual(strictRead(item.ics), null);
       } catch (error) {
         if (!(error instanceof InvalidInputError)) throw error;
       }
