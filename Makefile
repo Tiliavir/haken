@@ -3,7 +3,7 @@ SHELL := /bin/sh
 NPX := npx --no-install
 CONFIG ?= web/config.json
 
-.PHONY: build build-demo test test-unit test-browser test-go lint fmt validate e2e check check-container coverage run clean gateway
+.PHONY: build build-demo test test-unit test-browser test-go fuzz lint fmt validate e2e check check-container coverage run clean gateway
 
 build:
 	rm -rf dist
@@ -45,6 +45,12 @@ test-go: gateway
 
 e2e: gateway
 	$(NPX) playwright test
+
+# Random property runs and Go fuzzing (ADR-20261127-property-tests); not part of `check`.
+FUZZTIME ?= 30s
+fuzz: build
+	HAKEN_SEED=$$(date +%s) HAKEN_RUNS=$${HAKEN_RUNS:-5000} node --test "dist/tests/unit/*.property.test.js"
+	cd gateway && for f in FuzzAllowedPath FuzzProxyPath; do go test ./internal/proxy -run '^$$' -fuzz "^$$f$$" -fuzztime $(FUZZTIME) || exit 1; done
 
 check: lint test-unit test-browser validate test-go e2e
 
