@@ -1,6 +1,6 @@
 # ADR-20261127: Property tests and fuzzing
 
-Status: Proposed
+Status: Accepted
 
 ## Decision
 
