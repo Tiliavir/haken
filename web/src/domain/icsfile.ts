@@ -5,7 +5,14 @@
  */
 import ICAL from "../../vendor/ical.js/ical.js";
 import { HakenError, InvalidInputError } from "./errors.js";
-import { type Component, PRODID, parseResource, readTask, type TaskView } from "./vtodo.js";
+import {
+  type Component,
+  checkValues,
+  PRODID,
+  parseResource,
+  readTask,
+  type TaskView,
+} from "./vtodo.js";
 
 export interface ImportItem {
   readonly ics: string;
@@ -31,7 +38,9 @@ export function splitIcsFile(text: string): ImportResult {
     const jcal: unknown = ICAL.parse(text);
     if (!Array.isArray(jcal) || jcal[0] !== "vcalendar") throw new Error("not a VCALENDAR");
     calendar = new ICAL.Component(jcal);
+    for (const tz of calendar.getAllSubcomponents("vtimezone")) checkValues(tz);
   } catch (cause) {
+    if (cause instanceof InvalidInputError) throw cause;
     throw new InvalidInputError(
       "domain",
       "File is not a single iCalendar object",

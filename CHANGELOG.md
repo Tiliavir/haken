@@ -4,6 +4,12 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/en/1.
 versions: [Semantic Versioning](https://semver.org/). Releasing is described in
 [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
+## [Unreleased]
+
+### Fixed
+
+- Tasks or imported files with a malformed date, time-zone or other value are rejected as invalid input with the property named, instead of being corrupted further on every save or failing with an internal error.
+
 ## [0.6.7] - 2026-11-23
 
 ### Fixed

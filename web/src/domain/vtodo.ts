@@ -146,8 +146,32 @@ export function parseResource(ics: string): ParsedResource {
       reason: todos.length > 1 ? "recurrence overrides are not supported" : "no VTODO",
     });
   }
+  checkValues(calendar);
   const todo = todos[0] as Component;
   return { calendar, todo, rawRules: rawRulesOf(ics) };
+}
+
+/**
+ * Rejects every property value ical.js cannot decode or write back unchanged.
+ * It parses malformed values (e.g. a 5-digit `DATE`, an `UTC-OFFSET` with
+ * letters) without complaint, then throws on first access or rewrites them on
+ * each serialization: writing one back would corrupt it further every time.
+ */
+export function checkValues(component: Component): void {
+  for (const prop of component.getAllProperties()) {
+    let unchanged: boolean;
+    try {
+      prop.getValues(); // decodes the value; ical.js throws on some malformed ones only here
+      const again = ICAL.Property.fromString(prop.toICALString());
+      unchanged = JSON.stringify(again.toJSON()) === JSON.stringify(prop.toJSON());
+    } catch {
+      unchanged = false;
+    }
+    if (!unchanged) {
+      invalid("Value cannot be written back unchanged", { property: prop.name.toUpperCase() });
+    }
+  }
+  for (const sub of component.getAllSubcomponents()) checkValues(sub);
 }
 
 export function serialize(resource: ParsedResource): string {
@@ -241,12 +265,22 @@ function dateTimeInstant(resource: ParsedResource, prop: Property, prodid: strin
   if (vtz === undefined) {
     invalid("TZID without matching VTIMEZONE", ctx(name, `${value};TZID=${tzid}`, prodid));
   }
-  const zone = new ICAL.Timezone(vtz);
-  const time = new ICAL.Time(
-    { year: y, month: mo, day: d, hour: h, minute: mi, second: Math.min(s, 59), isDate: false },
-    zone,
-  );
-  return time.toUnixTime() * 1000;
+  try {
+    const zone = new ICAL.Timezone(vtz);
+    const time = new ICAL.Time(
+      { year: y, month: mo, day: d, hour: h, minute: mi, second: Math.min(s, 59), isDate: false },
+      zone,
+    );
+    return time.toUnixTime() * 1000;
+  } catch (cause) {
+    // ical.js reads a malformed VTIMEZONE without complaint and fails only when expanding it.
+    throw new InvalidInputError(
+      "domain",
+      "VTIMEZONE cannot be applied",
+      { ...ctx(name, `${value};TZID=${tzid}`, prodid), reason: String(cause) },
+      { cause },
+    );
+  }
 }
 
 // ---------------------------------------------------------------- read model

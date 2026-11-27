@@ -107,6 +107,25 @@ describe("strict input", () => {
     const ics = fixture("invalid-status.ics").replace("STATUS:DONE", "DUE;VALUE=DATE:20261345");
     assert.throws(() => readTask(parseResource(ics)), InvalidInputError);
   });
+  // Found by the property tests: ical.js reads these without complaint.
+  test("a value that would change on write-back is rejected (any property)", () => {
+    const ics = fixture("invalid-status.ics").replace("STATUS:DONE", "DTSTART;VALUE=DATE:20261");
+    assert.throws(
+      () => parseResource(ics),
+      (e: unknown) => e instanceof InvalidInputError && e.context["property"] === "DTSTART",
+    );
+  });
+  test("a value ical.js cannot decode is rejected, also inside VTIMEZONE", () => {
+    const ics = fixture("thunderbird-tzid.ics").replace("TZOFFSETTO:+0100", "TZOFFSETTO:+2EED0100");
+    assert.throws(
+      () => parseResource(ics),
+      (e: unknown) => e instanceof InvalidInputError && e.context["property"] === "TZOFFSETTO",
+    );
+  });
+  test("a VTIMEZONE that cannot be applied is rejected", () => {
+    const ics = fixture("thunderbird-tzid.ics").replace("RRULE:FREQ=YEARLY", "RRULE:XFREQ=YEARLY");
+    assert.throws(() => readTask(parseResource(ics)), InvalidInputError);
+  });
   test("TZID without VTIMEZONE is rejected", () => {
     const ics = fixture("invalid-status.ics").replace(
       "STATUS:DONE",
