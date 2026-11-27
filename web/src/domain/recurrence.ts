@@ -367,7 +367,9 @@ function timeOf(todo: Component, name: string): Time | null {
   const value = todo.getFirstPropertyValue(name);
   if (value === null) return null;
   if (!(value instanceof ICAL.Time))
-    throw new HakenError("domain", "Date property is not a time", { property: name });
+    throw new InvalidInputError("domain", "Date property is not a time", {
+      property: name.toUpperCase(),
+    });
   return value;
 }
 

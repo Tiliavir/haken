@@ -37,7 +37,7 @@ func TestAllowedPath(t *testing.T) {
 // signedIn returns a session manager and the cookie of alice's session. The
 // login check runs against its own stub, so the upstream under test sees only
 // proxied requests.
-func signedIn(t *testing.T) (*session.Manager, *http.Cookie) {
+func signedIn(t testing.TB) (*session.Manager, *http.Cookie) {
 	t.Helper()
 	verify := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PROPFIND" || r.URL.Path != "/alice/" || r.Header.Get("Depth") != "0" {
@@ -60,7 +60,7 @@ func signedIn(t *testing.T) (*session.Manager, *http.Cookie) {
 }
 
 // upstream starts a Radicale stand-in.
-func upstream(t *testing.T, h http.HandlerFunc) *url.URL {
+func upstream(t testing.TB, h http.HandlerFunc) *url.URL {
 	t.Helper()
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)

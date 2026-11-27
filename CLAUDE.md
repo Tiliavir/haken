@@ -75,6 +75,7 @@ and Chrome (or `PLAYWRIGHT_CHANNEL=chromium` with Playwright's browser).
 | `make lint` / `make fmt` | Biome, `tsc` on test sources, `gofmt`, `go vet` / fix formatting |
 | `make validate` | W3C validator on HTML, CSS, SVG |
 | `make test-go` | Gateway tests (builds `dist/haken`) |
+| `make fuzz` | Property tests with a random seed + Go fuzzing (`FUZZTIME`, `HAKEN_RUNS`); not in `check` |
 | `make e2e` | Playwright against gateway + Radicale (data in `e2e-data/`) |
 | `make check` | All of the above, as CI |
 | `make coverage` | Unit (LCOV) and gateway (Go profile) coverage in `coverage/` |

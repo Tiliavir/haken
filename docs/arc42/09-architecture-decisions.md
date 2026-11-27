@@ -39,3 +39,4 @@ Status: `Proposed` → `Accepted` | `Rejected` | `Superseded by …`.
 | [ADR-20261108-rule-locked-edits](adr/ADR-20261108-rule-locked-edits.md) | A rule haken cannot edit locks only the rule, completing and due/start; the rest of the task stays editable | Accepted |
 | [ADR-20261111-label-order](adr/ADR-20261111-label-order.md) | Labels reordered by dragging; the order stays on the device | Accepted |
 | [ADR-20261113-label-emoji](adr/ADR-20261113-label-emoji.md) | An optional emoji per label replaces its icon in the sidebar; kept on the device | Accepted |
+| [ADR-20261127-property-tests](adr/ADR-20261127-property-tests.md) | Seeded property tests on `node:test` (no library) and Go native fuzzing; random runs via `make fuzz`, not a gate | Accepted |
